@@ -3,6 +3,7 @@
 ## Não lançado
 - Página de Política de Privacidade em `/privacidade.html` (exigida pelo Google para o login com Google)
 - `/metrics` responde 401 (em vez de 404) quando o token falta ou está errado, como o Metrics Endpoint do Grafana Cloud exige; comparação do token em tempo constante
+- Arcano: o cajado não atravessa mais o corpo do mago, parado ou nas animações (mira, conjuração, Nova, esquiva); a mão desfaz por completo a rotação do braço e o cajado fica em pé, com o pé afastado do manto e a ponta para a frente ao conjurar
 
 ## 0.10.0 · Fase 1: fundação online
 - **Servidor online** (`server/`): Node 22 + TypeScript, Fastify e WebSocket, PostgreSQL com migrações (ou memória em dev), Docker para o Easypanel
