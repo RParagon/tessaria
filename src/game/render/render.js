@@ -1,0 +1,190 @@
+/* Fios de Tessária · Render do quadro */
+/* =========================================================
+   RENDER
+   ========================================================= */
+let dpr = 1, pxDev = 4, VP = null;
+const cam = { x: 0, z: 0, zoom: 1 };
+const IDB = (() => { const a = new Float32Array(24 * 16); a.set(mI(), 0); return a; })();
+const boneBuf = new Float32Array(24 * 16);
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const w = Math.max(1, Math.round(canvas.clientWidth * dpr)), h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  pxDev = Math.max(1, Math.round(G.settings.px * dpr));
+  resizeFB(Math.ceil(w / pxDev), Math.ceil(h / pxDev));
+}
+function computeInst(model, A, M) {
+  const B = model.bones, W = [];
+  for (let i = 0; i < B.length; i++) {
+    const b = B[i], a = A[i], p = b.v;
+    let L = mMul(mT(p[0] + a.tx, p[1] + a.ty, p[2] + a.tz), mMul(mRY(a.ry), mMul(mRX(a.rx), mRZ(a.rz))));
+    if (a.sx !== 1 || a.sy !== 1 || a.sz !== 1) L = mMul(L, mS(a.sx, a.sy, a.sz));
+    L = mMul(L, mT(-p[0], -p[1], -p[2]));
+    W[i] = b.p < 0 ? mMul(M, L) : mMul(W[b.p], L);
+    boneBuf.set(W[i], i * 16);
+  }
+  return W;
+}
+let U = PS.u;
+function drawModel(model, A, x, y, z, yaw, scale, o = {}) {
+  const M = mMul(mT(x, y, z), mMul(mRY(yaw), mS(scale)));
+  const W = computeInst(model, A, M);
+  gl.uniformMatrix4fv(U.u_bones, false, boneBuf);
+  gl.uniform1f(U.u_sizeMul, scale); gl.uniform1f(U.u_dissolve, o.dis || 0); gl.uniform1f(U.u_dmat, o.dmat ?? 21);
+  gl.uniform1f(U.u_flash, o.flash || 0); gl.uniform1f(U.u_glow, o.glow || 1); gl.uniform1f(U.u_xray, 0);
+  gl.bindVertexArray(model.vao); gl.drawArrays(gl.POINTS, 0, model.count);
+  return W;
+}
+function render(dt) {
+  resize();
+  const asp = canvas.width / canvas.height, fov = 40 * Math.PI / 180, cssW = canvas.clientWidth;
+  const proj = mPersp(fov, asp, .1, 220);
+  let eye, tgt, regPal = curPal || REGPAL.hub, xray = 0, player = [0, -99, 0];
+  dynN = 0;
+  const preview = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv');
+  if (G.mode === 'title' || (!P && G.mode !== 'create')) {
+    const a = G.time * .06; tgt = [44, 1, 32]; eye = [44 + Math.sin(a) * 32, 21, 32 + Math.cos(a) * 32];
+  } else if (preview) {
+    const sideL = cssW <= 760 && innerHeight < 520 && cssW > innerHeight && G.mode !== 'create';
+    if (cssW > 760 || sideL) proj[8] = sideL ? .44 : (G.mode === 'create' ? 400 : 440) / cssW * .95; else proj[9] = G.mode === 'create' ? -.48 : -.56;
+    tgt = [0, 1.0, 0]; eye = cssW > 760 || sideL ? [0, 1.9, 5.6] : [0, 2.1, 7.4];
+  } else {
+    let tx = P.x, tz = P.z;
+    if (boss && !boss.dying) { tx = lerp(P.x, boss.x, .32); tz = lerp(P.z, boss.z, .32); }
+    if (RG && RG.key === 'home') { tx = lerp(P.x, 16, .85); tz = lerp(P.z, 12.6, .85); }
+    if (G.cine) { const k = sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)); tx = lerp(tx, G.cine.x, k); tz = lerp(tz, G.cine.z, k); }
+    cam.x = lerp(cam.x, tx, 1 - Math.exp(-dt * 6)); cam.z = lerp(cam.z, tz, 1 - Math.exp(-dt * 6));
+    const fit = Math.pow(clamp(1.1 / asp, 1, 2), .55), dist = 15.5 * fit * (RG && RG.key === 'home' ? 1.16 : 1) * (boss ? 1.3 : 1) * (boss && boss.type === 'dragon' ? 1.12 : 1) * (G.cine ? 1 - .3 * sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)) : 1), pitch = .98;
+    const sh = G.shake || 0;
+    tgt = [cam.x + rr(-sh, sh), .8, cam.z + rr(-sh, sh)]; eye = [tgt[0], tgt[1] + dist * Math.sin(pitch), tgt[2] + dist * Math.cos(pitch)];
+    xray = 1; player = [P.x, 0, P.z];
+  }
+  VP = mMul(proj, mLook(eye, tgt, [0, 1, 0])); invVP = invert4(VP);
+  const light = V.norm([-.45, 1.0, .5]);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, FB.fbo); gl.viewport(0, 0, FB.w, FB.h);
+  gl.clearColor(0, 0, 0, 0); gl.clearDepth(1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(PS.p); U = PS.u;
+  gl.uniformMatrix4fv(U.u_vp, false, VP); gl.uniform3fv(U.u_cam, eye); gl.uniform3fv(U.u_light, light); gl.uniform3fv(U.u_player, player); gl.uniform1f(U.u_aspect, asp);
+  { const pc = [VP[0] * player[0] + VP[4] * 1.0 + VP[8] * player[2] + VP[12], VP[1] * player[0] + VP[5] * 1.0 + VP[9] * player[2] + VP[13], VP[3] * player[0] + VP[7] * 1.0 + VP[11] * player[2] + VP[15]]; gl.uniform3fv(U.u_pclip, [pc[0] / pc[2], pc[1] / pc[2], pc[2]]); }
+  gl.uniform1f(U.u_proj, FB.h / (2 * Math.tan(fov / 2))); gl.uniform1f(U.u_time, G.time);
+  const camD = V.len(V.sub(eye, tgt)); gl.uniform1f(U.u_near, Math.max(.1, camD - 14)); gl.uniform1f(U.u_range, 30);
+  // sombras
+  const shadows = new Float32Array(32); let si = 0;
+  const addSh = (x, z, rx, rz) => { if (si < 8) { shadows.set([x, z, rx, rz], si * 4); si++; } };
+  if (!preview && (G.mode === 'play' || G.mode === 'dialog' || G.mode === 'menu')) {
+    if (P && P.dieT < 0) addSh(P.x, P.z, .55, .55);
+    if (boss && !boss.dying) { if (boss.type === 'dragon') addSh(boss.x - Math.sin(boss.yaw) * .9, boss.z - Math.cos(boss.yaw) * .9, 2.6, 2.6); else if (boss.type === 'skull') { const h = bossHits(boss)[0]; addSh(h[0], h[1], 1.3, 1.3); if (boss.W) for (const H of boss.model.hands) { const p = tp(boss.W[H.hb], H.W); addSh(p[0], p[2], .7, .8); } } else addSh(boss.x, boss.z, 1.5, 1.4); }
+    for (const n of npcs) if (n.visible) addSh(n.x, n.z, .5 * (n.scale || 1), .5 * (n.scale || 1));
+    const near = enemies.filter(e => e.dieT < 0).sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z));
+    for (const e of near) addSh(e.x, e.z, e.def.r * e.scale * 1.1, e.def.r * e.scale * 1.1);
+  }
+  gl.uniform4fv(U.u_shadow, shadows);
+  // mundo
+  if (!preview && WD) {
+    gl.uniformMatrix4fv(U.u_bones, false, IDB); gl.uniform1f(U.u_sizeMul, 1); gl.uniform1f(U.u_dissolve, 0); gl.uniform1f(U.u_flash, 0); gl.uniform1f(U.u_glow, 1); gl.uniform1f(U.u_xray, xray);
+    const vr = G.mode === 'title' ? 60 : 30 + (boss ? 8 : 0);
+    for (const c of WD.chunks) { if (Math.abs(c.cx - tgt[0]) > vr || Math.abs(c.cz - tgt[2]) > vr * .95) continue; gl.bindVertexArray(c.vao); gl.drawArrays(gl.POINTS, 0, c.count); }
+  }
+  const t = G.time;
+  if (preview) {
+    drawModel(getModel('pedestal'), newAnim(getModel('pedestal')), 0, 0, 0, 0, 1);
+    creatorYaw += dt * .4; resetAnim(P.anim); P.moveAmt = 0; P.cls = G.char.cls; P.act = (Math.floor(t / 4) % 3 === 2) ? ({ lamina: 'swing', arcano: 'cast', arco: 'shoot' }[G.char.cls]) : null; P.actT = (t % 4) * .25;
+    if (G.mode !== 'create') { P.act = null; P.actT = 0; }
+    P.stance = P.act && P.cls !== 'lamina' ? 1 : 0; P.combo = Math.floor(t / 12) % 3;
+    poseHuman(P.anim, P, t); drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
+  } else {
+    for (const n of npcs) {
+      if (!n.visible) continue;
+      resetAnim(n.anim); n.talkT -= dt;
+      const talking = n.talkT > 0 || (G.mode === 'dialog' && DLG.cur && DLG.cur.who === n.name);
+      let want = n.baseYaw || 0;
+      if (talking && P) want = Math.atan2(P.x - n.x, P.z - n.z);
+      else if ((n.moveAmt || 0) > .2) want = n.wyaw;
+      else if (P && Math.hypot(P.x - n.x, P.z - n.z) < 4 && n.id !== 'ivo') want = Math.atan2(P.x - n.x, P.z - n.z);
+      n.yaw += angDiff(n.yaw, want) * (1 - Math.exp(-dt * 6));
+      n.act = talking ? 'talk' : ((((n.id === 'kiko' || n.id === 'nina') && (n.moveAmt || 0) < .2 && Math.sin(t * .7 + n.x) > .8) || (n.id === 'otto' && P && Math.hypot(P.x - n.x, P.z - n.z) < 9 && Math.sin(t * .9) > .6)) ? 'wave' : null);
+      n.cls = n.cfg.cls; poseHuman(n.anim, n, t + n.x);
+      if (n.id === 'lio' && !talking) { n.anim[5].rx = -.9 + Math.sin(t * 9) * .18; n.anim[4].rx = -.75; n.anim[4].ry = -.6; n.anim[3].rz = Math.sin(t * 2) * .08; }
+      if (n.id === 'brann') { n.anim[2].rx += .22; n.anim[3].rx -= .1; }
+      if (n.id === 'ivo' && !talking) { n.anim[5].rx = -.75 + Math.sin(t * .8) * .05; }
+      if (n.id === 'bruma' && !talking) { const ph = (t * .9) % 1; n.anim[5].rx = ph < .7 ? lerp(-.3, -2.5, ph / .7) : lerp(-2.5, -.2, clamp((ph - .7) / .08, 0, 1)); if (ph > .7) n.anim[2].rx += .15; if (n.lastPh !== undefined && n.lastPh < .78 && ph >= .78) { for (let i = 0; i < 10; i++) spawn({ x: 55 + rr(-.15, .15), y: .75, z: 44.9 + rr(-.1, .1), vx: rr(-2, 2), vy: rr(1.5, 3.5), vz: rr(-2, 2), life: rr(.3, .6), s0: .06, s1: .02, b0: 1, b1: .3, mat: 14, buoy: -9 }); if (P && G.mode === 'play' && Math.hypot(P.x - 55, P.z - 45) < 9) sfx('clink'); } n.lastPh = ph; }
+      if (n.id === 'mel' && !talking) { n.anim[4].rx = -1.0 + Math.sin(t * 5) * .25; n.anim[5].rx = -1.0 - Math.sin(t * 5) * .25; n.anim[2].rx += .25; }
+      if (n.id === 'desf' && !(G.save && G.save.ended) && Math.random() < .3) spawn({ x: n.x + rr(-.3, .3), y: rr(.3, 1.8), z: n.z + rr(-.3, .3), vx: rr(-.3, .3), vy: rr(.3, .8), vz: rr(-.3, .3), life: 1.2, s0: .07, s1: .02, b0: .9, b1: .1, mat: 63 });
+      if (n.id === 'lio' && !talking && Math.random() < .03) spawn({ x: n.x + rr(-.3, .3), y: 1.6, z: n.z + .3, vx: rr(-.2, .2), vy: .6, vz: rr(-.1, .2), life: 1.6, s0: .1, s1: .04, b0: 1, b1: .2, mat: 14 });
+      n.W = drawModel(n.model, n.anim, n.x, 0, n.z, n.yaw, n.scale || 1, { dis: n.id === 'desf' && !(G.save && G.save.ended === 'B') ? .1 + .05 * Math.sin(t * 2) : 0, dmat: 63 });
+      if (n.id === 'ivo' && n.W) { const tip = tp(n.W[8], [-.38, 1.6, 1.76]), bx = 59.6, bz = 50.6, by = .02 + Math.sin(t * 2.2) * .04; for (let k = 0; k <= 10; k++) { const u = k / 10; dyn(lerp(tip[0], bx, u), lerp(tip[1], by, u) - Math.sin(u * Math.PI) * .35, lerp(tip[2], bz, u), .5, 28, .045); } dyn(bx, by + .05, bz, .9, 16, .16); }
+    }
+    for (const c of critters) { resetAnim(c.anim); c.anim[2].rx = c.peck > 0 ? .9 * Math.sin(c.peck * 16) ** 2 : 0; c.anim[1].ty = Math.abs(Math.sin(c.ph * 9)) * .05 * c.moving; c.anim[1].rz = Math.sin(c.ph * 9) * .08 * c.moving; drawModel(c.model, c.anim, c.x, 0, c.z, c.yaw, 1); }
+    for (const it of inter) {
+      if (!it.model) continue;
+      resetAnim(it.anim);
+      if (it.kind === 'dragon') poseCalmDragon(it.anim, t, G.mode === 'dialog' && DLG.cur && DLG.cur.who === 'Varkhaz');
+      if (it.kind === 'shrine') { it.anim[1].ry = t * 1.2; it.anim[1].ty = Math.sin(t * 2) * .08; }
+      if (it.kind === 'altar') { const D = curDiff(); for (let k = 0; k < 12; k++) { const a = t * -1.1 + k / 12 * 6.283; dyn(it.x + Math.cos(a) * 1.1, .07, it.z + Math.sin(a) * 1.1, .8, k % 2 ? 26 : 30, .16); } if (!boss && Math.random() < .3 + .05 * (G.save.diff || 0)) spawn({ x: it.x + rr(-.3, .3), y: 1.2, z: it.z + rr(-.3, .3), vy: rr(1, 2), life: .7, s0: .1, s1: .02, b0: 1, b1: .2, mat: D.n.startsWith('Tormento') ? 124 : 30 }); }
+      if (it.kind === 'frag') { it.anim[1].ry = t * 2; it.anim[1].ty = Math.sin(t * 2.5) * .15; if (Math.random() < .3) spawn({ x: it.x + rr(-.5, .5), y: rr(.3, 1.8), z: it.z + rr(-.5, .5), vy: .5, life: .8, s0: .07, s1: .02, b0: 1, b1: .2, mat: 30 }); }
+      if (it.kind === 'chest') { if (it.open) it.openT += dt; it.anim[1].rx = -1.9 * sm(0, .35, it.openT); }
+      if (it.kind === 'pylon') { it.anim[1].ry = t * 1.5; it.anim[1].ty = Math.sin(t * 2) * .12; if (!it.used) { const B = BUFFS[it.bt]; for (let k = 0; k < 14; k++) { const a = t * 1.4 + k / 14 * 6.283; dyn(it.x + Math.cos(a) * 1.0, .07, it.z + Math.sin(a) * 1.0, .7, B.mat, .16); } if (Math.random() < .5) spawn({ x: it.x + rr(-.25, .25), y: 1.7, z: it.z + rr(-.25, .25), vy: rr(.5, 1.2), life: .8, s0: .1, s1: .02, b0: 1, b1: .2, mat: B.mat }); } }
+      drawModel(it.model, it.anim, it.x, it.y || 0, it.z, it.yaw, it.scale || 1, { glow: it.used ? .2 : 1 });
+      if ((it.kind === 'portal' || it.kind === 'riftportal') && it.lit) { for (let i = 0; i < 3; i++) { const a = rr(0, 6.28), r = rr(0, 1.05); spawn({ x: it.x + Math.cos(a) * r * Math.cos(it.yaw || 0), y: 1.5 + Math.sin(a) * r * 1.3, z: it.z + rr(-.1, .1) - Math.cos(a) * r * Math.sin(it.yaw || 0), vx: -Math.sin(a) * .8 * Math.cos(it.yaw || 0), vz: Math.sin(a) * .8 * Math.sin(it.yaw || 0), vy: Math.cos(a) * .8, life: .5, s0: .12, s1: .03, b0: 1, b1: .2, mat: it.kind === 'riftportal' ? 122 : it.to === 'hub' ? 30 : 31 }); } }
+    }
+    for (const e of enemies) {
+      if (Math.abs(e.x - tgt[0]) > 30 || Math.abs(e.z - tgt[2]) > 26) continue;
+      poseEnemy(e, e.t);
+      if (e.elite && e.dieT < 0 && Math.random() < .6) spawn({ mat: e.thief ? 30 : 123, x: e.x + rr(-.5, .5) * e.scale, y: rr(.1, 1.4) * e.scale, z: e.z + rr(-.5, .5) * e.scale, vy: rr(.4, 1), life: .6, s0: .1, s1: .02, b0: 1, b1: .2 });
+      if (e.slowT > 0 && Math.random() < .4) spawn({ x: e.x + rr(-.4, .4), y: rr(.2, 1.2), z: e.z + rr(-.4, .4), vy: -.3, life: .5, s0: .08, s1: .02, b0: 1, b1: .3, mat: 122 });
+      const dis = e.spawnT > 0 ? clamp(e.spawnT / .8, 0, 1) : e.dieT >= 0 ? clamp(e.dieT / .6, 0, 1) : 0;
+      drawModel(e.model, e.anim, e.x, e.y, e.z, e.yaw, e.scale * (e.dieT >= 0 ? 1 + .25 * Math.sin(Math.min(1, e.dieT / .25) * Math.PI) : 1), { dis: Math.max(dis, e.fade || 0), dmat: e.thief ? 30 : 21, flash: e.flash > .5 ? 1 : 0 });
+      if (e.dieT < 0) drawEnemyExtra(e, t);
+    }
+    if (G.touch && P && P.dieT < 0 && G.mode === 'play') { let tg = null, bd = 11; for (const e of enemies) { if (e.dieT >= 0 || e.spawnT > 0) continue; const dd = Math.hypot(e.x - P.x, e.z - P.z); if (dd < bd) { bd = dd; tg = e; } } if (tg) { const rr2 = (tg.def.r + .35) * tg.scale; for (let k = 0; k < 10; k++) { const a = t * 2 + k / 10 * 6.283; dyn(tg.x + Math.cos(a) * rr2, .08, tg.z + Math.sin(a) * rr2, .9, 30, .12); } } }
+    if (boss) {
+      poseBoss(boss, boss.t);
+      const dis = boss.dying ? clamp(boss.dieT / 2.4, 0, 1) : boss.spawnT > 0 ? clamp(boss.spawnT / 1.2, 0, 1) : 0;
+      boss.W = drawModel(boss.model, boss.anim, boss.x, boss.hop || 0, boss.z, boss.yaw, boss.scale || 1, { dis: Math.max(dis, boss.blinkDis || 0), dmat: BOSSMAT[boss.type] ?? 27, flash: boss.flash > .5 ? 1 : 0, glow: boss.act ? 1 : .85 });
+      if (boss.type === 'reflexo' && !boss.dying && Math.random() < .5) spawn({ x: boss.x + rr(-.6, .6), y: rr(.2, 3), z: boss.z + rr(-.6, .6), vy: rr(.3, 1), life: .8, s0: .1, s1: .02, b0: 1, b1: .2, mat: 158 });
+      if (boss.phase2 && !boss.dying && Math.random() < .6) { const a = rr(0, 6.28), rad = 1.5 * (boss.scale || 1); spawn({ x: boss.x + Math.cos(a) * rad, y: rr(.2, 2.5), z: boss.z + Math.sin(a) * rad, vy: rr(.5, 1.5), life: .7, s0: .14, s1: .03, b0: 1, b1: .2, mat: BOSSMAT[boss.type] ?? 27 }); }
+    }
+    if (P && playerModel) {
+      resetAnim(P.anim); poseHuman(P.anim, P, t);
+      if (P.ghosts) for (const g of P.ghosts) if (g.t < .18) drawModel(playerModel, P.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
+      for (const k in G.buffs) if (G.buffs[k] > 0 && Math.random() < .35) spawn({ x: P.x + rr(-.45, .45), y: rr(.1, 1.8), z: P.z + rr(-.45, .45), vy: rr(.3, .8), life: .6, s0: .09, s1: .02, b0: 1, b1: .2, mat: BUFFS[k].mat });
+      const blink = P.iframe > 0 && P.dashT <= 0 && P.dieT < 0 && Math.floor(t * 20) % 2 === 0;
+      if (!blink) P.W = drawModel(playerModel, P.anim, P.x, 0, P.z, P.yaw, 1, { dis: P.dieT >= 0 ? clamp(P.dieT / 1.2, 0, 1) : 0, dmat: 7, flash: P.flash > .6 ? 1 : 0 });
+      if (P.shield > 0) for (let i = 0; i < 16; i++) { const a = t * 2 + i / 16 * 6.283; dyn(P.x + Math.cos(a) * .7, .3 + (i % 4) * .4, P.z + Math.sin(a) * .7, .7, 31, .14); }
+      if (G.save && G.save.eq && G.save.eq.weapon && G.save.eq.weapon.rar === 4 && P.W && Math.random() < .5) { const wp = G.char.cls === 'arco' ? handPos('bow') : G.char.cls === 'arcano' ? handPos('staff') : tp(P.W[8], [-.38 * ([.86, 1, 1.18][G.char.body ?? 1]), .6, .6]); spawn({ x: wp[0] + rr(-.1, .1), y: wp[1] + rr(-.1, .1), z: wp[2] + rr(-.1, .1), vy: .5, life: .4, s0: .08, s1: .02, b0: 1, b1: .2, mat: 124 }); }
+      if (P.stance > .2 && P.dieT < 0) {
+        const sv = P.stance;
+        if (P.cls === 'arcano') { for (let i = 0; i < 22; i++) { const a = t * 1.6 + i / 22 * 6.283; dyn(P.x + Math.cos(a) * 1.0, .06, P.z + Math.sin(a) * 1.0, .55 * sv, 7, .15); } for (let i = 0; i < 6; i++) { const a = -t * 2.4 + i / 6 * 6.283; dyn(P.x + Math.cos(a) * .6, .06, P.z + Math.sin(a) * .6, .8 * sv, 7, .2); } }
+        const ay = P.aimYaw; for (let k = 1; k <= 7; k++) dyn(P.x + Math.sin(ay) * (1 + k * .9), .07, P.z + Math.cos(ay) * (1 + k * .9), .3 * sv * (1 - k / 9), 7, .13);
+      }
+    }
+  }
+  // dinâmicos
+  for (const p of parts) { const k = p.age / p.life; dyn(p.x, p.y, p.z, lerp(p.b0, p.b1, k), p.mat, lerp(p.s0, p.s1, k)); }
+  for (const p of projs) {
+    if (p.arrow) { const l = Math.hypot(p.vx, p.vz) || 1, ux = p.vx / l, uz = p.vz / l; dyn(p.x, p.y, p.z, 1, p.mat, p.size); for (let k = 1; k <= 4; k++) dyn(p.x - ux * k * .15, p.y, p.z - uz * k * .15, k === 4 ? .9 : .45, p.mat, k === 4 ? .17 : .1); }
+    else if (p.bolt) { dyn(p.x, p.y, p.z, 1, p.mat, p.size); for (let k = 0; k < 3; k++) { const a = t * 14 + k * 2.094; dyn(p.x + Math.cos(a) * .24, p.y + Math.sin(a) * .24, p.z, .7, p.mat, .1); } }
+    else dyn(p.x, p.y, p.z, 1, p.mat, p.size);
+  }
+  for (const p of pickups) { if (p.kind === 'item') { const r = RAR[p.item.rar].row; dyn(p.x, p.y + .15 + Math.sin(t * 3 + p.x) * .08, p.z, 1, r, .36); for (let k = 0; k < 8; k++) { const a = t * 2 + k / 8 * 6.283; dyn(p.x + Math.cos(a) * .45, .06, p.z + Math.sin(a) * .45, .55, r, .14); } } else dyn(p.x, p.y, p.z, .8 + .2 * Math.sin(t * 10 + p.x), p.kind === 'gold' ? 30 : p.kind === 'orb' ? 122 : 31, p.kind === 'gold' ? .2 : .34); }
+  drawTelegraphs(); drawZones(t);
+  for (const it of inter) if (it.kind === 'qitem') { const y = .5 + Math.sin(t * 3 + it.x) * .1; dyn(it.x, y, it.z, 1, it.mat, .3); for (let k = 0; k < 6; k++) { const a = t * 2 + k / 6 * 6.283; dyn(it.x + Math.cos(a) * .35, .06, it.z + Math.sin(a) * .35, .6, it.mat, .12); } if (Math.random() < .4) spawn({ x: it.x + rr(-.1, .1), y: .3, z: it.z + rr(-.1, .1), vy: rr(1, 2), life: .7, s0: .08, s1: .02, b0: 1, b1: .2, mat: it.mat }); }
+  if (dynN) {
+    gl.uniformMatrix4fv(U.u_bones, false, IDB); gl.uniform1f(U.u_sizeMul, 1); gl.uniform1f(U.u_dissolve, 0); gl.uniform1f(U.u_flash, 0); gl.uniform1f(U.u_glow, 1); gl.uniform1f(U.u_xray, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, dynVAO.buf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, pData, 0, dynN * STRIDE);
+    gl.bindVertexArray(dynVAO.vao); gl.drawArrays(gl.POINTS, 0, dynN);
+  }
+  // pós
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height); gl.disable(gl.DEPTH_TEST);
+  gl.useProgram(PP.p); const Q = PP.u;
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, FB.tex); gl.uniform1i(Q.u_fb, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, palTex); gl.uniform1i(Q.u_pal, 1);
+  gl.uniform1f(Q.u_px, pxDev); gl.uniform2f(Q.u_res, FB.w, FB.h); gl.uniform1f(Q.u_dither, G.settings.dither); gl.uniform1f(Q.u_time, G.time);
+  gl.uniform1i(Q.u_outlineOn, G.settings.outline ? 1 : 0); gl.uniform1f(Q.u_fade, G.fade || 0); gl.uniform1f(Q.u_hurt, G.hurt || 0);
+  const bgp = preview ? { bg: ['#0c0a18', '#1a1430', '#2e2048'], outline: '#06050b', star: '#ffe9c9' } : regPal;
+  gl.uniform3fv(Q.u_outline, hex1(bgp.outline)); gl.uniform3fv(Q.u_star, hex1(bgp.star));
+  gl.uniform3fv(Q.u_bg0, hex1(bgp.bg[0])); gl.uniform3fv(Q.u_bg1, hex1(bgp.bg[1])); gl.uniform3fv(Q.u_bg2, hex1(bgp.bg[2]));
+  gl.bindVertexArray(emptyVAO); gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+

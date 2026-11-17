@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Fios de Tessária</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="RPG de ação em pixel art 3D feito de splats. Crie seu Tecelão, explore Tessária e recosture o Sol.">
+<meta name="theme-color" content="#0b0912">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta property="og:title" content="Fios de Tessária">
+<meta property="og:description" content="RPG de ação em pixel art 3D feito de splats.">
+<meta property="og:image" content="/og-image.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icons/icon-64.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Chakra+Petch:wght@400;600&display=swap">
+</head>
+<body>
+
+<div id="app">
+  <canvas id="c" aria-label="Mundo do jogo em pixel art 3D feito de splats"></canvas>
+  <div id="fx"></div>
+  <div id="marks"></div>
+  <div id="cine" hidden><div class="cbar ctop"></div><div class="cbar cbot"></div><div class="cname" id="cineName"></div></div>
+
+  <div id="hud" hidden>
+    <div class="hud-l">
+      <div class="pname"><span id="hName">—</span><span class="lv">NV <span id="hLv">1</span></span><span id="hDiff" class="dif"></span></div>
+      <div class="hprow"><img data-ic="heart" class="hic" alt=""><div class="bar hp"><i id="hHp" style="width:100%"></i><span id="hHpT"></span></div></div>
+      <div class="bar xp"><i id="hXp" style="width:0%"></i></div>
+      <div class="res"><span title="Centelhas"><img data-ic="gold" alt="Centelhas"><b id="hGold">0</b></span><span title="Poções"><img data-ic="potion" alt="Poções"><b id="hPot">3</b></span><span title="Memórias"><img data-ic="gem" alt="Memórias"><b id="hFrag">0/9</b></span></div>
+      <div class="obj" id="hObj"></div>
+      <div class="trk" id="hTrk"></div>
+      <div class="buffs" id="buffs"></div>
+    </div>
+    <div class="hud-r"><button class="px" id="bBag"><img data-ic="bag" alt=""><span>Bolsa</span></button><button class="px" id="bSkills"><img data-ic="nova" alt=""><span>Grimório</span></button><button class="px" id="bJournal"><img data-ic="book" alt=""><span>Diário</span></button><button class="px" id="bPause"><img data-ic="gear" alt=""><span>Menu</span></button></div>
+    <div id="bossBar" hidden><div class="bname" id="bName"></div><div class="bar"><i id="bHp" style="width:100%"></i></div></div>
+    <div id="streak" hidden><b id="stN">x0</b><span id="stL">SEQUÊNCIA</span><div class="sbar"><i id="stBar"></i></div></div>
+    <div id="riftBar" hidden><div class="bname"><span id="rbName">FENDA</span><span id="rbTime">0:00</span></div><div class="bar"><i id="rbFill" style="width:0%"></i></div><div class="raff" id="rbAff"></div></div>
+    <div class="keys" id="keys"><kbd>WASD</kbd> mover · <kbd>E</kbd> interagir · <kbd>TAB</kbd> diário · <kbd>G</kbd> grimório · <kbd>ESC</kbd> menu</div>
+    <div class="abar" id="abar">
+      <button class="ab" id="abAtk" aria-label="Atacar"><img data-ic="sword" alt=""><kbd>J · CLIQUE</kbd><span class="lbl">Atacar</span></button>
+      <button class="ab" id="abDash" aria-label="Esquiva"><img data-ic="dash" alt=""><kbd>ESPAÇO</kbd><span class="lbl">Esquiva</span></button>
+      <button class="ab" id="abSkill" aria-label="Habilidade"><img data-ic="fire" alt=""><kbd>K</kbd><span class="lbl" id="abSkillL">Habilidade</span><i class="cdv" id="abSkillT"></i></button>
+      <button class="ab" id="abPot" aria-label="Poção"><img data-ic="potion" alt=""><kbd>Q</kbd><b class="cnt" id="abPotN">3</b><span class="lbl">Poção</span></button>
+      <button class="ab" id="abBag" aria-label="Bolsa"><img data-ic="bag" alt=""><kbd>I</kbd><span class="lbl">Bolsa</span></button>
+    </div>
+  </div>
+  <canvas id="mmap" width="64" height="48" hidden></canvas><div id="mmapZ" hidden></div>
+  <div id="toast"></div>
+  <div id="prompt" hidden></div>
+  <div id="rotate"><div><div class="ph"></div><p>GIRE O CELULAR</p><small>Fios de Tessária é jogado na horizontal.</small></div></div>
+
+  <div id="touch" hidden>
+    <div id="joyZone"></div>
+    <div id="joyBase" hidden><div id="joyKnob"></div></div>
+    <div class="tbtns">
+      <button class="tb use" id="tUse" hidden><span>USAR</span></button>
+      <button class="tb sm1" id="tPot" aria-label="Poção"><img data-ic="potion" alt=""><b class="cnt" id="tPotN">3</b></button>
+      <button class="tb sm2" id="tSkill" aria-label="Habilidade"><img data-ic="fire" alt=""><i class="cdv" id="tSkillT"></i><span class="tl">HABIL.</span></button>
+      <button class="tb md" id="tDash" aria-label="Esquiva"><img data-ic="dash" alt=""><span class="tl">ESQUIVA</span></button>
+      <button class="tb lg" id="tAtk" aria-label="Atacar"><img data-ic="sword" alt=""><span class="tl">ATACAR</span></button>
+    </div>
+  </div>
+
+  <div id="dialog" class="panel" hidden><div class="who" id="dWho"></div><div class="txt" id="dTxt"></div><div class="choices" id="dCh"></div><div class="next" id="dNext">▼</div></div>
+
+  <section id="title" class="screen" hidden>
+    <div class="title-box">
+      <h1 class="logo">FIOS DE<br>TESSÁRIA<small>UM RPG DE SPLATS</small></h1>
+      <p style="margin:0 0 6px;font-family:var(--f-display);font-size:9px;letter-spacing:.14em;color:var(--dim)">VERSÃO <span class="ver"></span></p>
+      <p class="tagline">O Sol se apagou e o mundo está se desfazendo em pixels soltos. Você nasceu com uma agulha de luz na mão.</p>
+      <div class="menu">
+        <button class="px gold" id="mContinue" hidden>Continuar</button>
+        <button class="px" id="mNew">Novo jogo</button>
+      </div>
+      <p class="foot">Teclado, mouse ou toque · cerca de 30 minutos de aventura</p>
+    </div>
+  </section>
+
+  <section id="create" class="screen" hidden>
+    <div class="cpanel panel" id="cpanel">
+      <h2>Crie sua Tecelagem</h2>
+      <div class="field"><label for="cName">Nome</label><input id="cName" type="text" maxlength="14" autocomplete="off"></div>
+      <div class="field"><span class="lbl">Classe</span><div class="cls" id="cCls"></div></div>
+      <div class="field"><span class="lbl">Corpo</span><div class="opts" id="cBody"></div></div>
+      <div class="field"><span class="lbl">Pele</span><div class="opts" id="cSkin"></div></div>
+      <div class="field"><span class="lbl">Cabelo</span><div class="opts" id="cHair"></div></div>
+      <div class="field"><span class="lbl">Cor do cabelo</span><div class="opts" id="cHairCol"></div></div>
+      <div class="field"><span class="lbl">Rosto</span><div class="opts" id="cBeard"></div></div>
+      <div class="field"><span class="lbl">Roupa</span><div class="opts" id="cOutfit"></div></div>
+      <div class="field"><span class="lbl">Detalhes e capa</span><div class="opts" id="cTrim"></div></div>
+      <div class="field"><span class="lbl">Brilho dos olhos e da magia</span><div class="opts" id="cGlow"></div></div>
+      <div class="field"><span class="lbl">Acessório</span><div class="opts" id="cAcc"></div></div>
+      <label class="chk" for="cCape"><input type="checkbox" id="cCape"> Usar capa</label>
+      <div class="crow"><button class="px" id="cRand">Aleatório</button><button class="px" id="cBack">Voltar</button></div>
+      <button class="px gold" id="cGo">Começar a jornada</button>
+    </div>
+  </section>
+
+  <section id="story" class="screen modal" hidden>
+    <div class="story" id="storyBox"></div>
+  </section>
+
+  <section id="forge" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Forja da Bruma</h2>
+      <p class="sub">Troque Centelhas por melhorias permanentes. Você tem <b id="fGold" style="color:var(--gold)">0</b> Centelhas.</p>
+      <div id="fList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="px" id="fClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="journal" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Diário</h2>
+      <div class="fios" id="jFios"></div>
+      <div class="statgrid" id="jStats"></div>
+      <h3 style="font-size:12px;color:var(--dim)">FEITOS <span id="jFeatN"></span></h3>
+      <div class="cards" id="jFeats"></div>
+      <h3 style="font-size:12px;color:var(--dim)">MISSÕES E CONTRATOS</h3>
+      <div id="jQuests" style="display:flex;flex-direction:column;gap:8px"></div>
+      <h3 style="font-size:12px;color:var(--dim)">MEMÓRIAS ENCONTRADAS</h3>
+      <div id="jFrags" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="px" id="jClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="pause" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Menu <small style="font-size:10px;color:var(--dim);letter-spacing:.08em">VERSÃO <span class="ver"></span></small></h2>
+      <button class="px gold" id="pResume">Continuar</button>
+      <label class="set" for="sDiff">Dificuldade <select id="sDiff"></select></label>
+      <div id="dInfo" class="dinfo"></div>
+      <label class="set" for="sPx">Tamanho do pixel <input id="sPx" type="range" min="2" max="6" step="1"></label>
+      <label class="set" for="sDither">Pontilhado <input id="sDither" type="range" min="0" max="2" step="0.1"></label>
+      <label class="chk" for="sOutline"><input type="checkbox" id="sOutline"> Contorno de 1 pixel</label>
+      <label class="set" for="sMusic">Volume da música <input id="sMusic" type="range" min="0" max="1" step="0.05"></label>
+      <label class="chk" for="sSound"><input type="checkbox" id="sSound"> Efeitos sonoros</label>
+      <label class="chk" for="sVib"><input type="checkbox" id="sVib"> Vibrar ao levar dano (celular)</label>
+      <button class="px" id="pFull">Tela cheia (horizontal)</button>
+      <div class="ctrl"><kbd>WASD</kbd> mover · <kbd>Clique</kbd>/<kbd>J</kbd> atacar (segure) · <kbd>Espaço</kbd> esquiva · <kbd>K</kbd>/<kbd>Botão direito</kbd> habilidade · <kbd>Q</kbd> poção · <kbd>E</kbd> interagir · <kbd>Tab</kbd> diário · <kbd>Esc</kbd> menu</div>
+      <button class="px" id="pQuit">Salvar e voltar ao título</button>
+    </div>
+  </section>
+
+  <section id="ending" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2 id="eTitle"></h2>
+      <div class="endtext" id="eText"></div>
+      <div class="statgrid" id="eStats"></div>
+      <button class="px gold" id="eRewind">Continuar em Tessária</button>
+      <button class="px" id="eTitleBtn">Voltar ao título</button>
+    </div>
+  </section>
+
+  <section id="inv" class="screen" hidden>
+    <div class="invp panel">
+      <h2>Bolsa <small id="iCount" style="font-size:11px;color:var(--dim)"></small></h2>
+      <p class="sub" style="margin:0;font-size:12px">Arraste o personagem para girar. O que você equipa aparece no visual.</p>
+      <div class="eqrow" id="iEq"></div>
+      <div class="statgrid" id="iStats"></div>
+      <div class="bag" id="iBag"></div>
+      <div class="idet" id="iDet"></div>
+      <button class="px" id="iClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="shop" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Barraca do Otto</h2>
+      <p class="sub">Você tem <b id="sGold" style="color:var(--gold)">0</b> Centelhas. O estoque muda a cada Fio recuperado.</p>
+      <div id="sList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="idet" id="sDet"></div>
+      <h3 style="font-size:12px;color:var(--dim)">VENDER DA BOLSA</h3>
+      <div class="bag" id="sBag"></div>
+      <button class="px" id="sClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="home" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Casa do Tecelão</h2>
+      <p class="sub">Você tem <b id="hmGold" style="color:var(--gold)">0</b> Centelhas.</p>
+      <div id="hmList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="px" id="hmClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="stash" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Baú da Casa <small id="stCount" style="font-size:11px;color:var(--dim)"></small></h2>
+      <p class="sub">Toque num item da bolsa para guardar, ou num item do baú para pegar. O baú nunca perde nada.</p>
+      <h3 class="hsec">BOLSA <span id="stBagN"></span></h3>
+      <div class="bag" id="stBag"></div>
+      <button class="px" id="stAll">Guardar toda a bolsa</button>
+      <h3 class="hsec">BAÚ</h3>
+      <div class="bag" id="stBox"></div>
+      <div class="idet" id="stDet"></div>
+      <button class="px" id="stClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="mail" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Correio do Tear</h2>
+      <p class="sub">Troque itens com amigos: lacre um item num pacote, mande o código por mensagem, e a pessoa abre no correio da casa dela. Quando o multiplayer chegar, este correio vira o mercado.</p>
+      <h3 class="hsec">ENVIAR UM ITEM DA BOLSA</h3>
+      <div class="bag" id="mlBag"></div>
+      <div class="idet" id="mlDet"></div>
+      <h3 class="hsec">RECEBER UM PACOTE</h3>
+      <textarea id="mlIn" placeholder="Cole aqui o código TEAR-… que seu amigo mandou" spellcheck="false"></textarea>
+      <button class="px gold" id="mlGet">Abrir pacote</button>
+      <button class="px" id="mlClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="skills" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Grimório</h2>
+      <p class="sub" id="kInfo"></p>
+      <h3 style="font-size:12px;color:var(--dim)">RUNAS DA HABILIDADE</h3>
+      <div class="cards" id="kRunes"></div>
+      <h3 style="font-size:12px;color:var(--dim)">TALENTOS <span id="kSlots"></span></h3>
+      <div class="cards" id="kTal"></div>
+      <h3 style="font-size:12px;color:var(--dim)">PONTOS DE TEAR</h3>
+      <div id="kPar" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="px" id="kClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="board" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Quadro de Contratos</h2>
+      <p class="sub">Pedidos dos moradores. Complete, volte aqui e receba. Um contrato novo aparece no lugar de cada um que você entregar.</p>
+      <div id="bList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="px" id="bdClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="riftm" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Fenda do Tear</h2>
+      <p class="sub" id="rInfo"></p>
+      <label class="set" for="rLvl">Nível da fenda: <b id="rLvlV" style="color:var(--gold)">1</b><input id="rLvl" type="range" min="1" max="1" step="1" value="1"></label>
+      <div class="statgrid" id="rStats"></div>
+      <h3 style="font-size:12px;color:var(--dim)">AFIXOS DESTA FENDA</h3>
+      <div id="rAff" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div class="crow"><button class="px" id="rReroll">Sortear outra fenda</button><button class="px gold" id="rGo">Abrir a Fenda</button></div>
+      <h3 style="font-size:12px;color:var(--dim)">CUBO DO TEAR · <span id="rFios" style="color:var(--gold)">0</span> FIOS</h3>
+      <p class="sub" style="margin:0">Fendas concluídas dão Fios do Tear. Quanto melhor o rank, mais Fios.</p>
+      <div class="irow" id="rShop"></div>
+      <button class="px" id="rClose">Voltar</button>
+    </div>
+  </section>
+
+  <canvas id="fade" hidden></canvas>
+  <div class="loading" id="loading">TECENDO O MUNDO…</div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

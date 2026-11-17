@@ -1,0 +1,55 @@
+# Histórico de versões
+
+## 0.9.1 · Fase 0
+- Projeto de produção: Vite, jogo dividido em 26 arquivos, source maps, build minificado
+- Testes de ponta a ponta com Playwright e CI no GitHub Actions
+- Android (Capacitor) em paisagem e tela cheia, com APK de teste gerado pelo CI
+- PWA (instalável), deploy na Netlify e Docker com nginx para a VPS
+- Equilíbrio das classes medido em simulação:
+  - **Arcano:** a Nova acerta no máximo 4 vezes o mesmo alvo; os raios explodem em área;
+  - **Arco:** mais dano e mais vida.
+
+## 0.9 · Casa do Tecelão
+- **Casa:** compra na vila, interior próprio, baú permanente (20 a 70 espaços), mobília com bônus, cama com bônus de XP e estátua dourada
+- **Bruma:** aprimorar itens de +1 até +10
+- **Otto:** embrulhos misteriosos
+- **Correio do Tear:** troca de itens entre jogadores por código
+
+## 0.8 · Celular, Ermos e Fendas aleatórias
+- **Celular:** jogado na horizontal, com HUD compacto, botões grandes, ação contextual e vibração
+- **Ermos de Tessária:** mapa aberto com 4 zonas de nível, javalis, lobos, ursos e Alfas
+- **Fendas:** mapa novo a cada abertura
+- **Minimapa** com névoa de exploração
+- **Correções:**
+  - colisão: dash e empurrões não atravessam mais paredes;
+  - missão "A Maçã do Vovô" clara e concluível.
+
+## 0.7 · Dificuldade e Ato II
+- **Dificuldades:** sete níveis, de Normal a Tormento III; monstros acompanham o nível do jogador
+- **Ato II:**
+  - Pântano Afogado, com a Hidra do Lodo;
+  - Cidadela de Vidro, com O Reflexo;
+- **Revanche:** altar para enfrentar os chefes de novo, com bônus de primeira vitória por dificuldade
+
+## 0.6 · Novos chefes e Fendas
+- Aranha Tecelã, Cavaleiro Desfiado e Olho do Vazio
+- Fendas do Tear com afixos e ranking por tempo
+
+## 0.5 · Ritmo de jogo
+- Sequências de abates, ladrões de Centelhas, pilares de bônus e animações refinadas
+
+## 0.4 · Final e personagens
+- Finais da história, memórias e epílogos
+- Armas seguradas corretamente por magos e arqueiros
+
+## 0.3 · Progressão
+- Armadura visível no personagem
+- Música procedural
+- Moradores e vila maior
+- Progressão estilo ARPG: runas, talentos e lendários
+
+## 0.2 · Interface e loot
+- HUD com ícones, inventário, loot e animações de combate
+
+## 0.1 · Protótipo
+- Renderizador de splats em pixel art, criação de personagem e Ato I

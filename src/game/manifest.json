@@ -1,0 +1,31 @@
+{
+  "note": "Ordem de concatenação. Todos os arquivos compartilham o mesmo escopo (ver docs/ARCHITECTURE.md).",
+  "files": [
+    "boot/prologue.js",
+    "engine/math.js",
+    "engine/materials.js",
+    "engine/splatset.js",
+    "data/palettes.js",
+    "render/icons.js",
+    "data/items.js",
+    "render/shaders.js",
+    "render/models.js",
+    "world/regions.js",
+    "core/state.js",
+    "audio/sfx.js",
+    "audio/music.js",
+    "render/particles.js",
+    "input/input.js",
+    "core/player.js",
+    "core/enemies.js",
+    "core/projectiles.js",
+    "core/bosses.js",
+    "render/poses.js",
+    "content/story.js",
+    "core/interaction.js",
+    "core/progression.js",
+    "ui/ui.js",
+    "render/render.js",
+    "core/loop.js"
+  ]
+}

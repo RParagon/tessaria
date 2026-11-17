@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-test/
+playwright-report/
+test-results/
+.DS_Store
+*.log
+
+# Android (gerados pelo Gradle/Capacitor)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/
+android/local.properties
+*.keystore
+*.jks

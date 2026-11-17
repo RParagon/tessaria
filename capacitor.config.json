@@ -1,0 +1,11 @@
+{
+  "appId": "com.fiosdetessaria.app",
+  "appName": "Fios de Tessária",
+  "webDir": "dist",
+  "backgroundColor": "#0b0912",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  }
+}

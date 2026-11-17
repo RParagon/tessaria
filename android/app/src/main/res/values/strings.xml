@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fios de Tessária</string>
+    <string name="title_activity_main">Fios de Tessária</string>
+    <string name="package_name">com.fiosdetessaria.app</string>
+    <string name="custom_url_scheme">com.fiosdetessaria.app</string>
+</resources>
