@@ -34,19 +34,26 @@ Ficou para a Fase 2, porque só é necessário quando o combate for online:
 - Simulação determinística em passos fixos, rodando também em Node
 - Baú, casa e economia calculados pelo servidor (hoje ele valida limites; na Fase 2 ele passa a decidir)
 
-## Fase 2 · Co-op (5 a 7 semanas)
+## Fase 2 · Co-op e social (10 a 14 semanas)
 
-- [ ] Módulos ES, `src/sim` separado do render e simulação determinística (vindo da Fase 1)
+As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo começa pelo caminho A (o jogo do líder simula, o servidor sorteia o loot), que serve para jogar com amigos por convite. O caminho B (o servidor simula) vem no fim da fase, para o conteúdo com desconhecidos.
 
-- [ ] Grupos de até 4 jogadores nas regiões e Fendas
-- [ ] Combate decidido pelo servidor, com previsão e correção no cliente
-- [ ] Loot individual por jogador, sem disputa
-- [ ] Vida e dano dos inimigos escalando com o tamanho do grupo
-- [ ] Mercado entre jogadores, com taxa como forma de tirar ouro de circulação
+- [ ] **2.1 Amigos e grupo:** pedidos de amizade, lista com presença (online e onde), bloqueio, convite de grupo na vila (até 4), líder, chat do grupo (`/g`), painel do grupo
+- [ ] **2.2 Nível de item (NI):** NI visível nos itens, teto de NI de quem recebe no correio, correio com Centelhas (taxa de 5%) e bloqueio
+- [ ] **2.3 Casa:** Armário do Tecelão (3.000 Centelhas, troca de aparência grátis, 3 visuais salvos) e Espelho da vila (250 Centelhas por troca)
+- [ ] **2.4 Instâncias (caminho A):** "Pronto?" ao entrar no portal, entrar junto e depois, inimigos sincronizados pelo líder, vida e dano dos inimigos por tamanho do grupo (175/250/325% e 110/115/120%), loot individual sorteado pelo servidor, morte em grupo com costura
+- [ ] **2.5 Dificuldade do grupo e Fio de Elo:** a dificuldade do líder entre as que todos liberaram, o mais fraco sobe até 3 níveis abaixo, o mais forte fica limitado a 5 acima, bônus de mentor
+- [ ] **2.6 História em grupo:** na etapa, Eco e Antes (com aviso de spoiler), escolhas e finais pessoais, Reflexo com uma cópia por jogador, Hidra com cabeças extras, Marca do Tear
+- [ ] **2.7 Fendas em grupo:** semente do servidor, nível escolhido entre os que todos liberaram, entrar no meio, ranking entre amigos
+- [ ] **2.8 Social no celular:** chat rápido em botões e marcador no minimapa
+- [ ] **2.9 Troca direta** na vila, com duas confirmações e teto de NI
+- [ ] **2.10 Guilda:** sigla, cargos, chat (`/gu`), recado do dia, pontos e nível da guilda (só estilo)
+- [ ] **2.11 Mercado da vila:** anúncios de 48 h, filtros, taxa de 2% ao anunciar e 8% na venda
+- [ ] **2.12 Caminho B:** módulos ES, `src/sim` separado do render e simulação determinística (vindo da Fase 1), combate decidido pelo servidor com previsão e correção no cliente, Procurar grupo nas Fendas e ranking público
 
 ## Fase 3 · Mundo compartilhado e PvP (3 a 4 semanas)
 
-- [ ] Ermos compartilhados, com cerca de 30 jogadores por sala
+- [ ] Ermos compartilhados, com cerca de 30 jogadores por sala, separados por faixa (Normal e Difícil, Expert e Mestre, Tormento)
 - [ ] **Zona PvP no Ermo Profundo:**
   - quem entra é marcado como hostil;
   - lá está o melhor loot e os Alfas.
