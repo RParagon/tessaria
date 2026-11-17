@@ -33,7 +33,8 @@ export function loadConfig(over: Partial<Config> = {}): Config {
     trustProxy: env.TRUST_PROXY ? env.TRUST_PROXY !== 'false' : production,
     logLevel: env.LOG_LEVEL || (production ? 'info' : 'warn'),
     authPerMinute: Number(env.AUTH_PER_MINUTE || 12),
-    version: env.APP_VERSION || '0.10.0',
+    // process.env.APP_VERSION é trocado pela versão do package.json no build (server/build.mjs).
+    version: process.env.APP_VERSION || env.APP_VERSION || 'dev',
     ...over,
   };
   if (production && !cfg.databaseUrl) throw new Error('DATABASE_URL é obrigatório em produção');

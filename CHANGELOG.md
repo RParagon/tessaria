@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 0.10.4 · Versão certa no servidor
+- O `/health` e o `/config` do servidor sempre diziam "0.10.0", qualquer que fosse a versão publicada (o build não substituía a leitura da versão). Agora mostram a versão real, e dá para conferir no navegador se o Easypanel publicou a última
+
 ## 0.10.3 · Vila sincronizada
 - **Relógio da vila:** moradores e galinhas andam por uma rota calculada a partir da hora do servidor, medida com ida e volta (mini-NTP). Todos os jogadores veem a mesma vila, sem trocar mensagens. Depois de conversar com você, o morador volta caminhando para a rota; ao entrar na vila, ele já aparece no lugar certo
 - Fugir das galinhas continua sendo só na sua tela, e elas voltam à rota comum logo depois
