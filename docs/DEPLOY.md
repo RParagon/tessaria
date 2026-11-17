@@ -67,7 +67,7 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 
 Na Netlify, em **Site configuration → Environment variables**, crie `VITE_API_URL` com o endereço do servidor e faça um novo deploy. Inclua o endereço `https://<nome>.netlify.app` em `CORS_ORIGINS` do servidor.
 
-Sem `VITE_API_URL`, o jogo funciona normalmente, só que offline (o botão "Jogar online" não aparece).
+O endereço padrão do servidor fica em `.env.production` e vale para o APK, a Netlify e o Docker quando `VITE_API_URL` não é definida. Sem nenhum dos dois, o jogo funciona normalmente, só que offline (o botão "Jogar online" não aparece).
 
 ### Backup do banco
 

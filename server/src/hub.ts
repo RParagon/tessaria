@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import type { Account, Store } from './store/types';
 import { inc, gauge } from './metrics';
@@ -25,7 +25,7 @@ interface Player {
   look: Look; title: string;
   x: number; z: number; yaw: number; m: number; a: string;
   lastPos: number; synced: boolean; dirty: boolean; alive: boolean;
-  chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number;
+  actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number;
 }
 
 class Room {
@@ -72,7 +72,7 @@ export class Hub {
     const p: Player = {
       id: ++this.seq, account, ws, room, look: lookFromSave(save), title: titleFromSave(save),
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
-      chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0,
+      actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0,
     };
     room.players.set(p.id, p); this.byAccount.set(account.id, p);
     send(p, { t: 'welcome', id: p.id, room: room.label, players: [...room.players.values()].filter(o => o !== p).map(pub), v: PROTOCOL_VERSION });
@@ -101,6 +101,7 @@ export class Hub {
       case 'pos': return this.onPos(p, msg);
       case 'chat': return void this.onChat(p, msg.text);
       case 'emote': return this.onEmote(p, msg.e);
+      case 'act': return this.onAct(p, msg);
       case 'look': return this.onLook(p, msg.look);
     }
   }
@@ -154,6 +155,19 @@ export class Hub {
     if (!EMOTES.includes(e as Emote)) return;
     const now = Date.now(); if (now - p.lastEmote < 1500) return; p.lastEmote = now;
     p.room.broadcast({ t: 'emote', id: p.id, e: e as Emote });
+  }
+
+  /** Ataque, habilidade ou esquiva: repassado na hora (não espera o snapshot), com cota por segundo. */
+  private onAct(p: Player, m: any) {
+    if (!ACTS.includes(m.a)) return;
+    const yaw = num(m.yaw); if (yaw === null) return;
+    const now = Date.now();
+    p.actTokens = Math.min(ACT_BURST, p.actTokens + (now - p.actRefill) / 1000 * ACT_RATE); p.actRefill = now;
+    if (p.actTokens < 1) { inc('hub_act_drops'); return; }
+    p.actTokens -= 1;
+    const c = Number.isInteger(m.c) && m.c >= 0 && m.c <= 2 ? m.c : 0;
+    p.yaw = yaw % 6.2832; p.dirty = true;
+    p.room.broadcast({ t: 'act', id: p.id, a: m.a as Act, c, yaw: +p.yaw.toFixed(2) }, p);
   }
 
   private onLook(p: Player, look: unknown) {
