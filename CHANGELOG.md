@@ -1,6 +1,10 @@
 # Histórico de versões
 
-## 0.10.2 · Efeitos dos outros jogadores
+## 0.10.2 · Amigos, grupo e efeitos dos outros jogadores
+- **Design do online** em `docs/ONLINE.md` (grupos, dificuldade, Fio de Elo, história em grupo, trocas, mercado, guilda, ranking) e roadmap da Fase 2 em 12 passos
+- **Amigos** (Fase 2.1): pedir pelo nome, pelo comando `/amigo` ou tocando no nome na vila; lista com quem está online e onde; aviso quando um amigo entra ou sai; bloquear (some o chat da pessoa e ela não pede amizade nem convida)
+- **Grupo** (Fase 2.1): até 4 jogadores; convite tocando no nome na vila, por `/convidar` ou pela lista de amigos (amigos de qualquer lugar); cartão de convite de 60 s; líder (★), `/lider`, `/tirar`, `/sair`; painel do grupo no HUD com classe, nível e onde cada um está; chat do grupo com `/g`, e fora da vila o chat vai direto para o grupo; quem cai da conexão continua no grupo por 2 minutos
+- A conexão online continua aberta fora da vila (só para amigos e grupo)
 - Na vila online, quem assiste agora vê os projéteis e as partículas das ações dos outros jogadores: o rastro dos golpes da Lâmina e do Giro, o raio e a Nova do Arcano (com as runas de gelo, cometa e Nova dupla), as flechas e a Chuva de Flechas do Arco, o círculo do poder Desfiado na esquiva e a poeira dos passos na corrida. São só visuais: não causam dano nem lentidão.
 - A mensagem `act` passa a dizer também a runa da habilidade e o poder da esquiva, e ganhou a ação `volley` (Chuva de Flechas).
 

@@ -84,4 +84,24 @@ CREATE TABLE IF NOT EXISTS chat_log (
 );
 CREATE INDEX IF NOT EXISTS chat_log_time ON chat_log (created_at DESC);
 ` },
+  { id: '002_amigos', sql: `
+-- Fase 2.1 · amigos e bloqueios (ver docs/ONLINE.md)
+-- Uma linha por sentido. Pedido: (de, para, accepted=false). Amizade: as duas linhas com accepted=true.
+CREATE TABLE IF NOT EXISTS friends (
+  from_id     uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  to_id       uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  accepted    boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (from_id, to_id)
+);
+CREATE INDEX IF NOT EXISTS friends_to ON friends (to_id);
+
+CREATE TABLE IF NOT EXISTS blocks (
+  account_id  uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  blocked_id  uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (account_id, blocked_id)
+);
+CREATE INDEX IF NOT EXISTS blocks_blocked ON blocks (blocked_id);
+` },
 ];

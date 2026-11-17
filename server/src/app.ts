@@ -7,7 +7,9 @@ import { z } from 'zod';
 import type { Config } from './config';
 import type { Account, Store } from './store/types';
 import { EMAIL_RE, guestName, hashPassword, hashToken, newToken, passwordProblem, verifyGoogleIdToken, verifyPassword } from './auth';
-import { Hub } from './hub';
+import { Hub, type HubOptions } from './hub';
+import { acceptFriend, removeFriend, requestFriend, setBlock } from './social';
+import { FRIEND_REQ_DAYS, type FriendsList } from '../../shared/social';
 import { inc, render as renderMetrics } from './metrics';
 import { nameProblem, maskText, cleanChat } from '../../shared/text';
 import { allItems, validateSave, MAX_SAVE_BYTES } from '../../shared/save';
@@ -18,10 +20,10 @@ declare module 'fastify' { interface FastifyRequest { account?: Account } }
 const publicAccount = (a: Account) => ({ id: a.id, name: a.name, guest: a.guest, email: a.email ? a.email.replace(/^(.).*(@.*)$/, '$1•••$2') : null, google: !!a.googleSub });
 const isUnique = (e: any) => e && (e.code === '23505');
 
-export interface AppOptions { config: Config; store: Store }
+export interface AppOptions { config: Config; store: Store; hub?: HubOptions }
 export interface App { app: FastifyInstance; hub: Hub }
 
-export async function buildApp({ config, store }: AppOptions): Promise<App> {
+export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Promise<App> {
   const app = Fastify({
     logger: { level: config.logLevel, redact: ['req.headers.authorization', 'req.headers.cookie'] },
     trustProxy: config.trustProxy,
@@ -36,7 +38,7 @@ export async function buildApp({ config, store }: AppOptions): Promise<App> {
   });
   await app.register(rateLimit, { max: 240, timeWindow: '1 minute' });
 
-  const hub = new Hub(store, app.log);
+  const hub = new Hub(store, app.log, hubOpts);
   app.addHook('onClose', async () => { hub.stop(); });
 
   // ---------- utilitários ----------
@@ -223,6 +225,53 @@ export async function buildApp({ config, store }: AppOptions): Promise<App> {
     inc('mail_claimed'); return { rev: r.rev, item: r.item };
   });
 
+  // ---------- amigos e bloqueios (docs/ONLINE.md) ----------
+  app.get('/friends', { preHandler: auth }, async req => {
+    const me = req.account!, links = await store.friendLinks(me.id, FRIEND_REQ_DAYS), blocked = await store.blockedBy(me.id);
+    const out: FriendsList = { friends: [], incoming: [], outgoing: [], blocked: blocked.map(b => ({ name: b.name })) };
+    for (const l of links) {
+      if (l.state === 'amigo') { const pr = hub.presence(l.otherId); out.friends.push({ name: l.otherName, online: !!pr, where: pr?.where ?? '', title: pr?.title ?? '', lastSeen: l.otherLastSeen ? l.otherLastSeen.toISOString() : null }); }
+      else (l.state === 'recebido' ? out.incoming : out.outgoing).push({ name: l.otherName, at: l.since.toISOString() });
+    }
+    out.friends.sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
+    return out;
+  });
+  const ByName = z.object({ name: z.string().min(1).max(32) });
+  app.post('/friends', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const b = parse(ByName, req.body, rep); if (!b) return;
+    const me = req.account!, r = await requestFriend(store, me, b.name);
+    if (!r.ok) return fail(rep, r.code, r.error);
+    if (r.state === 'amigos') { hub.friendsChanged(me.id, r.other.id, true); hub.notify(r.other.id, { t: 'social', ev: 'aceito', name: me.name }); }
+    else hub.notify(r.other.id, { t: 'social', ev: 'pedido', name: me.name });
+    inc('friend_requests'); return { state: r.state, name: r.other.name };
+  });
+  app.post('/friends/accept', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const b = parse(ByName, req.body, rep); if (!b) return;
+    const me = req.account!, r = await acceptFriend(store, me, b.name);
+    if (!r.ok) return fail(rep, r.code, r.error);
+    hub.friendsChanged(me.id, r.other.id, true); hub.notify(r.other.id, { t: 'social', ev: 'aceito', name: me.name });
+    return { state: 'amigos', name: r.other.name };
+  });
+  app.post('/friends/remove', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const b = parse(ByName, req.body, rep); if (!b) return;
+    const me = req.account!, r = await removeFriend(store, me, b.name);
+    if (!r.ok) return fail(rep, r.code, r.error);
+    hub.friendsChanged(me.id, r.other.id, false); return { ok: true };
+  });
+  app.post('/blocks', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const b = parse(ByName, req.body, rep); if (!b) return;
+    const me = req.account!, r = await setBlock(store, me, b.name, true);
+    if (!r.ok) return fail(rep, r.code, r.error);
+    hub.blockChanged(me.id, r.other.id, true); await store.audit(me.id, 'bloqueio', { conta: r.other.id }).catch(() => {});
+    return { ok: true };
+  });
+  app.post('/blocks/remove', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const b = parse(ByName, req.body, rep); if (!b) return;
+    const me = req.account!, r = await setBlock(store, me, b.name, false);
+    if (!r.ok) return fail(rep, r.code, r.error);
+    hub.blockChanged(me.id, r.other.id, false); return { ok: true };
+  });
+
   // ---------- telemetria ----------
   const ErrorReport = z.object({ version: z.string().max(40), message: z.string().max(500), stack: z.string().max(4000).optional(), url: z.string().max(300).optional() });
   app.post('/telemetry/error', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, rep) => {
@@ -242,7 +291,8 @@ export async function buildApp({ config, store }: AppOptions): Promise<App> {
       if (config.corsOrigins.length && origin && !config.corsOrigins.includes(origin)) return socket.destroy();
       const a = await accountFromToken(url.searchParams.get('token'));
       if (!a) { socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n'); return socket.destroy(); }
-      wss.handleUpgrade(req, socket, head, ws => { hub.connect(ws, a).catch(e => { app.log.warn({ err: e }, 'falha ao entrar na vila'); ws.close(1011); }); });
+      const where = url.searchParams.get('r') || 'hub', whereN = Number(url.searchParams.get('n')) || 0;
+      wss.handleUpgrade(req, socket, head, ws => { hub.connect(ws, a, where, whereN).catch(e => { app.log.warn({ err: e }, 'falha ao entrar na vila'); ws.close(1011); }); });
     } catch (e) { app.log.warn({ err: e }, 'upgrade falhou'); socket.destroy(); }
   });
   app.addHook('onClose', async () => { wss.close(); });

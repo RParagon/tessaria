@@ -16,7 +16,7 @@ function lookOfPlayer() {
 
 // ---------- ganchos chamados pelo jogo ----------
 function netSaveChanged() { const n = NETON(); if (n && G.save) n.saveChanged(G.save); }
-function netRegion(key) { const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null); if (key !== 'hub') clearRemoteMarks(); }
+function netRegion(key) { const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : 0); if (key !== 'hub') clearRemoteMarks(); }
 function netLook() { const n = NETON(); if (n) n.setLook(lookOfPlayer()); }
 let netPosAcc = 0, netAct = null, netActT = 0;
 const NET_ACTS = ['swing', 'cast', 'shoot', 'spin', 'nova', 'dash'];
@@ -177,10 +177,18 @@ function updateRemoteMarks() {
     const sc = project(r.x, 2.35, r.z); if (!sc) continue;
     alive.add(r.id);
     let el = rmarks.get(r.id);
-    if (!el || !el.isConnected) { el = document.createElement('div'); el.className = 'tag rp'; el.innerHTML = '<i class="bub" hidden></i><span class="rn"></span><small class="rt"></small>'; box.appendChild(el); rmarks.set(r.id, el); }
+    if (!el || !el.isConnected) {
+      el = document.createElement('div'); el.className = 'tag rp'; el.innerHTML = '<i class="bub" hidden></i><span class="rn" role="button" tabindex="-1"></span><small class="rt"></small>'; box.appendChild(el); rmarks.set(r.id, el);
+      // Tocar no nome abre o menu do jogador (amigo, grupo, bloquear), montado em src/net/ui.ts.
+      const nmEl = el.querySelector('.rn');
+      nmEl.addEventListener('pointerdown', e => e.stopPropagation());
+      nmEl.addEventListener('click', e => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('tess:player', { detail: { name: nmEl.textContent, x: e.clientX, y: e.clientY } })); });
+    }
     el.style.left = sc[0] + 'px'; el.style.top = sc[1] + 'px';
     const nm = el.querySelector('.rn'), tt = el.querySelector('.rt'), bub = el.querySelector('.bub');
     if (nm.textContent !== r.name) nm.textContent = r.name;
+    const ally = !!(n.party && n.party.members.some(m => m.name === r.name));
+    if (el.classList.contains('ally') !== ally) el.classList.toggle('ally', ally);
     if (tt.textContent !== r.title) tt.textContent = r.title;
     const showBub = r.chat && r.chatT < 6;
     bub.hidden = !showBub; if (showBub && bub.textContent !== r.chat) bub.textContent = r.chat;
