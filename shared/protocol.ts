@@ -10,6 +10,16 @@ export const VISIBLE_MAX = 12;      // jogadores remotos desenhados ao mesmo tem
 export const CHAT_MAX = 140;
 export const HUB_BOUNDS = { x0: 4, x1: 84, z0: 4, z1: 60 };
 export const MAX_SPEED = 12;        // unidades/s (corrida + esquiva com folga)
+// ---------- instâncias (co-op) ----------
+/** Bases de Fenda que o jogo conhece (core/progression.js, RTYPES). */
+export const RIFT_BASES = ['forest', 'crypt', 'peaks', 'swamp', 'glass'] as const;
+export const INST_CAP = 4;                 // jogadores por instância
+export const INST_READY_MS = 20_000;       // tempo do aviso "Pronto?"
+export const INST_EMPTY_MS = 60_000;       // instância vazia fecha depois disso
+export const INST_BOUNDS = { x0: 0, x1: 400, z0: 0, z1: 400 };
+/** Tudo o que define uma Fenda: com os mesmos dados (e a mesma semente), todo jogo gera o mesmo mapa. */
+export interface RiftParams { L: number; base: string; aff: string[]; boss: string; seed: number }
+
 export const EMOTES = ['acenar', 'comemorar', 'dancar', 'sentar'] as const;
 export type Emote = typeof EMOTES[number];
 /** Ações com animação própria (ataque, habilidade, esquiva), enviadas no quadro em que começam. */
@@ -53,9 +63,11 @@ export type ClientMsg =
   | { t: 'emote'; e: Emote }
   | { t: 'act'; a: Act; c: number; yaw: number }      // c: golpe do combo, runa da habilidade ou poder da esquiva (0..3)
   | { t: 'look'; look: Look }
-  | { t: 'time'; c: number }   // pedido da hora do servidor (c: hora do cliente no envio)
+  | { t: 'time'; c: number }
+  | { t: 'iopen'; kind: 'rift'; L: number; base: string; aff: string[]; boss: string }   // líder abre a Fenda para o grupo
+  | { t: 'ijoin'; inst: number }   // entrar na instância do grupo   // pedido da hora do servidor (c: hora do cliente no envio)
   // amigos e grupo (docs/ONLINE.md). Fora da vila a conexão continua aberta só para isso.
-  | { t: 'where'; r: string; n?: number }        // região atual (chave do jogo) e nível da Fenda
+  | { t: 'where'; r: string; n?: number; i?: number }        // região atual (chave do jogo), nível da Fenda e instância do grupo
   | { t: 'pinvite'; name: string }              // convidar para o grupo
   | { t: 'paccept'; from: string }              // aceitar o convite de alguém
   | { t: 'pdecline'; from: string }
@@ -66,7 +78,10 @@ export type ClientMsg =
 // Servidor → cliente
 export type ServerMsg =
   | { t: 'welcome'; id: number; room: string; players: PublicPlayer[]; v: number; now?: number }
-  | { t: 'time'; c: number; s: number }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
+  | { t: 'time'; c: number; s: number }
+  | { t: 'iready'; inst: number; kind: 'rift'; L: number; by: string; ms: number }   // aviso "Pronto?" para o grupo
+  | { t: 'ienter'; inst: number; kind: 'rift'; rift: RiftParams }   // pode entrar: dados para gerar o mesmo mapa
+  | { t: 'iclosed'; inst: number }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
   | { t: 'join'; p: PublicPlayer }
   | { t: 'leave'; id: number }
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação

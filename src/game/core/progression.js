@@ -285,7 +285,7 @@ function renderRiftMenu() {
 }
 $('#rReroll').onclick = () => { sfx('ui'); G.riftRoll = rollRift(); renderRiftMenu(); };
 $('#rLvl').oninput = renderRiftMenu;
-$('#rGo').onclick = () => { const L = +$('#rLvl').value; closeMenus(); startRift(L); };
+$('#rGo').onclick = () => { const L = +$('#rLvl').value; closeMenus(); if (netGroupRift(L)) return; startRift(L); };
 function genRiftLayout(base) {
   const B = REG[base], W = B.W, H = B.H, rect = base === 'crypt' || base === 'glass', pool = !rect, cols = 4, rows = 3, cw = (W - 8) / cols, ch = (H - 22) / rows, startCol = Math.floor(rr(0, cols)), cells = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {

@@ -259,7 +259,7 @@ export function mountOnlineUI(net: Net) {
   function renderParty() {
     const pt = net.party, show = !!pt && playing();
     partyBox.hidden = !show; if (!show) { partyKey = ''; return; }
-    const key = JSON.stringify(pt); if (key === partyKey) return; partyKey = key;
+    const key = JSON.stringify([pt, net.inst]); if (key === partyKey) return; partyKey = key;
     partyBox.innerHTML = '';
     partyBox.append(h('div', { class: 'net-ptitle', text: `GRUPO ${pt!.members.length}/${PARTY_MAX}` }));
     for (const m of pt!.members) {
@@ -268,6 +268,9 @@ export function mountOnlineUI(net: Net) {
         h('b', { text: (m.leader ? '★ ' : '') + m.name }), h('small', { text: `${CLS[m.cls] || ''} Nv ${m.lvl} · ${m.online ? m.where : 'caiu da conexão'}` }));
       partyBox.append(el);
     }
+    // Fenda aberta pelo grupo: quem não está nela pode entrar (aparece no início)
+    const ins = pt!.inst;
+    if (ins && net.inst !== ins.id) partyBox.append(h('button', { class: 'px gold net-pjoin', text: `Entrar na Fenda ${ins.L} do grupo (${ins.n}/4)`, onclick: () => { game()?.sfx('ui'); net.joinInst(ins.id); } }));
   }
   function partyMenu(name: string, me: boolean, e: MouseEvent) {
     const items: Array<[string, () => void]> = [];
@@ -316,6 +319,17 @@ export function mountOnlineUI(net: Net) {
   function renderInvites() {
     invBox.innerHTML = '';
     const now = Date.now(); net.invites = net.invites.filter(i => i.exp > now);
+    const r = net.ready;
+    if (r && r.until > now && playing()) {
+      const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, r.until - now) + 'ms';
+      invBox.append(h('div', { class: 'net-invite net-ready panel', role: 'alertdialog', 'aria-label': 'Pronto?' },
+        h('b', { text: 'Pronto?' }),
+        h('span', { text: `${r.by} abriu a Fenda do Tear · Nível ${r.L} para o grupo` }),
+        h('div', { class: 'act' },
+          h('button', { class: 'px gold', text: 'Entrar', onclick: () => { game()?.sfx('ui'); net.joinInst(r.inst); renderInvites(); } }),
+          h('button', { class: 'px', text: 'Agora não', onclick: () => { net.declineReady(); renderInvites(); } })),
+        bar));
+    }
     for (const i of net.invites) {
       const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, i.exp - now) + 'ms';
       invBox.append(h('div', { class: 'net-invite panel', role: 'alertdialog', 'aria-label': `Convite de ${i.from}` },
@@ -326,9 +340,11 @@ export function mountOnlineUI(net: Net) {
         bar));
     }
   }
-  setInterval(() => { if (net.invites.length && net.invites.some(i => i.exp <= Date.now())) renderInvites(); }, 1000);
+  setInterval(() => { const now = Date.now(); if ((net.invites.length && net.invites.some(i => i.exp <= now)) || (net.ready && net.ready.until <= now)) { if (net.ready && net.ready.until <= now) net.ready = null; renderInvites(); } }, 1000);
   net.on((ev, data) => {
     if (ev === 'pinvite') { game()?.sfx('ui'); renderInvites(); }
+    if (ev === 'iready') { if (data) game()?.sfx('ui'); renderInvites(); }
+    if (ev === 'iclosed') game()?.toast('A Fenda do grupo fechou', false, 'VOCÊ CONTINUA SOZINHO NESTA FENDA');
     if (ev === 'party') { if (!data) renderInvites(); updateChip(); }
     if (ev === 'friends') renderSoon();
     if (ev === 'social') {
@@ -348,7 +364,7 @@ export function mountOnlineUI(net: Net) {
     log.scrollTop = log.scrollHeight;
     setTimeout(() => row.classList.add('old'), 12000);
   }
-  net.on((ev, data) => { if (ev === 'chat') addLine(data); if (ev === 'hub' && data?.joined) addLine({ kind: 'sys', text: `${data.joined} chegou à vila.`, ts: Date.now() }); });
+  net.on((ev, data) => { if (ev === 'chat') addLine(data); if (ev === 'hub' && data?.joined) addLine({ kind: 'sys', text: net.inst ? `${data.joined} entrou na Fenda.` : `${data.joined} chegou à vila.`, ts: Date.now() }); });
   setInterval(updateChip, 500);
 
   // salvar ao sair da aba

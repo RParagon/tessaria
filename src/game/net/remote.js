@@ -16,6 +16,29 @@ function lookOfPlayer() {
 
 // ---------- ganchos chamados pelo jogo ----------
 function netSaveChanged() { const n = NETON(); if (n && G.save) n.saveChanged(G.save); }
+// ---------- Fenda do grupo ----------
+/** Roda fn com Math.random trocado por um sorteio com semente: com a mesma semente, todo jogo gera o mesmo mapa. */
+function withSeed(seed, fn) { const r = Math.random; Math.random = rng(seed | 0); try { return fn(); } finally { Math.random = r; } }
+/** Menu da Fenda: em grupo e líder, a Fenda abre para o grupo (o servidor responde com ienter). */
+function netGroupRift(L) {
+  const n = NETON(); if (!n || !n.groupRift) return false;
+  const R0 = G.riftRoll || rollRift(); G.riftRoll = R0;
+  n.openRift(L, R0.base, R0.aff.slice(0, riftAffN(L)), R0.boss);
+  toast('Abrindo a Fenda para o grupo', false, 'OS OUTROS RECEBEM O AVISO');
+  return true;
+}
+/** Servidor mandou entrar: gera a Fenda com os dados e a semente do grupo e viaja. */
+function startGroupRift(inst, prm) {
+  const n = NETON(); if (!n || !P || G.mode === 'title' || G.mode === 'create') return;
+  if (G.menu) closeMenus();
+  if (G.mode === 'dialog') { DLG.q = []; DLG.cur = null; G.mode = 'play'; $('#dialog').hidden = true; }
+  G.riftRoll = { base: prm.base, boss: prm.boss, aff: prm.aff.slice() };
+  n.enteringInst(inst);
+  withSeed(prm.seed, () => startRift(prm.L));
+  // Etapa atual do co-op: mesmo mapa e todos se veem; os monstros compartilhados chegam na próxima versão.
+  setTimeout(() => toast('FENDA DO GRUPO', false, 'MESMO MAPA · POR ENQUANTO CADA UM ENFRENTA OS PRÓPRIOS MONSTROS'), 1800);
+}
+
 function netRegion(key) { const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : 0); if (key !== 'hub') clearRemoteMarks(); }
 function netLook() { const n = NETON(); if (n) n.setLook(lookOfPlayer()); }
 let netPosAcc = 0, netAct = null, netActT = 0;
@@ -28,7 +51,7 @@ function netActInfo(a) {
   return 0;
 }
 function netTick(dt) {
-  const n = NETON(); if (!n || !RG || RG.key !== 'hub' || !P) return;
+  const n = NETON(); if (!n || !RG || !n.room || !P) return;   // sala conectada: vila ou Fenda do grupo
   // Ação nova (ou o mesmo golpe repetido): vai na hora, sem esperar a próxima posição.
   if (P.act && NET_ACTS.includes(P.act) && (P.act !== netAct || P.actT < netActT)) {
     const a = P.act === 'shoot' && P.fxSkill ? 'volley' : P.act;   // a Chuva de Flechas usa a mesma pose do tiro
@@ -145,7 +168,7 @@ function poseRemote(r, t) {
 }
 /** Chamado no render da vila: suaviza posições, anima e desenha. */
 function drawRemotes(dt, t) {
-  const n = NETON(); if (!n || !RG || RG.key !== 'hub' || !P) return;
+  const n = NETON(); if (!n || !RG || !n.room || !P) return;
   const list = n.players(); if (!list.length) return;
   const vis = assignRemoteSlots(list);
   for (const r of vis) {
@@ -170,7 +193,7 @@ const rmarks = new Map();
 function clearRemoteMarks() { for (const el of rmarks.values()) el.remove(); rmarks.clear(); }
 function updateRemoteMarks() {
   const n = NETON(), box = $('#marks');
-  const show = n && RG && RG.key === 'hub' && P && (G.mode === 'play' || G.mode === 'dialog');
+  const show = n && RG && n.room && P && (G.mode === 'play' || G.mode === 'dialog');
   const alive = new Set();
   if (show) for (const r of n.players()) {
     if (r.slot === undefined || r.x === undefined || Math.hypot(r.x - P.x, r.z - P.z) > 18) continue;
@@ -258,6 +281,7 @@ window.TessGame = {
   toast: (a, big, sub, c) => toast(a, big, sub, c),
   sfx: k => sfx(k),
   look: () => lookOfPlayer(),
+  startGroupRift,
   remoteEmote: (id, e) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.emote = e; r.emoteT = 0; } },
   remoteAct: (id, a, c, yaw) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) startRemoteAct(r, a, c, yaw); },
   remoteChat: (id, text) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.chat = text; r.chatT = 0; } },

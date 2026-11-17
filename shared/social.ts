@@ -18,7 +18,9 @@ export const whereLabel = (where: string, n = 0, room = '') =>
   where === 'hub' && room ? room : where === 'rift' && n > 0 ? `Fenda ${n}` : WHERE_LABEL[where] ?? 'Tessária';
 
 export interface PartyMember { name: string; cls: string; lvl: number; online: boolean; where: string; leader: boolean }
-export interface PartyView { id: number; leader: string; members: PartyMember[] }
+/** Instância aberta pelo grupo (Fenda): quem estiver no grupo pode entrar enquanto ela existir. */
+export interface InstView { id: number; kind: 'rift'; L: number; n: number }
+export interface PartyView { id: number; leader: string; members: PartyMember[]; inst?: InstView | null }
 
 export interface FriendView { name: string; online: boolean; where: string; title: string; lastSeen: string | null }
 export interface FriendsList {

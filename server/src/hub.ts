@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
 import type { Account, Store } from './store/types';
@@ -34,6 +34,8 @@ interface Player {
 
 class Room {
   players = new Map<number, Player>();
+  bounds = HUB_BOUNDS;
+  inst: Instance | null = null;
   constructor(public id: string, public label: string) {}
   broadcast(msg: ServerMsg, except?: Player) {
     const s = JSON.stringify(msg);
@@ -41,8 +43,10 @@ class Room {
   }
 }
 
-interface Party { id: number; leader: string; members: string[]; info: Map<string, { name: string; cls: string; lvl: number }>; gone: Map<string, NodeJS.Timeout> }
-export interface HubOptions { inviteMs?: number; graceMs?: number }
+interface Party { id: number; leader: string; members: string[]; info: Map<string, { name: string; cls: string; lvl: number }>; gone: Map<string, NodeJS.Timeout>; inst?: Instance | null }
+/** Instância do grupo (Fenda): uma sala própria, com os dados que geram o mesmo mapa para todos. */
+interface Instance { id: number; party: Party; kind: 'rift'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
+export interface HubOptions { inviteMs?: number; graceMs?: number; instEmptyMs?: number }
 const lvlOf = (save: any) => (Number.isInteger(save?.lvl) ? save.lvl : 1);
 
 const pub = (p: Player): PublicPlayer => ({ id: p.id, name: p.account.name, title: p.title, look: p.look, x: p.x, z: p.z, yaw: p.yaw });
@@ -59,20 +63,25 @@ export class Hub {
   private partyOf = new Map<string, Party>();
   private invites = new Map<string, Map<string, { name: string; exp: number }>>();   // convidado → (quem convidou → convite)
   private partySeq = 0;
+  private instances = new Map<number, Instance>();
+  private instSeq = 0;
   private inviteMs: number;
   private graceMs: number;
+  private instEmptyMs: number;
 
   constructor(private store: Store, private log: { warn: (o: any, m?: string) => void; info: (o: any, m?: string) => void }, opts: HubOptions = {}) {
-    this.inviteMs = opts.inviteMs ?? PARTY_INVITE_MS; this.graceMs = opts.graceMs ?? PARTY_GRACE_MS;
+    this.inviteMs = opts.inviteMs ?? PARTY_INVITE_MS; this.graceMs = opts.graceMs ?? PARTY_GRACE_MS; this.instEmptyMs = opts.instEmptyMs ?? INST_EMPTY_MS;
     this.timer = setInterval(() => this.tick(), 1000 / SNAP_HZ);
     this.ping = setInterval(() => this.heartbeat(), 15_000);
     gauge('hub_players', () => this.byAccount.size);
     gauge('hub_rooms', () => this.rooms.size);
     gauge('hub_parties', () => this.parties.size);
+    gauge('hub_instances', () => this.instances.size);
   }
 
   stop() {
     clearInterval(this.timer); clearInterval(this.ping);
+    for (const i of this.instances.values()) if (i.closeT) clearTimeout(i.closeT);
     for (const pt of this.parties.values()) for (const t of pt.gone.values()) clearTimeout(t);
     for (const p of this.byAccount.values()) { try { p.ws.close(1001, 'servidor reiniciando'); } catch { /* já fechado */ } p.ws.terminate(); }
   }
@@ -113,8 +122,8 @@ export class Hub {
     if (!old) this.notifyFriends(p, 'online');
   }
 
-  private enterRoom(p: Player) {
-    const room = this.pickRoom();
+  private enterRoom(p: Player, room: Room = this.pickRoom()) {
+    if (room.inst?.closeT) { clearTimeout(room.inst.closeT); room.inst.closeT = null; }
     p.room = room; p.synced = false; p.dirty = true;
     room.players.set(p.id, p);
     send(p, { t: 'welcome', id: p.id, room: room.label, players: [...room.players.values()].filter(o => o !== p).map(pub), v: PROTOCOL_VERSION, now: Date.now() });
@@ -125,7 +134,8 @@ export class Hub {
     p.room = null;
     if (!room.players.delete(p.id)) return;
     room.broadcast({ t: 'leave', id: p.id });
-    if (!room.players.size && this.rooms.size > 1) this.rooms.delete(room.id);
+    if (room.inst) { if (!room.players.size) this.scheduleClose(room.inst); else this.sendParty(room.inst.party); }
+    else if (!room.players.size && this.rooms.size > 1) this.rooms.delete(room.id);
   }
 
   private leave(p: Player) {
@@ -155,7 +165,9 @@ export class Hub {
       case 'act': return p.room ? this.onAct(p, msg) : undefined;
       case 'time': if (p.timeReqs++ < 20 && typeof msg.c === 'number' && Number.isFinite(msg.c)) send(p, { t: 'time', c: msg.c, s: Date.now() }); return;
       case 'look': return this.onLook(p, msg.look);
-      case 'where': return this.onWhere(p, msg.r, msg.n);
+      case 'where': return this.onWhere(p, msg.r, msg.n, msg.i);
+      case 'iopen': return this.openInst(p, msg);
+      case 'ijoin': return this.joinInst(p, msg.inst);
       case 'pinvite': return void this.invite(p, msg.name);
       case 'paccept': return this.accept(p, msg.from);
       case 'pdecline': return this.decline(p, msg.from);
@@ -168,7 +180,7 @@ export class Hub {
   private onPos(p: Player, m: any) {
     let x = num(m.x), z = num(m.z); const yaw = num(m.yaw), mv = num(m.m);
     if (x === null || z === null || yaw === null || mv === null) return;
-    x = Math.min(HUB_BOUNDS.x1, Math.max(HUB_BOUNDS.x0, x)); z = Math.min(HUB_BOUNDS.z1, Math.max(HUB_BOUNDS.z0, z));
+    const B = p.room!.bounds; x = Math.min(B.x1, Math.max(B.x0, x)); z = Math.min(B.z1, Math.max(B.z0, z));
     const now = Date.now(), dt = Math.max(.05, (now - p.lastPos) / 1000), dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz), lim = MAX_SPEED * dt + 1.5;
     // A primeira posição depois de entrar vale direto (o jogador pode estar voltando de um portal).
     if (p.synced && d > lim) { x = p.x + dx / d * lim; z = p.z + dz / d * lim; inc('hub_speed_clamps'); }
@@ -294,15 +306,62 @@ export class Hub {
   }
 
   // ---------- onde o jogador está ----------
-  private onWhere(p: Player, r: unknown, n: unknown) {
+  private onWhere(p: Player, r: unknown, n: unknown, i?: unknown) {
     if (typeof r !== 'string' || !WHERE_LABEL[r]) return;
     const whereN = r === 'rift' && Number.isInteger(n) && (n as number) > 0 && (n as number) < 1000 ? (n as number) : 0;
-    if (r === p.where && whereN === p.whereN && (r === 'hub') === !!p.room) return;
+    // Na Fenda do grupo, a sala é a da instância; na vila, uma sala da vila; no resto, nenhuma.
+    const inst = r === 'rift' && Number.isInteger(i) ? this.partyOf.get(p.account.id)?.inst : null;
+    const target: Room | 'vila' | null = inst && inst.id === i && (inst.room.players.has(p.id) || inst.room.players.size < INST_CAP) ? inst.room : r === 'hub' ? 'vila' : null;
+    const same = target === 'vila' ? !!p.room && !p.room.inst : target === p.room;
     p.where = r; p.whereN = whereN;
-    if (r === 'hub' && !p.room) this.enterRoom(p);
-    else if (r !== 'hub' && p.room) this.leaveRoom(p);
+    if (!same) {
+      if (p.room) this.leaveRoom(p);
+      if (target === 'vila') this.enterRoom(p);
+      else if (target) { this.enterRoom(p, target); this.sendParty(target.inst!.party); }
+      else if (r === 'rift' && Number.isInteger(i)) send(p, { t: 'iclosed', inst: i as number });
+    }
     const party = this.partyOf.get(p.account.id); if (party) this.sendParty(party);
   }
+
+  // ---------- instâncias (co-op na Fenda) ----------
+  private openInst(p: Player, m: any) {
+    const pt = this.partyOf.get(p.account.id);
+    if (!pt) return send(p, { t: 'sys', text: 'Você precisa estar num grupo para abrir a Fenda para o grupo.' });
+    if (pt.leader !== p.account.id) return send(p, { t: 'sys', text: 'Só o líder abre a Fenda para o grupo.' });
+    const word = (v: unknown) => typeof v === 'string' && /^[a-z]{1,14}$/.test(v);
+    const L = m.L, aff = Array.isArray(m.aff) ? m.aff : null;
+    if (!Number.isInteger(L) || L < 1 || L > 200 || !RIFT_BASES.includes(m.base) || !word(m.boss) || !aff || aff.length > 4 || !aff.every(word)) return;
+    if (pt.inst && pt.inst.room.players.size && !(pt.inst.room.players.size === 1 && pt.inst.room.players.has(p.id))) return send(p, { t: 'sys', text: 'O grupo ainda está numa Fenda.' });
+    if (pt.inst) this.closeInst(pt.inst);
+    const id = ++this.instSeq, room = new Room('inst-' + id, `Fenda ${L}`);
+    const inst: Instance = { id, party: pt, kind: 'rift', L, base: m.base, aff: aff.slice(), boss: m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
+    room.bounds = INST_BOUNDS; room.inst = inst; pt.inst = inst; this.instances.set(id, inst);
+    send(p, this.enterMsg(inst));
+    for (const mid of pt.members) if (mid !== p.account.id) this.notify(mid, { t: 'iready', inst: id, kind: 'rift', L, by: p.account.name, ms: INST_READY_MS });
+    this.scheduleClose(inst);   // se ninguém entrar, fecha sozinha
+    this.sendParty(pt);
+    inc('hub_inst_open');
+  }
+  private joinInst(p: Player, id: unknown) {
+    const inst = this.partyOf.get(p.account.id)?.inst;
+    if (!inst || inst.id !== id) return send(p, { t: 'sys', text: 'Essa Fenda já fechou.' });
+    if (inst.room.players.size >= INST_CAP && !inst.room.players.has(p.id)) return send(p, { t: 'sys', text: 'A Fenda do grupo está cheia.' });
+    send(p, this.enterMsg(inst));
+  }
+  private enterMsg(i: Instance): ServerMsg { return { t: 'ienter', inst: i.id, kind: 'rift', rift: { L: i.L, base: i.base, aff: i.aff, boss: i.boss, seed: i.seed } }; }
+  private scheduleClose(inst: Instance) {
+    if (inst.closeT) clearTimeout(inst.closeT);
+    inst.closeT = setTimeout(() => { if (!inst.room.players.size) this.closeInst(inst); else inst.closeT = null; }, this.instEmptyMs);
+  }
+  private closeInst(inst: Instance) {
+    if (inst.closeT) clearTimeout(inst.closeT);
+    inst.closeT = null;
+    for (const p of [...inst.room.players.values()]) { this.leaveRoomQuiet(p); send(p, { t: 'iclosed', inst: inst.id }); }
+    this.instances.delete(inst.id);
+    if (inst.party.inst === inst) { inst.party.inst = null; if (this.parties.has(inst.party.id)) this.sendParty(inst.party); }
+  }
+  /** Tira da sala sem disparar o fechamento (usado ao fechar a própria instância). */
+  private leaveRoomQuiet(p: Player) { const room = p.room; if (!room) return; p.room = null; room.players.delete(p.id); room.broadcast({ t: 'leave', id: p.id }); }
 
   // ---------- grupo ----------
   private onlineByName(name: string): Player | null {
@@ -317,6 +376,7 @@ export class Hub {
         const i = pt.info.get(id)!, p = this.byAccount.get(id);
         return { name: i.name, cls: i.cls, lvl: i.lvl, online: !!p, where: p ? whereLabel(p.where, p.whereN, p.room?.label) : '', leader: id === pt.leader };
       }),
+      inst: pt.inst ? { id: pt.inst.id, kind: pt.inst.kind, L: pt.inst.L, n: pt.inst.room.players.size } : null,
     };
   }
   private sendParty(pt: Party) {
@@ -391,6 +451,8 @@ export class Hub {
     const pt = this.partyOf.get(accountId); if (!pt) return false;
     const name = pt.info.get(accountId)?.name ?? '?';
     pt.members = pt.members.filter(id => id !== accountId); this.partyOf.delete(accountId); pt.info.delete(accountId);
+    const inside = this.byAccount.get(accountId);
+    if (inside?.room?.inst && inside.room.inst.party === pt) { const id = inside.room.inst.id; this.leaveRoom(inside); send(inside, { t: 'iclosed', inst: id }); }
     const t = pt.gone.get(accountId); if (t) { clearTimeout(t); pt.gone.delete(accountId); }
     this.notify(accountId, { t: 'party', party: null });
     if (why === 'tirado') this.notify(accountId, { t: 'sys', text: 'Você foi tirado do grupo.' });
@@ -398,6 +460,7 @@ export class Hub {
     if (pt.members.length <= 1) {
       for (const id of pt.members) { this.partyOf.delete(id); const g = pt.gone.get(id); if (g) clearTimeout(g); this.notify(id, { t: 'party', party: null }); this.notify(id, { t: 'sys', text: 'O grupo acabou.' }); }
       this.parties.delete(pt.id);
+      if (pt.inst) this.closeInst(pt.inst);
       return true;
     }
     this.partySys(pt, why === 'tirado' ? `${name} foi tirado do grupo.` : why === 'caiu' ? `${name} caiu da conexão e saiu do grupo.` : `${name} saiu do grupo.`);
@@ -439,7 +502,7 @@ export class Hub {
   }
 
   private tick() {
-    for (const room of this.rooms.values()) {
+    for (const room of [...this.rooms.values(), ...[...this.instances.values()].map(i => i.room)]) {
       const ps: Array<[number, number, number, number, number, string]> = [];
       for (const p of room.players.values()) if (p.dirty) { ps.push([p.id, +p.x.toFixed(2), +p.z.toFixed(2), +p.yaw.toFixed(2), +p.m.toFixed(2), p.a]); p.dirty = false; }
       if (ps.length) room.broadcast({ t: 'snap', ps });

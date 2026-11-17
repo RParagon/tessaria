@@ -153,6 +153,37 @@ test('quem assiste vê o ataque, a esquiva e os projéteis do outro jogador desd
   await A.ctx.close(); await B.ctx.close();
 });
 
+test('Fenda do grupo: o líder abre, o outro aceita o Pronto? e os dois entram no mesmo mapa e se veem', async ({ browser }) => {
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
+  // grupo (convite direto pela API do cliente; a interface do convite já tem teste próprio)
+  await A.page.evaluate(n => (window as any).TessNet.invite(n), B.name);
+  await B.page.click('.net-invite button:has-text("Aceitar")');
+  await A.page.waitForFunction(() => (window as any).TessNet.party?.members.length === 2, null, { timeout: 10_000 });
+  // líder abre a Fenda nível 1 pelo mesmo caminho do menu
+  expect(await A.page.evaluate(() => (window as any).__T.ev('netGroupRift(1)'))).toBe(true);
+  await A.page.waitForFunction(() => (window as any).__T.RG?.key === 'rift' && (window as any).TessNet.room, null, { timeout: 20_000 });
+  // B recebe o Pronto? e entra
+  const card = B.page.locator('.net-ready');
+  await expect(card).toContainText('Fenda do Tear · Nível 1');
+  await card.locator('button:has-text("Entrar")').click();
+  await B.page.waitForFunction(() => (window as any).__T.RG?.key === 'rift' && (window as any).TessNet.room, null, { timeout: 20_000 });
+  // mesmo mapa: salas, ligações, semente, chefe e afixos iguais
+  const mapa = (pg: Page) => pg.evaluate(() => (window as any).__T.ev('JSON.stringify({ rooms: REG.rift.rooms.map(r => [r.x, r.y, r.r || 0, r.w || 0, r.kind || "", r.en ? Object.keys(r.en).length : 0]), links: REG.rift.links, seed: REG.rift.seed, boss: G.rift.boss, aff: G.rift.aff })'));
+  const [ma, mb] = await Promise.all([mapa(A.page), mapa(B.page)]);
+  expect(mb).toBe(ma);
+  // dentro da Fenda, um vê o outro
+  const st = (pg: Page) => pg.evaluate(() => { const n = (window as any).TessNet; return { room: n.room, inst: n.inst, region: n.region, ps: n.players().map((p: any) => p.name), party: n.party?.inst }; });
+  await A.page.waitForFunction(n => (window as any).TessNet.players().some((p: any) => p.name === n), B.name, { timeout: 10_000 }).catch(async e => { console.log('A', JSON.stringify(await st(A.page)), 'B', JSON.stringify(await st(B.page))); throw e; });
+  await B.page.waitForFunction(n => (window as any).TessNet.players().some((p: any) => p.name === n), A.name, { timeout: 10_000 });
+  await B.page.evaluate(() => { const T = (window as any).__T; T.P.x = T.P.x + 1.5; });
+  await A.page.waitForFunction(() => (window as any).TessNet.players().some((p: any) => p.slot !== undefined), null, { timeout: 10_000 });
+  await expect(A.page.locator('#marks .tag.rp .rn', { hasText: B.name })).toBeVisible();
+  expect(await A.page.evaluate(() => (window as any).TessNet.party.inst.n)).toBe(2);
+  if (process.env.SHOTS) await A.page.screenshot({ path: process.env.SHOTS + '/fenda-grupo.png' });
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
 test('o progresso vai para a nuvem e volta em outro aparelho', async ({ browser }) => {
   const A = await onlinePlayer(browser);
   await A.page.evaluate(() => { const s = (window as any).__T.G.save; s.lvl = 4; s.gold = 321; (window as any).__T.ev('writeSave()'); });

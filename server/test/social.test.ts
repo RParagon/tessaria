@@ -5,7 +5,7 @@ import { STORES, startServer, api, register, baseSave, WsClient, sleep, type Tes
 for (const kind of STORES) {
   describe(`amigos e grupo (${kind})`, () => {
     let S: TestServer;
-    before(async () => { S = await startServer(kind, {}, { inviteMs: 400, graceMs: 300 }); });
+    before(async () => { S = await startServer(kind, {}, { inviteMs: 400, graceMs: 300, instEmptyMs: 300 }); });
     after(async () => { await S.close(); });
 
     async function account(save = baseSave()) {
@@ -165,6 +165,64 @@ for (const kind of STORES) {
       b2.c.close();
       await a.c.waitFor(m => m.t === 'party' && m.party === null, 2000);   // graceMs = 300 nos testes
       a.c.close();
+    });
+
+    test('Fenda do grupo: o líder abre, o grupo recebe o Pronto?, todos entram no mesmo mapa e se veem', async () => {
+      const A = await account(), B = await account(), C = await account();
+      const a = await connect(A), b = await connect(B), c = await connect(C);
+      a.c.send({ t: 'pinvite', name: B.account.name });
+      await b.c.waitFor(m => m.t === 'pinvite');
+      b.c.send({ t: 'paccept', from: A.account.name });
+      await a.c.waitFor(m => m.t === 'party' && m.party && m.party.members.length === 2);
+      // só o líder abre; dados inválidos são ignorados
+      b.c.send({ t: 'iopen', kind: 'rift', L: 3, base: 'crypt', aff: ['sangrenta'], boss: 'knight' });
+      assert.match((await b.c.waitFor(m => m.t === 'sys' && /líder/.test(m.text))).text, /Só o líder/);
+      a.c.send({ t: 'iopen', kind: 'rift', L: 3, base: 'lua', aff: [], boss: 'knight' });
+      a.c.send({ t: 'iopen', kind: 'rift', L: 3, base: 'crypt', aff: ['sangrenta'], boss: 'knight' });
+      const ea = await a.c.waitFor(m => m.t === 'ienter');
+      assert.equal(ea.rift.L, 3); assert.equal(ea.rift.base, 'crypt'); assert.ok(ea.rift.seed > 0);
+      const ready = await b.c.waitFor(m => m.t === 'iready');
+      assert.equal(ready.inst, ea.inst); assert.equal(ready.by, A.account.name); assert.equal(ready.L, 3);
+      b.c.send({ t: 'ijoin', inst: ready.inst });
+      const eb = await b.c.waitFor(m => m.t === 'ienter');
+      assert.deepEqual(eb.rift, ea.rift);   // mesmos dados → mesmo mapa
+      // entram na sala da instância e se veem; posições fora da vila valem lá dentro
+      a.c.send({ t: 'where', r: 'rift', n: 3, i: ea.inst });
+      const wa = await a.c.waitFor(m => m.t === 'welcome' && m.room === 'Fenda 3');
+      b.c.send({ t: 'where', r: 'rift', n: 3, i: ea.inst });
+      const wb = await b.c.waitFor(m => m.t === 'welcome' && m.room === 'Fenda 3');
+      assert.ok(wb.players.some((p: any) => p.id === wa.id));
+      await a.c.waitFor(m => m.t === 'join' && m.p.id === wb.id);
+      b.c.send({ t: 'pos', x: 150, z: 120, yaw: 0, m: 0, a: '' });
+      await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === wb.id && q[1] === 150));
+      const pv = await a.c.waitFor(m => m.t === 'party' && m.party?.inst?.n === 2);
+      assert.equal(pv.party.inst.L, 3);
+      // quem não é do grupo não entra
+      c.c.send({ t: 'where', r: 'rift', n: 3, i: ea.inst });
+      await c.c.waitFor(m => m.t === 'iclosed' && m.inst === ea.inst);
+      c.c.send({ t: 'ijoin', inst: ea.inst });
+      await c.c.waitFor(m => m.t === 'sys' && /fechou/.test(m.text));
+      // todos voltam para a vila: a instância vazia fecha
+      a.c.send({ t: 'where', r: 'hub' }); b.c.send({ t: 'where', r: 'hub' });
+      await a.c.waitFor(m => m.t === 'party' && m.party && m.party.inst === null, 3000);
+      a.c.close(); b.c.close(); c.c.close();
+    });
+
+    test('Fenda do grupo: sair do grupo tira da instância; grupo desfeito fecha a Fenda', async () => {
+      const A = await account(), B = await account();
+      const a = await connect(A), b = await connect(B);
+      a.c.send({ t: 'pinvite', name: B.account.name });
+      await b.c.waitFor(m => m.t === 'pinvite'); b.c.send({ t: 'paccept', from: A.account.name });
+      await a.c.waitFor(m => m.t === 'party' && m.party?.members.length === 2);
+      a.c.send({ t: 'iopen', kind: 'rift', L: 1, base: 'forest', aff: [], boss: 'spider' });
+      const ea = await a.c.waitFor(m => m.t === 'ienter');
+      b.c.send({ t: 'ijoin', inst: ea.inst }); await b.c.waitFor(m => m.t === 'ienter');
+      a.c.send({ t: 'where', r: 'rift', n: 1, i: ea.inst }); b.c.send({ t: 'where', r: 'rift', n: 1, i: ea.inst });
+      await b.c.waitFor(m => m.t === 'welcome' && m.room === 'Fenda 1');
+      b.c.send({ t: 'pleave' });
+      await b.c.waitFor(m => m.t === 'iclosed' && m.inst === ea.inst);
+      await a.c.waitFor(m => m.t === 'iclosed' && m.inst === ea.inst);   // grupo de 1 acabou: Fenda fecha
+      a.c.close(); b.c.close();
     });
 
     test('comando /amigo pelo chat', async () => {

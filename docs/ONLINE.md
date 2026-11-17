@@ -359,6 +359,12 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 - Se o líder cair da conexão, a liderança da simulação passa para o próximo do grupo.
 - Ideal para jogar **com amigos por convite**.
 
+### Como a 2.2 funciona por dentro
+
+- **Mesmo mapa:** o líder escolhe nível, base, afixos e chefe (o sorteio do menu da Fenda). O servidor cria a instância e sorteia a **semente**. Cada jogo roda `startRift` com `Math.random` trocado por um sorteio com essa semente (`withSeed` em `src/game/net/remote.js`), então todos geram as mesmas salas, ligações e afixos.
+- **Mensagens:** `iopen` (líder abre), `iready` (aviso "Pronto?", 20 s), `ijoin` (aceitar), `ienter` (dados + semente), `where` com `i` (entrar na sala da instância), `iclosed`. A sala da instância reaproveita as salas da vila: snapshots, ações, chat e emotes funcionam lá dentro.
+- **Inimigos (2.2b):** o líder simula; antes de cada inimigo pensar, o `P` aponta por um instante para o jogador mais próximo (alvo substituto), então a IA atual persegue quem estiver perto sem ser reescrita. Nos outros jogos os inimigos são cópias desenhadas a partir dos snapshots do líder; `hurtEnemy` e `hurtBoss` repassam o acerto ao líder. Projéteis e áreas marcadas viram eventos e cada jogo confere só o próprio herói.
+
 ### Caminho B: o servidor simula (depois)
 
 - Exige a migração para módulos ES e a separação de `src/sim` (ver [ARCHITECTURE.md](ARCHITECTURE.md)).
@@ -367,18 +373,21 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 
 ## Ordem de implementação
 
-| Passo | O que entra |
-|---|---|
-| 2.1 | Amigos e grupo: pedidos de amizade, lista com presença, bloqueio, convite de grupo na vila, líder, chat do grupo, painel do grupo |
-| 2.2 | Nível de item visível e teto de NI no correio; correio com Centelhas e bloqueio |
-| 2.3 | Armário do Tecelão e Espelho da vila |
-| 2.4 | Instâncias (caminho A): "Pronto?", entrar junto, inimigos sincronizados, escala por grupo, loot individual sorteado pelo servidor, morte em grupo |
-| 2.5 | Dificuldade do grupo e Fio de Elo |
-| 2.6 | História em grupo (na etapa, Eco, Antes), escolhas pessoais, Reflexo e Hidra em grupo, Marca do Tear |
-| 2.7 | Fendas em grupo com semente do servidor; ranking entre amigos |
-| 2.8 | Social no celular: chat rápido e marcador no minimapa |
-| 2.9 | Troca direta |
-| 2.10 | Guilda |
-| 2.11 | Mercado da vila |
-| 2.12 | Módulos ES, `src/sim` e caminho B; Procurar grupo; ranking público |
-| Fase 3 | Ermos compartilhados, Ermo Profundo com PvP, arena |
+| Passo | O que entra | Estado |
+|---|---|---|
+| 2.1 | Amigos e grupo: pedidos de amizade, lista com presença, bloqueio, convite de grupo na vila, líder, chat do grupo, painel do grupo | feito (0.10.2) |
+| 2.2 | **Fendas em grupo** (instâncias, caminho A), em três partes: | |
+| 2.2a | instância da Fenda: o líder abre, "Pronto?" para o grupo, semente do servidor (mesmo mapa para todos), sala da instância (todos se veem), "Entrar na Fenda do grupo" pelo painel | feito (0.11.0) |
+| 2.2b | inimigos e chefe simulados pelo líder: cópias nos outros, acertos repassados ao líder, alvo substituto na IA, projéteis e áreas marcadas como eventos, mortes repassadas | próximo |
+| 2.2c | escala por número de jogadores, Caído/Costurar, fim da Fenda e rank para todos, loot sorteado pelo servidor com conferência de plausibilidade | |
+| 2.3 | Dificuldade do grupo e Fio de Elo | |
+| 2.4 | Portais da história em grupo (na etapa, Eco, Antes), escolhas pessoais, Reflexo e Hidra em grupo, Marca do Tear | |
+| 2.5 | Nível de item visível e teto de NI no correio; correio com Centelhas e bloqueio | |
+| 2.6 | Armário do Tecelão e Espelho da vila | |
+| 2.7 | Ranking entre amigos | |
+| 2.8 | Social no celular: chat rápido e marcador no minimapa | |
+| 2.9 | Troca direta | |
+| 2.10 | Guilda | |
+| 2.11 | Mercado da vila | |
+| 2.12 | Módulos ES, `src/sim` e caminho B; Procurar grupo; ranking público | |
+| Fase 3 | Ermos compartilhados, Ermo Profundo com PvP, arena | |

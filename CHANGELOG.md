@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.11.0 · Fenda do grupo (co-op, parte 1)
+- **Fenda do grupo:** em grupo, o líder abre a Fenda pelo menu de sempre e todos recebem o aviso **Pronto?** (20 s). Quem entra cai **no mesmo mapa**, com a mesma semente sorteada pelo servidor, e todos se veem lá dentro, com animações, chat e emotes
+- Quem recusou ou chegou depois entra pelo botão **Entrar na Fenda do grupo**, no painel do grupo. A Fenda vazia fecha sozinha depois de 1 minuto; sair do grupo tira da Fenda do grupo
+- Por enquanto cada um enfrenta os próprios monstros; os monstros compartilhados chegam na próxima parte (2.2b)
+- Correção: ao entrar numa sala, o jogo reenviava a região sem a instância e tirava o jogador da Fenda do grupo
+
 ## 0.10.4 · Versão certa no servidor
 - O `/health` e o `/config` do servidor sempre diziam "0.10.0", qualquer que fosse a versão publicada (o build não substituía a leitura da versão). Agora mostram a versão real, e dá para conferir no navegador se o Easypanel publicou a última
 

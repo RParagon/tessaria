@@ -2,7 +2,7 @@
 // Exposto como window.TessNet para o código do jogo (src/game/net/remote.js).
 
 import { API_BASE, WS_BASE, call, tokens } from './api';
-import { ACTS, EMOTES, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { type RiftParams, ACTS, EMOTES, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import type { FriendsList, PartyView } from '../../shared/social';
 
 export interface PublicAccount { id: string; name: string; guest: boolean; email: string | null; google: boolean }
@@ -27,6 +27,10 @@ export class Net {
   chatLog: ChatLine[] = [];
   /** Grupo atual (null sem grupo) e convites recebidos ainda válidos. */
   party: PartyView | null = null;
+  /** Instância do grupo em que este jogador está (ou entrando). */
+  inst: number | null = null;
+  /** Aviso "Pronto?" pendente. */
+  ready: { inst: number; L: number; by: string; until: number } | null = null;
   invites: Array<{ from: string; size: number; exp: number }> = [];
   /** Última lista de amigos carregada (para os menus) e nomes bloqueados. */
   friendsList: FriendsList | null = null;
@@ -157,14 +161,26 @@ export class Net {
   /** A conexão fica aberta em qualquer região (amigos e grupo); só na vila ela entra numa sala. */
   setRegion(key: string, look: Look, _pos: [number, number] | null, n = 0) {
     this.look = look;
-    const changed = key !== this.region || n !== this.regionN;
+    if (key !== 'rift') this.inst = null;
+    const changed = key !== this.region || n !== this.regionN || (key === 'rift' && !!this.inst);
     this.region = key; this.regionN = n;
     if (key !== 'hub') { this.clearRemotes(); this.room = ''; }
     if (!this.account || this.offline) return this.leaveHub();
     this.wantHub = true;
-    if (this.ws && this.ws.readyState === 1) { if (changed) this.send({ t: 'where', r: key, ...(n ? { n } : {}) }); }
+    if (this.ws && this.ws.readyState === 1) { if (changed) this.sendWhere(); }
     else this.connect();
   }
+  private sendWhere() { this.send({ t: 'where', r: this.region, ...(this.regionN ? { n: this.regionN } : {}), ...(this.region === 'rift' && this.inst ? { i: this.inst } : {}) }); }
+  // ---------- Fenda do grupo ----------
+  /** Líder: abre a Fenda para o grupo (o servidor sorteia a semente e manda o Pronto? aos outros). */
+  openRift(L: number, base: string, aff: string[], boss: string) { this.send({ t: 'iopen', kind: 'rift', L, base, aff, boss }); }
+  /** Aceitar o Pronto? (ou "Entrar com o grupo" depois). */
+  joinInst(id: number) { this.ready = null; this.send({ t: 'ijoin', inst: id }); }
+  declineReady() { this.ready = null; this.emit('iready', null); }
+  /** O jogo chama ao gerar a Fenda do grupo: daqui em diante o 'where' leva a instância. */
+  enteringInst(id: number) { this.inst = id; }
+  /** Em grupo e líder: os portais de Fenda abrem para o grupo. */
+  get groupRift() { return !!this.party && this.party.members.length > 1 && this.isLeader && this.connected; }
   /** Na vila e com a sala conectada. */
   get inRoom() { return this.connected && !!this.room; }
   setLook(look: Look) { this.look = look; this.send({ t: 'look', look }); }
@@ -247,8 +263,13 @@ export class Net {
         for (let i = 0; i < 3; i++) setTimeout(() => this.send({ t: 'time', c: Date.now() }), 200 + i * 400);
         this.myId = m.id; this.room = m.room; this.connected = true; this.clearRemotes(); m.players.forEach(p => this.addRemote(p));
         this.lastPos = ''; if (this.look) this.send({ t: 'look', look: this.look });
-        // Conectou fora da vila e o jogador já voltou para ela (ou o contrário): avisa onde está.
-        if ((m.room === '') !== (this.region !== 'hub') || this.regionN) this.send({ t: 'where', r: this.region, ...(this.regionN ? { n: this.regionN } : {}) });
+        {
+          // A sala recebida não bate com onde o jogador está (voltou para a vila, ou reconectou dentro
+          // da Fenda do grupo): avisa onde está, sempre com a instância. Já na sala certa, não reenvia
+          // (reenviar sem a instância tirava o jogador da Fenda do grupo).
+          const wantRoom = this.region === 'hub' || (this.region === 'rift' && !!this.inst);
+          if (!!m.room !== wantRoom || (!m.room && this.regionN)) this.sendWhere();
+        }
         this.emit('hub', { connected: true, room: m.room, count: this.remotes.size + 1 }); void this.friends(); break;
       case 'join': this.addRemote(m.p); this.emit('hub', { connected: true, room: this.room, count: this.remotes.size + 1, joined: m.p.name }); break;
       case 'leave': { const r = this.remotes.get(m.id); this.remotes.delete(m.id); this.remoteList = [...this.remotes.values()]; this.emit('hub', { connected: true, room: this.room, count: this.remotes.size + 1, left: r?.name }); break; }
@@ -270,6 +291,12 @@ export class Net {
       case 'title': { const r = this.remotes.get(m.id); if (r) r.title = m.title; break; }
       case 'sys': this.pushChat({ kind: 'sys', text: m.text, ts: Date.now() }); break;
       case 'party': this.party = m.party; this.emit('party', m.party); break;
+      case 'iready': this.ready = { inst: m.inst, L: m.L, by: m.by, until: Date.now() + m.ms }; this.emit('iready', this.ready); break;
+      case 'ienter': this.ready = null; G?.startGroupRift(m.inst, m.rift as RiftParams); break;
+      case 'iclosed':
+        if (this.ready?.inst === m.inst) { this.ready = null; this.emit('iready', null); }
+        if (this.inst === m.inst) { this.inst = null; this.emit('iclosed', m.inst); }
+        break;
       case 'pinvite':
         this.invites = this.invites.filter(i => i.from !== m.from && i.exp > Date.now());
         this.invites.push({ from: m.from, size: m.size, exp: Date.now() + m.ms }); this.emit('pinvite', m); break;
