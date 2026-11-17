@@ -24,6 +24,7 @@ Prazos estimados para uma pessoa desenvolvendo com apoio de IA. Podem variar bas
 - [x] Validação no servidor: tetos de itens, nível e Centelhas pelo tempo jogado, tamanho e formato do save
 - [x] Correio online pelo nome do Tecelão, sem duplicar itens (lápides)
 - [x] Vila Brasa online: ver outros jogadores, chat com filtro, emotes, títulos
+- [x] Ataques, habilidades e esquiva dos outros jogadores animados desde o início (mensagem de ação, versão 0.10.1)
 - [x] Proteções: limites de requisições, cota de chat, silêncio automático, limite de velocidade na vila
 - [x] Registro de erros do cliente, auditoria de saves estranhos e métricas (Prometheus)
 - [x] Testes do servidor (memória + PostgreSQL no CI) e de ponta a ponta com dois navegadores

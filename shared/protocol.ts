@@ -11,6 +11,11 @@ export const HUB_BOUNDS = { x0: 4, x1: 84, z0: 4, z1: 60 };
 export const MAX_SPEED = 12;        // unidades/s (corrida + esquiva com folga)
 export const EMOTES = ['acenar', 'comemorar', 'dancar', 'sentar'] as const;
 export type Emote = typeof EMOTES[number];
+/** Ações com animação própria (ataque, habilidade, esquiva), enviadas no quadro em que começam. */
+export const ACTS = ['swing', 'cast', 'shoot', 'spin', 'nova', 'dash'] as const;
+export type Act = typeof ACTS[number];
+export const ACT_BURST = 6;         // ações seguidas permitidas de uma vez
+export const ACT_RATE = 6;          // ações por segundo, em média
 export const EMOTE_LABEL: Record<Emote, string> = { acenar: 'Acenar', comemorar: 'Comemorar', dancar: 'Dançar', sentar: 'Sentar' };
 
 /** Aparência pública do personagem (o que os outros veem). */
@@ -43,6 +48,7 @@ export type ClientMsg =
   | { t: 'pos'; x: number; z: number; yaw: number; m: number; a: string }
   | { t: 'chat'; text: string }
   | { t: 'emote'; e: Emote }
+  | { t: 'act'; a: Act; c: number; yaw: number }      // c: golpe do combo (0..2)
   | { t: 'look'; look: Look };
 
 // Servidor → cliente
@@ -53,6 +59,7 @@ export type ServerMsg =
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação
   | { t: 'chat'; id: number; name: string; text: string; ts: number }
   | { t: 'emote'; id: number; e: Emote }
+  | { t: 'act'; id: number; a: Act; c: number; yaw: number }
   | { t: 'look'; id: number; look: Look }
   | { t: 'title'; id: number; title: string }
   | { t: 'sys'; text: string }
