@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
 import type { Account, Store } from './store/types';
@@ -29,7 +29,7 @@ interface Player {
   look: Look; title: string;
   x: number; z: number; yaw: number; m: number; a: string;
   lastPos: number; synced: boolean; dirty: boolean; alive: boolean;
-  chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number;
+  actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number;
 }
 
 class Room {
@@ -95,7 +95,7 @@ export class Hub {
       friends: new Set(links.filter(l => l.state === 'amigo').map(l => l.otherId)), blocks: new Set(blocks.map(b => b.id)), lastInvite: 0,
       look: lookFromSave(save), title: titleFromSave(save),
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
-      chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0,
+      actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0,
     };
     const old = this.byAccount.get(account.id);
     this.byAccount.set(account.id, p);
@@ -152,6 +152,7 @@ export class Hub {
       case 'pos': return p.room ? this.onPos(p, msg) : undefined;
       case 'chat': return void this.onChat(p, msg.text);
       case 'emote': return p.room ? this.onEmote(p, msg.e) : undefined;
+      case 'act': return p.room ? this.onAct(p, msg) : undefined;
       case 'look': return this.onLook(p, msg.look);
       case 'where': return this.onWhere(p, msg.r, msg.n);
       case 'pinvite': return void this.invite(p, msg.name);
@@ -232,6 +233,19 @@ export class Hub {
     if (!EMOTES.includes(e as Emote) || !p.room) return;
     const now = Date.now(); if (now - p.lastEmote < 1500) return; p.lastEmote = now;
     p.room.broadcast({ t: 'emote', id: p.id, e: e as Emote });
+  }
+
+  /** Ataque, habilidade ou esquiva: repassado na hora (não espera o snapshot), com cota por segundo. */
+  private onAct(p: Player, m: any) {
+    if (!ACTS.includes(m.a)) return;
+    const yaw = num(m.yaw); if (yaw === null) return;
+    const now = Date.now();
+    p.actTokens = Math.min(ACT_BURST, p.actTokens + (now - p.actRefill) / 1000 * ACT_RATE); p.actRefill = now;
+    if (p.actTokens < 1) { inc('hub_act_drops'); return; }
+    p.actTokens -= 1;
+    const c = Number.isInteger(m.c) && m.c >= 0 && m.c <= 2 ? m.c : 0;
+    p.yaw = yaw % 6.2832; p.dirty = true;
+    p.room?.broadcast({ t: 'act', id: p.id, a: m.a as Act, c, yaw: +p.yaw.toFixed(2) }, p);
   }
 
   private onLook(p: Player, look: unknown) {

@@ -5,6 +5,11 @@
 - **Amigos** (Fase 2.1): pedir pelo nome, pelo comando `/amigo` ou tocando no nome na vila; lista com quem está online e onde; aviso quando um amigo entra ou sai; bloquear (some o chat da pessoa e ela não pede amizade nem convida)
 - **Grupo** (Fase 2.1): até 4 jogadores; convite tocando no nome na vila, por `/convidar` ou pela lista de amigos (amigos de qualquer lugar); cartão de convite de 60 s; líder (★), `/lider`, `/tirar`, `/sair`; painel do grupo no HUD com classe, nível e onde cada um está; chat do grupo com `/g`, e fora da vila o chat vai direto para o grupo; quem cai da conexão continua no grupo por 2 minutos
 - A conexão online continua aberta fora da vila (só para amigos e grupo)
+
+## 0.10.1 · Animações dos outros jogadores
+- **Correção:** na vila online, o ataque, as habilidades e a esquiva dos outros jogadores apareciam tremidos ou nem apareciam. A ação agora vai como mensagem própria (`act`), no quadro exato em que começa, e o servidor repassa na hora, com cota de 6 por segundo. Quem assiste vê a animação desde o início: o combo da Lâmina, a postura de mira do Arco e do Arcano, e a esquiva com o rastro.
+- Uma ação interrompe o emote do outro jogador, como já acontecia com o seu.
+- O APK do Android e os builds de produção já vêm apontando para o servidor online (`.env.production`). No Docker do site, um `VITE_API_URL` vazio não apaga mais esse endereço.
 - Página de Política de Privacidade em `/privacidade.html` (exigida pelo Google para o login com Google)
 - `/metrics` responde 401 (em vez de 404) quando o token falta ou está errado, como o Metrics Endpoint do Grafana Cloud exige; comparação do token em tempo constante
 - Arcano: o cajado não atravessa mais o corpo do mago, parado ou nas animações (mira, conjuração, Nova, esquiva); a mão desfaz por completo a rotação do braço e o cajado fica em pé, com o pé afastado do manto e a ponta para a frente ao conjurar

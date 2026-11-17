@@ -34,6 +34,26 @@ for (const kind of STORES) {
       A.c.close();
     });
 
+    test('ações (ataque, esquiva) chegam na hora para os outros, com limite', async () => {
+      const A = await join(), B = await join();
+      B.c.send({ t: 'act', a: 'swing', c: 2, yaw: 1.5 });
+      const m = await A.c.waitFor(x => x.t === 'act' && x.id === B.w.id);
+      assert.deepEqual([m.a, m.c, m.yaw], ['swing', 2, 1.5]);
+      B.c.send({ t: 'act', a: 'dash', c: 7, yaw: 0 });
+      const d = await A.c.waitFor(x => x.t === 'act' && x.a === 'dash');
+      assert.equal(d.c, 0);
+      // inválidas são ignoradas; quem manda não recebe de volta
+      B.c.send({ t: 'act', a: 'voar', c: 0, yaw: 0 }); B.c.send({ t: 'act', a: 'swing', c: 0, yaw: 'x' });
+      for (let i = 0; i < 20; i++) B.c.send({ t: 'act', a: 'cast', c: 0, yaw: 0 });
+      await sleep(300);
+      const got = A.c.msgs.filter(x => x.t === 'act' && x.id === B.w.id);
+      assert.ok(got.every(x => ['swing', 'dash', 'cast'].includes(x.a)));
+      const casts = got.filter(x => x.a === 'cast').length;
+      assert.ok(casts >= 3 && casts <= 7, `repassou ${casts} de 20`);
+      assert.equal(B.c.msgs.filter(x => x.t === 'act').length, 0);
+      A.c.close(); B.c.close();
+    });
+
     test('o título muda para todos quando o save sobe de nível', async () => {
       const A = await join(), B = await join();
       await api(S.url, 'PUT', '/save', { rev: 1, data: baseSave({ lvl: 5 }) }, B.a.token);

@@ -2,11 +2,11 @@
 // Exposto como window.TessNet para o código do jogo (src/game/net/remote.js).
 
 import { API_BASE, WS_BASE, call, tokens } from './api';
-import { EMOTES, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { ACTS, EMOTES, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import type { FriendsList, PartyView } from '../../shared/social';
 
 export interface PublicAccount { id: string; name: string; guest: boolean; email: string | null; google: boolean }
-export interface Remote { id: number; name: string; title: string; look: Look; tx: number; tz: number; tyaw: number; m: number; a: string; x?: number; z?: number; yaw?: number; slot?: number; emote?: Emote; emoteT?: number; chat?: string; chatT?: number }
+export interface Remote { id: number; name: string; title: string; look: Look; tx: number; tz: number; tyaw: number; m: number; a: string; x?: number; z?: number; yaw?: number; slot?: number; emote?: Emote | null; emoteT?: number; chat?: string; chatT?: number; act?: Act | null; actT?: number }
 export type SyncState = 'desligado' | 'salvo' | 'pendente' | 'enviando' | 'recusado' | 'conflito' | 'sem-rede';
 export interface ChatLine { kind: 'chat' | 'sys' | 'grupo'; name?: string; text: string; ts: number; mine?: boolean }
 
@@ -173,6 +173,8 @@ export class Net {
     this.lastPos = k; this.lastPosAt = now;
     this.send({ t: 'pos', x, z, yaw, m, a });
   }
+  /** Envia no quadro em que a ação começa, para quem assiste ver o início da animação. */
+  sendAct(a: Act, c: number, yaw: number) { if (ACTS.includes(a) && this.room) this.send({ t: 'act', a, c, yaw }); }
   chat(text: string) { if (text.trim()) this.send({ t: 'chat', text }); }
   emote(e: Emote) { if (EMOTES.includes(e)) this.send({ t: 'emote', e }); }
 
@@ -250,6 +252,7 @@ export class Net {
         if (!mine) G?.remoteChat(m.id, m.text); break;
       }
       case 'emote': if (m.id === this.myId) G?.myEmote(m.e); else G?.remoteEmote(m.id, m.e); break;
+      case 'act': if (m.id !== this.myId && this.remotes.has(m.id)) G?.remoteAct(m.id, m.a, m.c, m.yaw); break;
       case 'look': { const r = this.remotes.get(m.id); if (r) r.look = m.look; break; }
       case 'title': { const r = this.remotes.get(m.id); if (r) r.title = m.title; break; }
       case 'sys': this.pushChat({ kind: 'sys', text: m.text, ts: Date.now() }); break;

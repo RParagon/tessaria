@@ -18,9 +18,13 @@ function lookOfPlayer() {
 function netSaveChanged() { const n = NETON(); if (n && G.save) n.saveChanged(G.save); }
 function netRegion(key) { const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : 0); if (key !== 'hub') clearRemoteMarks(); }
 function netLook() { const n = NETON(); if (n) n.setLook(lookOfPlayer()); }
-let netPosAcc = 0;
+let netPosAcc = 0, netAct = null, netActT = 0;
+const NET_ACTS = ['swing', 'cast', 'shoot', 'spin', 'nova', 'dash'];
 function netTick(dt) {
   const n = NETON(); if (!n || !RG || RG.key !== 'hub' || !P) return;
+  // Ação nova (ou o mesmo golpe repetido): vai na hora, sem esperar a próxima posição.
+  if (P.act && NET_ACTS.includes(P.act) && (P.act !== netAct || P.actT < netActT)) n.sendAct(P.act, P.combo || 0, P.yaw);
+  netAct = P.act; netActT = P.actT;
   netPosAcc += dt; if (netPosAcc < .1) return; netPosAcc = 0;
   n.sendPos(P.x, P.z, P.yaw, P.moveAmt || 0, P.act || '');
 }
@@ -58,12 +62,29 @@ function applyEmote(A, em, t) {
   else if (em === 'dancar') { A[1].ry = Math.sin(t * 5) * .6; A[1].ty = Math.abs(Math.sin(t * 9)) * .12; A[4].rz = 1.2 + Math.sin(t * 9) * .6; A[5].rz = -1.2 + Math.sin(t * 9 + 1.5) * .6; A[6].rx = Math.sin(t * 9) * .4; A[7].rx = -Math.sin(t * 9) * .4; }
   else if (em === 'sentar') { A[1].ty = -.48; A[6].rx = A[7].rx = -1.45; A[4].rx = A[5].rx = -.25; A[2].rx = .1; }
 }
+// Duração de cada ação, igual à do jogador local (core/player.js).
+const REMOTE_ACT_DUR = { swing: .3, cast: .3, shoot: .25, spin: .5, nova: .45, dash: .18 };
+/** Começo de uma ação de outro jogador: toca a animação desde o início. */
+function startRemoteAct(r, a, c, yaw) {
+  r.act = a; r.actT = 0; r.combo = c || 0; r.tyaw = yaw; if (r.yaw !== undefined) r.yaw = yaw;
+  r.emote = null;                                    // a ação interrompe o emote, como no jogador local
+  if (a === 'cast' || a === 'shoot') r.aimAgo = 0;
+  // A posição da esquiva chega pelos snapshots, um pouco depois: o rastro dura o bastante para cobri-la.
+  if (a === 'dash') { r.dashT = .35; r.ghosts = []; }
+}
+function updateRemoteAct(r, dt) {
+  if (r.act) { r.actT += dt; if (r.actT > (REMOTE_ACT_DUR[r.act] || .3)) r.act = null; }
+  r.aimAgo = (r.aimAgo ?? 9) + dt;
+  const ranged = r.look.cls === 'arco' || r.look.cls === 'arcano';
+  r.stance = lerp(r.stance || 0, ranged && r.aimAgo < .5 && r.act !== 'dash' ? 1 : 0, 1 - Math.exp(-dt * 16));
+  if (r.dashT > 0) { r.dashT -= dt; r.ghosts.push({ x: r.x, z: r.z, yaw: r.yaw, t: 0 }); if (r.ghosts.length > 5) r.ghosts.shift(); }
+  if (r.ghosts) { for (const g of r.ghosts) g.t += dt; r.ghosts = r.ghosts.filter(g => g.t < .25); }
+}
 function poseRemote(r, t) {
   const A = r.anim; resetAnim(A);
-  const e2 = { moveAmt: r.m, walkPh: r.walkPh, cls: r.look.cls, act: null, actT: 0, combo: 0, stance: 0, lean: 0, idleT: 0 };
-  if (r.a === 'swing' || r.a === 'cast' || r.a === 'shoot') { e2.act = r.a; e2.actT = (t * 3) % .3; }
+  const e2 = { moveAmt: r.m, walkPh: r.walkPh, cls: r.look.cls, act: r.act || null, actT: r.actT || 0, combo: r.combo || 0, stance: r.stance || 0, lean: 0, idleT: 0 };
   poseHuman(A, e2, t);
-  if (r.emoteT < 6 && r.m < .2) applyEmote(A, r.emote, t);
+  if (!r.act && r.emote && r.emoteT < 6 && r.m < .2) applyEmote(A, r.emote, t);
 }
 /** Chamado no render da vila: suaviza posições, anima e desenha. */
 function drawRemotes(dt, t) {
@@ -77,7 +98,9 @@ function drawRemotes(dt, t) {
     r.x = lerp(r.x, r.tx, k); r.z = lerp(r.z, r.tz, k); r.yaw += angDiff(r.yaw, r.tyaw) * k;
     r.walkPh = (r.walkPh || 0) + dt * 7 * r.m; r.emoteT = (r.emoteT ?? 9) + dt; r.chatT = (r.chatT ?? 9) + dt;
     if (!r.anim || r.anim.length !== s.model.bones.length) r.anim = newAnim(s.model);
+    updateRemoteAct(r, dt);
     poseRemote(r, t);
+    if (r.ghosts) for (const g of r.ghosts) if (g.t < .18) drawModel(s.model, r.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
     r.W = drawModel(s.model, r.anim, r.x, 0, r.z, r.yaw, 1, {});
     if (r.emote === 'comemorar' && r.emoteT < 2 && Math.random() < .5) spawn({ x: r.x + rr(-.4, .4), y: rr(.5, 2), z: r.z + rr(-.4, .4), vy: rr(1, 2), life: .7, s0: .1, s1: .02, b0: 1, b1: .2, mat: 30 });
   }
@@ -177,6 +200,7 @@ window.TessGame = {
   sfx: k => sfx(k),
   look: () => lookOfPlayer(),
   remoteEmote: (id, e) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.emote = e; r.emoteT = 0; } },
+  remoteAct: (id, a, c, yaw) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) startRemoteAct(r, a, c, yaw); },
   remoteChat: (id, text) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.chat = text; r.chatT = 0; } },
   myEmote: e => { if (!P) return; P.emote = e; P.emoteT = 0; },
 };

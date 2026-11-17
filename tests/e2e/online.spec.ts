@@ -95,6 +95,37 @@ test('amigos e grupo: tocar no nome, convidar, aceitar e conversar fora da vila'
   await A.ctx.close(); await B.ctx.close();
 });
 
+test('quem assiste vê o ataque e a esquiva do outro jogador desde o início', async ({ browser }) => {
+  const A = await onlinePlayer(browser, 'arcano'), B = await onlinePlayer(browser, 'lamina');
+  await A.page.evaluate(() => { const T = (window as any).__T; T.P.x = 44; T.P.z = 40; });
+  await B.page.evaluate(() => { const T = (window as any).__T; T.P.x = 47; T.P.z = 40; });
+  await A.page.waitForFunction(n => (window as any).TessNet.players().some((p: any) => p.name === n && p.slot !== undefined && p.x !== undefined), B.name, { timeout: 10_000 });
+  // A anota cada ação que chega e o primeiro quadro desenhado dela.
+  await A.page.evaluate(() => {
+    const W = window as any, seen: any[] = W.__seen = [], orig = W.TessGame.remoteAct;
+    W.TessGame.remoteAct = (id: number, a: string, c: number, yaw: number) => { orig(id, a, c, yaw); seen.push({ a, c, at: performance.now() }); };
+  });
+  const remote = () => (window as any).TessNet.players()[0];
+
+  // Emote primeiro: a ação seguinte precisa interrompê-lo.
+  await B.page.evaluate(() => (window as any).TessNet.emote('dancar'));
+  await A.page.waitForFunction(() => (window as any).TessNet.players()[0].emote === 'dancar', null, { timeout: 5000 });
+
+  const t0 = await B.page.evaluate(() => { (window as any).__T.ev('doAttack()'); return Date.now(); });
+  await A.page.waitForFunction(() => { const r = (window as any).TessNet.players()[0]; return r.act === 'swing' && r.actT > 0 && r.actT < .3; }, null, { timeout: 3000, polling: 'raf' });
+  expect(Date.now() - t0).toBeLessThan(1500);
+  expect(await A.page.evaluate(remote).then((r: any) => r.emote ?? null)).toBeNull();
+
+  await B.page.waitForTimeout(400);
+  await B.page.evaluate(() => (window as any).__T.ev('doDash()'));
+  await A.page.waitForFunction(() => { const r = (window as any).TessNet.players()[0]; return r.act === 'dash' && r.ghosts && r.ghosts.length > 0; }, null, { timeout: 3000, polling: 'raf' });
+
+  const seen = await A.page.evaluate(() => (window as any).__seen.map((x: any) => x.a));
+  expect(seen).toEqual(['swing', 'dash']);
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
 test('o progresso vai para a nuvem e volta em outro aparelho', async ({ browser }) => {
   const A = await onlinePlayer(browser);
   await A.page.evaluate(() => { const s = (window as any).__T.G.save; s.lvl = 4; s.gold = 321; (window as any).__T.ev('writeSave()'); });
