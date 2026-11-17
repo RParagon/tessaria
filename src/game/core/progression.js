@@ -125,14 +125,14 @@ function updateZones(dt) {
   for (let i = G.zones.length - 1; i >= 0; i--) {
     const z = G.zones[i]; z.t += dt; if (z.t >= z.dur) { G.zones.splice(i, 1); continue; }
     if (z.team === 'p') { z.tick -= dt; if (z.tick <= 0) { z.tick = .5; for (const e of enemies) if (e.dieT < 0 && e.spawnT <= 0 && Math.hypot(e.x - z.x, e.z - z.z) < z.r) hurtEnemy(e, z.dmg, 0, 0, false, 0); if (boss && !boss.dying) for (const h of bossHits(boss)) if (Math.hypot(h[0] - z.x, h[1] - z.z) < z.r + h[2]) { hurtBoss(boss, z.dmg, false, h); break; } } }
-    else if (P && Math.hypot(P.x - z.x, P.z - z.z) < z.r) { P.slowT = .35; if (z.dmg) { z.tick = (z.tick || 0) - dt; if (z.tick <= 0) { z.tick = .5; hurtPlayer(z.dmg, z.x, z.z, 0); } } }
+    else if (z.team === 'e' && P && Math.hypot(P.x - z.x, P.z - z.z) < z.r) { P.slowT = .35; if (z.dmg) { z.tick = (z.tick || 0) - dt; if (z.tick <= 0) { z.tick = .5; hurtPlayer(z.dmg, z.x, z.z, 0); } } }
   }
 }
 function drawZones(t) {
   for (const z of G.zones) {
-    const m = z.mat || (z.team === 'p' ? 7 : 122), fade = 1 - z.t / z.dur, n = Math.ceil(z.r * 10);
-    for (let i = 0; i < n; i++) { const a = i / n * 6.283 + t * (z.team === 'p' ? 1 : -.5); dyn(z.x + Math.cos(a) * z.r, .07, z.z + Math.sin(a) * z.r, .7 * fade + .2, m, .18); }
-    for (let i = 0; i < n; i++) { const a = hash2(i, 3) * 6.283, d = Math.sqrt(hash2(i, 9)) * z.r; dyn(z.x + Math.cos(a) * d, .06 + (z.team === 'p' ? Math.abs(Math.sin(t * 6 + i)) * .3 : 0), z.z + Math.sin(a) * d, .45 * fade, m, .16); }
+    const ally = z.team !== 'e', m = z.mat || (ally ? 7 : 122), fade = 1 - z.t / z.dur, n = Math.ceil(z.r * 10);
+    for (let i = 0; i < n; i++) { const a = i / n * 6.283 + t * (ally ? 1 : -.5); dyn(z.x + Math.cos(a) * z.r, .07, z.z + Math.sin(a) * z.r, .7 * fade + .2, m, .18); }
+    for (let i = 0; i < n; i++) { const a = hash2(i, 3) * 6.283, d = Math.sqrt(hash2(i, 9)) * z.r; dyn(z.x + Math.cos(a) * d, .06 + (ally ? Math.abs(Math.sin(t * 6 + i)) * .3 : 0), z.z + Math.sin(a) * d, .45 * fade, m, .16); }
   }
 }
 function updateLater(dt) { for (let i = G.later.length - 1; i >= 0; i--) { const L = G.later[i]; L.t -= dt; if (L.t <= 0) { G.later.splice(i, 1); L.fn(); } } }

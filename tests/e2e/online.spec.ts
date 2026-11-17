@@ -95,7 +95,7 @@ test('amigos e grupo: tocar no nome, convidar, aceitar e conversar fora da vila'
   await A.ctx.close(); await B.ctx.close();
 });
 
-test('quem assiste vê o ataque e a esquiva do outro jogador desde o início', async ({ browser }) => {
+test('quem assiste vê o ataque, a esquiva e os projéteis do outro jogador desde o início', async ({ browser }) => {
   const A = await onlinePlayer(browser, 'arcano'), B = await onlinePlayer(browser, 'lamina');
   await A.page.evaluate(() => { const T = (window as any).__T; T.P.x = 44; T.P.z = 40; });
   await B.page.evaluate(() => { const T = (window as any).__T; T.P.x = 47; T.P.z = 40; });
@@ -103,7 +103,7 @@ test('quem assiste vê o ataque e a esquiva do outro jogador desde o início', a
   // A anota cada ação que chega e o primeiro quadro desenhado dela.
   await A.page.evaluate(() => {
     const W = window as any, seen: any[] = W.__seen = [], orig = W.TessGame.remoteAct;
-    W.TessGame.remoteAct = (id: number, a: string, c: number, yaw: number) => { orig(id, a, c, yaw); seen.push({ a, c, at: performance.now() }); };
+    W.TessGame.remoteAct = (id: number, a: string, c: number, yaw: number) => { const n0 = W.__T.ev('parts.length'); orig(id, a, c, yaw); seen.push({ a, c, fx: W.__T.ev('parts.length') - n0 }); };
   });
   const remote = () => (window as any).TessNet.players()[0];
 
@@ -115,6 +115,8 @@ test('quem assiste vê o ataque e a esquiva do outro jogador desde o início', a
   await A.page.waitForFunction(() => { const r = (window as any).TessNet.players()[0]; return r.act === 'swing' && r.actT > 0 && r.actT < .3; }, null, { timeout: 3000, polling: 'raf' });
   expect(Date.now() - t0).toBeLessThan(1500);
   expect(await A.page.evaluate(remote).then((r: any) => r.emote ?? null)).toBeNull();
+  // o rastro do golpe também aparece para quem assiste
+  expect(await A.page.evaluate(() => (window as any).__seen[0].fx)).toBe(22);
 
   await B.page.waitForTimeout(400);
   await B.page.evaluate(() => (window as any).__T.ev('doDash()'));
@@ -122,6 +124,16 @@ test('quem assiste vê o ataque e a esquiva do outro jogador desde o início', a
 
   const seen = await A.page.evaluate(() => (window as any).__seen.map((x: any) => x.a));
   expect(seen).toEqual(['swing', 'dash']);
+
+  // O Arcano (A) lança um raio e a Nova: B vê os projéteis, só visuais.
+  await A.page.waitForTimeout(400);
+  await A.page.evaluate(() => (window as any).__T.ev('doAttack()'));
+  await B.page.waitForFunction(() => (window as any).__T.ev("projs.filter(p => p.team === 'fx' && p.bolt).length") === 1, null, { timeout: 3000, polling: 'raf' });
+  await A.page.waitForTimeout(400);
+  await A.page.evaluate(() => (window as any).__T.ev('doSkill()'));
+  await B.page.waitForFunction(() => (window as any).__T.ev("projs.filter(p => p.team === 'fx').length") >= 16, null, { timeout: 3000, polling: 'raf' });
+  expect(await B.page.evaluate(() => (window as any).__T.ev("projs.every(p => p.team !== 'p' && !p.dmg)"))).toBe(true);
+  expect(await B.page.evaluate(() => (window as any).__T.P.hp === (window as any).__T.P.maxHp)).toBe(true);
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
   await A.ctx.close(); await B.ctx.close();
 });

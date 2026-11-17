@@ -34,7 +34,7 @@ function updateProjectiles(dt) {
     } else if (!dead && p.team === 'e') {
       if (Math.hypot(P.x - p.x, P.z - p.z) < .45 + p.r && Math.abs(p.y - 1) < 1.3) { hurtPlayer(p.dmg, p.x - p.vx, p.z - p.vz); if (p.web) P.slowT = 2.2; dead = true; burst(p.x, p.y, p.z, 8, p.mat, 2, .3, .12); }
     }
-    if (dead) { if (p.comet && !p.exploded) explodeComet(p); if (p.web) G.zones.push({ x: p.x, z: p.z, r: 1.5, t: 0, dur: 4, team: 'e', mat: 143 }); projs.splice(i, 1); }
+    if (dead) { if (p.comet && !p.exploded) explodeComet(p); if (p.fxBoom) burst(p.x, .5, p.z, 70, 7, 7, .7, .25); if (p.web) G.zones.push({ x: p.x, z: p.z, r: 1.5, t: 0, dur: 4, team: 'e', mat: 143 }); projs.splice(i, 1); }
   }
 }
 function updateTelegraphs(dt) { for (let i = tels.length - 1; i >= 0; i--) { const t = tels[i]; t.t += dt; if (t.follow) t.follow(t); if (t.t >= t.dur) { tels.splice(i, 1); if (t.fn) t.fn(); } } }

@@ -13,7 +13,7 @@ export const MAX_SPEED = 12;        // unidades/s (corrida + esquiva com folga)
 export const EMOTES = ['acenar', 'comemorar', 'dancar', 'sentar'] as const;
 export type Emote = typeof EMOTES[number];
 /** Ações com animação própria (ataque, habilidade, esquiva), enviadas no quadro em que começam. */
-export const ACTS = ['swing', 'cast', 'shoot', 'spin', 'nova', 'dash'] as const;
+export const ACTS = ['swing', 'cast', 'shoot', 'volley', 'spin', 'nova', 'dash'] as const;
 export type Act = typeof ACTS[number];
 export const ACT_BURST = 6;         // ações seguidas permitidas de uma vez
 export const ACT_RATE = 6;          // ações por segundo, em média
@@ -51,7 +51,7 @@ export type ClientMsg =
   | { t: 'pos'; x: number; z: number; yaw: number; m: number; a: string }
   | { t: 'chat'; text: string }
   | { t: 'emote'; e: Emote }
-  | { t: 'act'; a: Act; c: number; yaw: number }      // c: golpe do combo (0..2)
+  | { t: 'act'; a: Act; c: number; yaw: number }      // c: golpe do combo, runa da habilidade ou poder da esquiva (0..3)
   | { t: 'look'; look: Look }
   // amigos e grupo (docs/ONLINE.md). Fora da vila a conexão continua aberta só para isso.
   | { t: 'where'; r: string; n?: number }        // região atual (chave do jogo) e nível da Fenda
