@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 0.10.0 · Fase 1: fundação online
+- **Servidor online** (`server/`): Node 22 + TypeScript, Fastify e WebSocket, PostgreSQL com migrações (ou memória em dev), Docker para o Easypanel
+- **Contas:** e-mail e senha, Google e convidado; o convidado vira conta sem perder o progresso; troca de nome com filtro
+- **Save na nuvem:** sincroniza sozinho, avisa quando outro aparelho gravou antes e deixa escolher entre nuvem e aparelho
+- **Servidor que confere:** recusa itens acima do teto, nível que diminui e Centelhas demais para o tempo jogado; casos estranhos ficam registrados
+- **Correio online:** envio pelo nome do Tecelão, com recado; o item não pode ser duplicado com save antigo
+- **Vila Brasa online:**
+  - outros jogadores aparecem com a própria aparência, nome e título (nível, classe e dificuldade);
+  - chat (Enter) com filtro de palavrões, cota de mensagens e silêncio automático; comandos `/quem` e `/sala`;
+  - emotes: acenar, comemorar, dançar e sentar.
+- **Operação:** `/health`, métricas Prometheus, registro de erros do cliente, limites de requisições, desligamento gracioso
+- **Testes:** 50 testes do servidor (memória e PostgreSQL) e testes de ponta a ponta com dois navegadores; CI com PostgreSQL
+
 ## 0.9.1 · Fase 0
 - Projeto de produção: Vite, jogo dividido em 26 arquivos, source maps, build minificado
 - Testes de ponta a ponta com Playwright e CI no GitHub Actions

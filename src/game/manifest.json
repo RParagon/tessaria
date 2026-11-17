@@ -26,6 +26,7 @@
     "core/progression.js",
     "ui/ui.js",
     "render/render.js",
+    "net/remote.js",
     "core/loop.js"
   ]
 }

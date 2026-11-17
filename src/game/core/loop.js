@@ -15,7 +15,7 @@ function frame(now) {
     if (G.mode === 'play' && P && !G.traveling && !(G.touch && innerHeight > innerWidth * 1.05)) {
       let gdt = dt; if (G.hitStop > 0) { G.hitStop -= dt; gdt = dt * .12; }
       G.save.time += dt;
-      updatePlayer(gdt);
+      updatePlayer(gdt); netTick(dt);
       for (const e of enemies) updateEnemy(e, gdt);
       enemies = enemies.filter(e => { if (e.dead && e.el) e.el.remove(); return !e.dead; });
       if (boss) updateBoss(boss, gdt);
@@ -31,8 +31,8 @@ function frame(now) {
     if (G.mode === 'play' || G.mode === 'dialog' || G.mode === 'title') updateNPCs(dt);
     updateParticles(dt);
     if (RG && (G.mode !== 'create')) updateEmitters(dt, P ? P.x : 44, P ? P.z : 32);
-    render(dt); updateMarks();
-  } catch (err) { console.error(err); }
+    render(dt); updateMarks(); updateRemoteMarks();
+  } catch (err) { console.error(err); if (window.TessNet) window.TessNet.reportError(String(err), err && err.stack ? String(err.stack) : ''); }
 }
 if (__DEV__ || /[?&]debug=1/.test(location.search)) window.__T = { G, startRift: L => startRift(L), get P() { return P; }, get inter() { return inter; }, spawnThief: rm => spawnThief(rm), get boss() { return boss; }, get enemies() { return enemies; }, travel, loadRegion, get RG() { return RG; }, hurtBoss, startBoss, DIALOG, advanceDialog, spawnEnemy, monsterScale, curDiff, interact, get nearInter() { return nearInter; }, openMenu, makeItem, gamble, upgradeItem, H, readCode, itemCode, stats: () => stats(), ev: src => eval(src) };
 

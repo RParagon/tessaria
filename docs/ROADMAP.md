@@ -15,18 +15,28 @@ Prazos estimados para uma pessoa desenvolvendo com apoio de IA. Podem variar bas
 - [x] Deploy: Netlify (gratuito) e Docker com nginx para a VPS (Easypanel)
 - [x] Documentação: arquitetura, roadmap, monetização e deploy
 
-## Fase 1 · Fundação online (4 a 6 semanas)
+## Fase 1 · Fundação online (concluída na versão 0.10)
 
-- [ ] Migrar para módulos ES e separar `src/sim` (simulação) de `src/render`
-- [ ] Simulação determinística em passos fixos, rodando também em Node
-- [ ] Servidor Node + TypeScript + Colyseus no Easypanel, com PostgreSQL
-- [ ] Contas: e-mail, Google e Apple; personagens salvos no servidor
-- [ ] Migração do save local para a conta, no primeiro login
-- [ ] Vila Brasa online: ver outros jogadores, chat com filtro, emotes
-- [ ] Baú, casa e economia validados no servidor
-- [ ] Registro de erros (Sentry ou similar) e métricas básicas
+- [x] Servidor Node 22 + TypeScript (Fastify + WebSocket), pronto para o Easypanel (`server/Dockerfile`)
+- [x] PostgreSQL com migrações versionadas, e armazenamento em memória para desenvolvimento
+- [x] Contas: e-mail e senha, convidado (que vira conta depois) e Google
+- [x] Save na nuvem com revisão (sem perder progresso entre aparelhos) e escolha nuvem × aparelho no primeiro login
+- [x] Validação no servidor: tetos de itens, nível e Centelhas pelo tempo jogado, tamanho e formato do save
+- [x] Correio online pelo nome do Tecelão, sem duplicar itens (lápides)
+- [x] Vila Brasa online: ver outros jogadores, chat com filtro, emotes, títulos
+- [x] Proteções: limites de requisições, cota de chat, silêncio automático, limite de velocidade na vila
+- [x] Registro de erros do cliente, auditoria de saves estranhos e métricas (Prometheus)
+- [x] Testes do servidor (memória + PostgreSQL no CI) e de ponta a ponta com dois navegadores
 
-## Fase 2 · Co-op (4 a 6 semanas)
+Ficou para a Fase 2, porque só é necessário quando o combate for online:
+
+- Migrar para módulos ES e separar `src/sim` (simulação) de `src/render`
+- Simulação determinística em passos fixos, rodando também em Node
+- Baú, casa e economia calculados pelo servidor (hoje ele valida limites; na Fase 2 ele passa a decidir)
+
+## Fase 2 · Co-op (5 a 7 semanas)
+
+- [ ] Módulos ES, `src/sim` separado do render e simulação determinística (vindo da Fase 1)
 
 - [ ] Grupos de até 4 jogadores nas regiões e Fendas
 - [ ] Combate decidido pelo servidor, com previsão e correção no cliente
@@ -55,9 +65,8 @@ Prazos estimados para uma pessoa desenvolvendo com apoio de IA. Podem variar bas
 ## Fase 4 · Lançamento (4 semanas ou mais)
 
 - [ ] Beta fechado
-- [ ] Proteção contra trapaça:
-  - validação de velocidade e cooldowns no servidor;
-  - limites de requisições.
+- [ ] Proteção contra trapaça: velocidade e cooldowns validados no servidor durante o combate
+- [ ] Login com Apple (exigido pela App Store, se houver versão iOS)
 - [ ] Passe do Tear e loja de cosméticos (ver [MONETIZATION.md](MONETIZATION.md))
 - [ ] Google Play: conta de desenvolvedor, APK assinado, ficha da loja, classificação etária
 - [ ] Política de privacidade (LGPD), termos de uso e exclusão de conta

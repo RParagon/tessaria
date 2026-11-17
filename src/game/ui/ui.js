@@ -61,7 +61,7 @@ function openMenu(which) {
   G.menu = which; $('#prompt').hidden = true; $('#tUse').hidden = true;
   if (which === 'skills') renderSkills(); if (which === 'board') renderBoard(); if (which === 'riftm') renderRiftMenu();
   if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; renderShop(); }
-  if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; renderMail(); }
+  if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; resetMailOnline(); renderMail(); }
   if (which === 'forge') renderForge(); if (which === 'journal') renderJournal(); if (which === 'pause') renderPause();
   showOnly('#' + which); refreshHudVis();
 }
@@ -229,6 +229,9 @@ function readCode(code) {
 }
 let mlSel = null;
 function renderMail() {
+  if (NETON() && !NETON().offline) return renderMailOnline();
+  $('#mlCodeBox').hidden = false; $('#mlInbox').hidden = true; $('#mlInboxH').hidden = true;
+  $('#mlIntro').textContent = 'Troque itens com amigos: lacre um item num pacote, mande o código por mensagem, e a pessoa abre no correio da casa dela. Jogando online, o correio envia direto pelo nome.';
   const s = G.save, h = H(), bag = $('#mlBag'); bag.innerHTML = '';
   s.inv.forEach(it => bag.appendChild(slotBtn(it, () => { mlSel = { it }; G.mailCode = null; renderMail(); }, mlSel && mlSel.it === it)));
   if (!s.inv.length) bag.innerHTML = '<p class="sub" style="grid-column:1/-1">Coloque na bolsa o item que quer enviar.</p>';
@@ -302,17 +305,17 @@ function toTitle() {
   const sv = readSave(); $('#mContinue').hidden = !sv;
   showOnly('#title'); refreshHudVis();
 }
-$('#mNew').onclick = () => { sfx('ui'); if (G.touch) goLandscape(); openCreator(); };
+$('#mNew').onclick = () => { sfx('ui'); const n = NET(); if (n) { n.offline = true; n.leaveHub(); } if (G.touch) goLandscape(); openCreator(); };
 $('#pFull').onclick = () => { goLandscape(); };
 $('#sVib').onchange = e => { G.settings.vib = e.target.checked; saveSettings(); };
-$('#mContinue').onclick = () => {
-  sfx('ui'); const sv = readSave(); if (!sv) return;
+$('#mContinue').onclick = () => { sfx('ui'); const n = NET(); if (n) n.offline = true; const sv = readSave(); if (sv) startFromSave(sv); };
+function startFromSave(sv) {
   sv.inv = sv.inv || []; sv.eq = sv.eq || {}; sv.met = sv.met || {}; sv.talents = sv.talents || []; sv.pgp = sv.pgp || {}; sv.perks = sv.perks || {}; sv.q = sv.q || {}; sv.riftMax = sv.riftMax || 0; sv.fios = sv.fios || 0; sv.riftBest = sv.riftBest || {}; G.rift = null;
   G.save = sv; G.char = { ...sv.char }; rebuildPlayerModel(); P = null;
   showOnly(null); G.mode = 'play'; refreshHudVis();
   $('#loading').hidden = false;
   setTimeout(() => { loadRegion(sv.region || 'hub', true); $('#loading').hidden = true; fadeTo(0, .6); }, 30);
-};
+}
 let creatorYaw = 0;
 function optRow(id, items, key, isSwatch) {
   const box = $(id); box.innerHTML = '';

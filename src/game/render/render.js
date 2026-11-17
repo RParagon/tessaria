@@ -94,6 +94,7 @@ function render(dt) {
     P.stance = P.act && P.cls !== 'lamina' ? 1 : 0; P.combo = Math.floor(t / 12) % 3;
     poseHuman(P.anim, P, t); drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
   } else {
+    drawRemotes(dt, t);
     for (const n of npcs) {
       if (!n.visible) continue;
       resetAnim(n.anim); n.talkT -= dt;
@@ -147,6 +148,7 @@ function render(dt) {
     }
     if (P && playerModel) {
       resetAnim(P.anim); poseHuman(P.anim, P, t);
+      if (P.emote) { P.emoteT = (P.emoteT || 0) + dt; if (P.emoteT > 6 || (P.moveAmt || 0) > .2 || P.act) P.emote = null; else applyEmote(P.anim, P.emote, t); }
       if (P.ghosts) for (const g of P.ghosts) if (g.t < .18) drawModel(playerModel, P.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
       for (const k in G.buffs) if (G.buffs[k] > 0 && Math.random() < .35) spawn({ x: P.x + rr(-.45, .45), y: rr(.1, 1.8), z: P.z + rr(-.45, .45), vy: rr(.3, .8), life: .6, s0: .09, s1: .02, b0: 1, b1: .2, mat: BUFFS[k].mat });
       const blink = P.iframe > 0 && P.dashT <= 0 && P.dieT < 0 && Math.floor(t * 20) % 2 === 0;

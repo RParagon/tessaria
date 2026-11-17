@@ -160,7 +160,7 @@ function resizeFB(w, h) {
 const palTex = gl.createTexture();
 let curPal = null;
 function uploadPalette(regKey) {
-  const reg = (regKey === 'hub' && G.save && G.save.ended && G.mode !== 'title' && G.mode !== 'create') ? REGPAL.hubDay : (REGPAL[regKey] || REGPAL[G.rift ? G.rift.base : 'hub']), px = new Uint8Array(5 * 160 * 4);
+  const reg = (regKey === 'hub' && G.save && G.save.ended && G.mode !== 'title' && G.mode !== 'create') ? REGPAL.hubDay : (REGPAL[regKey] || REGPAL[G.rift ? G.rift.base : 'hub']), px = new Uint8Array(5 * 256 * 4);
   const rows = [];
   const pr = charRows(G.char);
   for (let i = 0; i < 8; i++) rows[i] = pr[i];
@@ -171,10 +171,11 @@ function uploadPalette(regKey) {
   rows[125] = METAL[arR]; rows[126] = RAR[arR].ramp; rows[127] = RAR[chR].ramp;
   NPCS.forEach((n, k) => { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[32 + k * 8 + i] = r[i]; });
   for (const k in XROWS) rows[k] = XROWS[k];
+  for (const k in REMOTE_ROWS) rows[k] = REMOTE_ROWS[k];
   { const rf = charRows({ ...G.char, skin: 5, outfit: 11, trim: 3, glow: 2 }); for (let i = 0; i < 8; i++) rows[152 + i] = rf[i]; }
-  for (let m = 0; m < 160; m++) { const row = rows[m] || rows[11]; for (let i = 0; i < 5; i++) { const c = row[i], o = (m * 5 + i) * 4; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = 255; } }
+  for (let m = 0; m < 256; m++) { const row = rows[m] || rows[11]; for (let i = 0; i < 5; i++) { const c = row[i], o = (m * 5 + i) * 4; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = 255; } }
   gl.bindTexture(gl.TEXTURE_2D, palTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 5, 160, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 5, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   curPal = (G.rift && RG && RG.key === 'rift') ? { ...reg, bg: ['#07030e', '#1a0b2e', '#3c1766'], star: '#e6d0ff' } : reg;
 }

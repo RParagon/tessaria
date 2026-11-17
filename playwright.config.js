@@ -23,10 +23,20 @@ export default defineConfig({
     actionTimeout: 15_000,
     launchOptions,
   },
-  webServer: {
-    command: 'npx vite preview --outDir dist-test --port 4173 --strictPort',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: 'npx vite preview --outDir dist-test --port 4173 --strictPort',
+      url: 'http://localhost:4173',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      // Servidor do jogo em memória para os testes online (porta fixada em .env.test).
+      command: 'npx tsx server/src/index.ts',
+      url: 'http://localhost:2599/health',
+      env: { PORT: '2599', AUTH_PER_MINUTE: '100000', LOG_LEVEL: 'warn', NODE_ENV: 'test' },
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
 });

@@ -87,7 +87,7 @@ function takeItem(it) {
   toast(it.name, false, 'NOVO ITEM · ' + RAR[it.rar].n.toUpperCase() + (itemScore(it) > itemScore(s.eq[it.slot]) ? ' · MELHOR QUE O SEU' : ''), RAR[it.rar].c);
   return true;
 }
-function afterEquip() { rebuildPlayerModel(); const st = stats(); if (P) { const ratio = P.hp / P.maxHp; P.maxHp = st.maxHp; P.hp = Math.min(P.maxHp, Math.max(1, Math.round(ratio * P.maxHp))); } if (RG) uploadPalette(RG.key); writeSave(); sfx('open'); }
+function afterEquip() { rebuildPlayerModel(); const st = stats(); if (P) { const ratio = P.hp / P.maxHp; P.maxHp = st.maxHp; P.hp = Math.min(P.maxHp, Math.max(1, Math.round(ratio * P.maxHp))); } if (RG) uploadPalette(RG.key); writeSave(); netLook(); sfx('open'); }
 function gainXp(n) {
   if (bless('descanso')) n = Math.round(n * 1.15);
   const s = G.save; s.xp += n;

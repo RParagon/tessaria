@@ -19,7 +19,7 @@ function newSave() {
   return { v: 1, char: { ...G.char }, lvl: 1, xp: 0, gold: 0, potions: 3, up: { pow: 0, vig: 0, agi: 0, foc: 0, pot: 0 }, frags: [], chests: [], bosses: {}, met: {}, region: 'hub', cp: null, time: 0, deaths: 0, kills: 0, endings: [], inv: [], eq: { weapon: makeItem('weapon', 1, 0, true) }, shop: null, talents: [], pgp: {}, perks: {}, q: {}, contracts: null, riftMax: 0, rune: 0, fios: 0, riftBest: {} };
 }
 const SKEY = 'fios-de-tessaria-v1';
-function writeSave() { try { G.save.char = { ...G.char }; localStorage.setItem(SKEY, JSON.stringify(G.save)); } catch (e) { } }
+function writeSave() { try { G.save.char = { ...G.char }; localStorage.setItem(SKEY, JSON.stringify(G.save)); } catch (e) { } netSaveChanged(); }
 function readSave() { try { const s = localStorage.getItem(SKEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
 function eqSum(s) { const o = { dmg: 0, hp: 0, crit: 0, spd: 0, cdr: 0, ls: 0, dr: 0, gold: 0 }; const eq = s.eq || {}; for (const k in eq) { const it = eq[k]; if (it) for (const st in it.st) o[st] = (o[st] || 0) + it.st[st]; } return o; }
 let stats = function () {

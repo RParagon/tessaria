@@ -1,0 +1,135 @@
+import postgres from 'postgres';
+import { MIGRATIONS } from './migrations';
+import type { Account, ClaimResult, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
+import { INV_MAX } from '../../../shared/save';
+
+type Row = Record<string, any>;
+const toAccount = (r: Row): Account => ({
+  id: r.id, name: r.name, email: r.email, passHash: r.pass_hash, googleSub: r.google_sub, guest: r.guest, banned: r.banned,
+  createdAt: r.created_at, lastSeen: r.last_seen, mutedUntil: r.muted_until,
+});
+const toMail = (r: Row): MailRow => ({ id: Number(r.id), toId: r.to_id, fromId: r.from_id, fromName: r.from_name, item: r.item, note: r.note, createdAt: r.created_at, claimedAt: r.claimed_at });
+
+export class PgStore implements Store {
+  private sql: postgres.Sql;
+  constructor(url: string) {
+    this.sql = postgres(url, { max: 10, idle_timeout: 30, connect_timeout: 10, onnotice: () => {} });
+  }
+
+  async migrate() {
+    const sql = this.sql;
+    await sql`CREATE TABLE IF NOT EXISTS schema_migrations (id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`;
+    for (const m of MIGRATIONS) {
+      await sql.begin(async tx => {
+        await tx`SELECT pg_advisory_xact_lock(424242)`;
+        const done = await tx`SELECT 1 FROM schema_migrations WHERE id = ${m.id}`;
+        if (done.length) return;
+        await tx.unsafe(m.sql);
+        await tx`INSERT INTO schema_migrations (id) VALUES (${m.id})`;
+      });
+    }
+  }
+  async close() { await this.sql.end({ timeout: 5 }); }
+
+  async createAccount(a: NewAccount) {
+    const [r] = await this.sql`INSERT INTO accounts (name, email, pass_hash, google_sub, guest)
+      VALUES (${a.name}, ${a.email ?? null}, ${a.passHash ?? null}, ${a.googleSub ?? null}, ${a.guest}) RETURNING *`;
+    return toAccount(r);
+  }
+  async accountById(id: string) { const [r] = await this.sql`SELECT * FROM accounts WHERE id = ${id}`; return r ? toAccount(r) : null; }
+  async accountByName(name: string) { const [r] = await this.sql`SELECT * FROM accounts WHERE lower(name) = lower(${name})`; return r ? toAccount(r) : null; }
+  async accountByEmail(email: string) { const [r] = await this.sql`SELECT * FROM accounts WHERE lower(email) = lower(${email})`; return r ? toAccount(r) : null; }
+  async accountByGoogle(sub: string) { const [r] = await this.sql`SELECT * FROM accounts WHERE google_sub = ${sub}`; return r ? toAccount(r) : null; }
+  async updateAccount(id: string, p: Partial<Account>) {
+    const map: Record<string, string> = { name: 'name', email: 'email', passHash: 'pass_hash', googleSub: 'google_sub', guest: 'guest', banned: 'banned', lastSeen: 'last_seen', mutedUntil: 'muted_until' };
+    const cols: Record<string, any> = {};
+    for (const [k, v] of Object.entries(p)) if (map[k]) cols[map[k]] = v;
+    if (!Object.keys(cols).length) return;
+    await this.sql`UPDATE accounts SET ${this.sql(cols)} WHERE id = ${id}`;
+  }
+
+  async createSession(tokenHash: string, accountId: string, expiresAt: Date, ua: string) {
+    await this.sql`INSERT INTO sessions (token_hash, account_id, expires_at, ua) VALUES (${tokenHash}, ${accountId}, ${expiresAt}, ${ua.slice(0, 200)})`;
+  }
+  async sessionAccount(tokenHash: string) {
+    const [r] = await this.sql`SELECT account_id FROM sessions WHERE token_hash = ${tokenHash} AND expires_at > now()`;
+    return r ? r.account_id as string : null;
+  }
+  async deleteSession(tokenHash: string) { await this.sql`DELETE FROM sessions WHERE token_hash = ${tokenHash}`; }
+
+  async getSave(accountId: string): Promise<SaveRow | null> {
+    const [r] = await this.sql`SELECT rev, data, updated_at FROM saves WHERE account_id = ${accountId}`;
+    return r ? { rev: r.rev, data: r.data, updatedAt: r.updated_at } : null;
+  }
+  async putSave(accountId: string, data: any, expectedRev: number): Promise<PutSaveResult> {
+    if (expectedRev === 0) {
+      const r = await this.sql`INSERT INTO saves (account_id, rev, data) VALUES (${accountId}, 1, ${this.sql.json(data)}) ON CONFLICT (account_id) DO NOTHING RETURNING rev`;
+      if (r.length) return { ok: true, rev: 1 };
+    } else {
+      const r = await this.sql`UPDATE saves SET data = ${this.sql.json(data)}, rev = rev + 1, updated_at = now() WHERE account_id = ${accountId} AND rev = ${expectedRev} RETURNING rev`;
+      if (r.length) return { ok: true, rev: r[0].rev };
+    }
+    const cur = await this.getSave(accountId);
+    return { ok: false, conflict: true, rev: cur?.rev ?? 0 };
+  }
+
+  async deleteSave(accountId: string) { await this.sql`DELETE FROM saves WHERE account_id = ${accountId}`; }
+
+  async tombstoned(accountId: string, itemIds: string[]) {
+    if (!itemIds.length) return [];
+    const r = await this.sql`SELECT item_id FROM tombstones WHERE account_id = ${accountId} AND item_id IN ${this.sql(itemIds)}`;
+    return r.map(x => x.item_id as string);
+  }
+
+  async transferItem(fromId: string, fromName: string, toId: string, itemId: string, note: string): Promise<TransferResult> {
+    return this.sql.begin(async tx => {
+      const [s] = await tx`SELECT rev, data FROM saves WHERE account_id = ${fromId} FOR UPDATE`;
+      if (!s) return { ok: false, reason: 'sem-save' } as const;
+      const data = s.data, inv: any[] = Array.isArray(data.inv) ? data.inv : [];
+      const idx = inv.findIndex(it => it && it.id === itemId);
+      if (idx < 0) {
+        const equipped = ['weapon', 'armor', 'charm'].some(k => data.eq?.[k]?.id === itemId);
+        return { ok: false, reason: equipped ? 'equipado' : 'sem-item' } as const;
+      }
+      const [item] = inv.splice(idx, 1); data.inv = inv;
+      const [u] = await tx`UPDATE saves SET data = ${tx.json(data)}, rev = rev + 1, updated_at = now() WHERE account_id = ${fromId} RETURNING rev`;
+      await tx`INSERT INTO tombstones (account_id, item_id) VALUES (${fromId}, ${itemId}) ON CONFLICT DO NOTHING`;
+      const [m] = await tx`INSERT INTO mail (to_id, from_id, from_name, item, note) VALUES (${toId}, ${fromId}, ${fromName}, ${tx.json(item)}, ${note}) RETURNING id`;
+      return { ok: true, rev: u.rev, mailId: Number(m.id) } as const;
+    }) as Promise<TransferResult>;
+  }
+  async listMail(accountId: string) {
+    const r = await this.sql`SELECT * FROM mail WHERE to_id = ${accountId} AND claimed_at IS NULL ORDER BY created_at DESC LIMIT 50`;
+    return r.map(toMail);
+  }
+  async claimMail(accountId: string, mailId: number): Promise<ClaimResult> {
+    return this.sql.begin(async tx => {
+      const [m] = await tx`SELECT * FROM mail WHERE id = ${mailId} AND to_id = ${accountId} FOR UPDATE`;
+      if (!m) return { ok: false, reason: 'nao-encontrado' } as const;
+      if (m.claimed_at) return { ok: false, reason: 'ja-resgatado' } as const;
+      const [s] = await tx`SELECT rev, data FROM saves WHERE account_id = ${accountId} FOR UPDATE`;
+      if (!s) return { ok: false, reason: 'sem-save' } as const;
+      const data = s.data; data.inv = Array.isArray(data.inv) ? data.inv : [];
+      if (data.inv.length >= INV_MAX) return { ok: false, reason: 'bolsa-cheia' } as const;
+      data.inv.push(m.item);
+      const [u] = await tx`UPDATE saves SET data = ${tx.json(data)}, rev = rev + 1, updated_at = now() WHERE account_id = ${accountId} RETURNING rev`;
+      await tx`UPDATE mail SET claimed_at = now() WHERE id = ${mailId}`;
+      await tx`DELETE FROM tombstones WHERE account_id = ${accountId} AND item_id = ${m.item.id}`;
+      return { ok: true, rev: u.rev, item: m.item } as const;
+    }) as Promise<ClaimResult>;
+  }
+
+  async audit(accountId: string | null, kind: string, detail: any) {
+    await this.sql`INSERT INTO audit (account_id, kind, detail) VALUES (${accountId}, ${kind}, ${this.sql.json(detail ?? {})})`;
+  }
+  async logClientError(e: { accountId: string | null; version: string; message: string; stack: string; ua: string; url: string }) {
+    await this.sql`INSERT INTO client_errors (account_id, version, message, stack, ua, url) VALUES (${e.accountId}, ${e.version}, ${e.message}, ${e.stack}, ${e.ua}, ${e.url})`;
+  }
+  async logChat(accountId: string, room: string, text: string) {
+    await this.sql`INSERT INTO chat_log (account_id, room, text) VALUES (${accountId}, ${room}, ${text})`;
+  }
+  async counts() {
+    const [r] = await this.sql`SELECT (SELECT count(*) FROM accounts)::int a, (SELECT count(*) FROM saves)::int s, (SELECT count(*) FROM mail)::int m`;
+    return { accounts: r.a, saves: r.s, mail: r.m };
+  }
+}

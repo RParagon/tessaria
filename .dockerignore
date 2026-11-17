@@ -5,3 +5,6 @@ android
 playwright-report
 test-results
 .git
+server/dist
+.env
+.env.local

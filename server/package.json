@@ -1,0 +1,30 @@
+{
+  "name": "@tessaria/server",
+  "version": "0.10.0",
+  "private": true,
+  "type": "module",
+  "description": "Servidor online do Fios de Tessária: contas, save na nuvem, correio e vila online.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/server.js",
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "11.4.3",
+    "@fastify/rate-limit": "11.2.2",
+    "fastify": "5.12.8",
+    "jose": "6.2.17",
+    "postgres": "3.4.9",
+    "ws": "8.23.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "8.18.2",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

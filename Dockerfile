@@ -1,11 +1,15 @@
 # Imagem para a VPS (Easypanel): compila a versão web e serve com nginx.
-# Na Fase 1 o servidor do jogo entra como um segundo serviço no mesmo projeto.
+# O servidor online é outro serviço (server/Dockerfile). Passe o endereço dele no build:
+#   docker build --build-arg VITE_API_URL=https://api.seu-dominio.com .
 
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY server/package.json server/
 RUN npm ci --ignore-scripts
 COPY . .
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 FROM nginx:1.27-alpine

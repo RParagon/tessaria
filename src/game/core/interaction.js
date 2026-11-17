@@ -225,7 +225,7 @@ function loadRegion(key, atCp) {
   if (!P) makePlayer(sx, sz); else { P.x = sx; P.z = sz; P.vx = P.vz = P.kx = P.kz = 0; P.dieT = -1; }
   P.maxHp = stats().maxHp; if (key === 'hub') P.hp = P.maxHp;
   cam.x = P.x; cam.z = P.z;
-  writeSave(); updateObjective(); setMusic(key === 'rift' ? G.rift.base : key); MM.key = null; setupMinimap();
+  writeSave(); updateObjective(); setMusic(key === 'rift' ? G.rift.base : key); netRegion(key); MM.key = null; setupMinimap();
   setTimeout(() => toast(spec.name.toUpperCase(), true, spec.sub), 500);
   const rq = key === 'hub' && requiredTalk(); if (rq && G.save.met.ysolde) setTimeout(() => toast(NPCS.find(n => n.id === rq).name + ' quer falar com você', false, 'SIGA O ! DOURADO'), 2800);
   if (key === 'hub' && G.save.met.ysolde && !G.save.met.houseTip && G.save.met.wildTip) { G.save.met.houseTip = true; setTimeout(() => toast('CASA À VENDA', true, 'a leste da forja · baú, correio e mobília com bônus'), 4200); }

@@ -1,6 +1,6 @@
 {
   "name": "fios-de-tessaria",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "private": true,
   "description": "RPG de ação em pixel art 3D feito de splats. Web e Android.",
   "type": "module",
@@ -19,7 +19,10 @@
     "android:open": "cap open android",
     "icons": "node tools/make-icons.mjs",
     "test:slow": "npm run build:test && SLOW=1 playwright test tests/e2e/balance.spec.js",
-    "screenshots": "npm run build:test && node tools/screenshots.mjs"
+    "screenshots": "npm run build:test && node tools/screenshots.mjs",
+    "dev:server": "npm run dev -w server",
+    "test:server": "npm test -w server",
+    "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck -w server"
   },
   "devDependencies": {
     "@capacitor/android": "^8.6.2",
@@ -27,6 +30,10 @@
     "@capacitor/core": "^8.6.2",
     "@playwright/test": "1.63.0",
     "magic-string": "^1.4.5",
-    "vite": "^8.3.8"
-  }
+    "vite": "^8.3.8",
+    "typescript": "5.9.3"
+  },
+  "workspaces": [
+    "server"
+  ]
 }

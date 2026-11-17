@@ -76,6 +76,7 @@
       <div class="menu">
         <button class="px gold" id="mContinue" hidden>Continuar</button>
         <button class="px" id="mNew">Novo jogo</button>
+        <button class="px" id="mOnline" hidden>Jogar online</button>
       </div>
       <p class="foot">Teclado, mouse ou toque · cerca de 30 minutos de aventura</p>
     </div>
@@ -207,13 +208,16 @@
   <section id="mail" class="screen modal" hidden>
     <div class="mbox panel">
       <h2>Correio do Tear</h2>
-      <p class="sub">Troque itens com amigos: lacre um item num pacote, mande o código por mensagem, e a pessoa abre no correio da casa dela. Quando o multiplayer chegar, este correio vira o mercado.</p>
+      <p class="sub" id="mlIntro">Troque itens com amigos: lacre um item num pacote, mande o código por mensagem, e a pessoa abre no correio da casa dela. Jogando online, o correio envia direto pelo nome.</p>
       <h3 class="hsec">ENVIAR UM ITEM DA BOLSA</h3>
       <div class="bag" id="mlBag"></div>
       <div class="idet" id="mlDet"></div>
-      <h3 class="hsec">RECEBER UM PACOTE</h3>
-      <textarea id="mlIn" placeholder="Cole aqui o código TEAR-… que seu amigo mandou" spellcheck="false"></textarea>
-      <button class="px gold" id="mlGet">Abrir pacote</button>
+      <div id="mlCodeBox">
+        <h3 class="hsec">RECEBER UM PACOTE</h3>
+        <textarea id="mlIn" placeholder="Cole aqui o código TEAR-… que seu amigo mandou" spellcheck="false"></textarea>
+        <button class="px gold" id="mlGet">Abrir pacote</button>
+      </div>
+      <div id="mlInboxWrap"><h3 class="hsec" id="mlInboxH" hidden>CAIXA DE ENTRADA</h3><div id="mlInbox" hidden style="display:flex;flex-direction:column;gap:6px"></div></div>
       <button class="px" id="mlClose">Fechar</button>
     </div>
   </section>

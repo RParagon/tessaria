@@ -15,3 +15,8 @@ android/capacitor-cordova-android-plugins/
 android/local.properties
 *.keystore
 *.jks
+
+# Segredos locais (nunca commitar)
+.env
+.env.local
+.env.*.local

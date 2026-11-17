@@ -17,20 +17,65 @@ O plano gratuito cobre 100 GB de tráfego por mês. O jogo tem cerca de 150 KB c
 
 ## VPS com Easypanel
 
-Use quando quiser tudo na sua máquina. Na Fase 1, o servidor do jogo entra no mesmo projeto.
+O projeto tem três peças: **banco** (PostgreSQL), **servidor online** (`server/Dockerfile`, porta 2567) e **versão web** (`Dockerfile` da raiz, porta 80). A web também pode ficar na Netlify, e na VPS ficam só o banco e o servidor.
 
-1. No Easypanel, crie um projeto (por exemplo `tessaria`) e dentro dele um serviço **App**.
-2. **Source → GitHub:** repositório `RParagon/tessaria`, branch `main`.
-3. **Build → Dockerfile.** O `Dockerfile` da raiz compila o jogo e serve com nginx (`deploy/nginx.conf`).
-4. **Domains:** aponte um domínio ou subdomínio e ative o HTTPS automático. A porta do container é **80**.
-5. Ative **Auto Deploy** para publicar a cada envio para `main`.
+### 1. Banco
+
+No projeto do Easypanel (por exemplo `tessaria`), crie um serviço **Postgres**. Copie a *Internal connection URL*, algo como `postgres://postgres:SENHA@tessaria_db:5432/tessaria`.
+
+### 2. Servidor online
+
+1. Crie um serviço **App** chamado `server`.
+2. **Source → GitHub:** `RParagon/tessaria`, branch `main`.
+3. **Build → Dockerfile**, arquivo `server/Dockerfile`. O contexto é a raiz do repositório.
+4. **Environment:**
+
+   | Variável | Obrigatória | Para quê |
+   |---|---|---|
+   | `DATABASE_URL` | sim | URL do Postgres do passo 1. As tabelas são criadas sozinhas na primeira subida. |
+   | `CORS_ORIGINS` | sim | Endereços que podem abrir o jogo, separados por vírgula. Ex.: `https://jogo.seu-dominio.com,https://seu-site.netlify.app,https://localhost`. O `https://localhost` é o app Android. |
+   | `TRUST_PROXY` | recomendada | `1` atrás do proxy do Easypanel, para os limites por IP usarem o IP real. Já é o padrão em produção. |
+   | `GOOGLE_CLIENT_ID` | não | Liga o botão "Entrar com Google" (ID de cliente OAuth do tipo *Web* no Google Cloud). |
+   | `METRICS_TOKEN` | não | Libera `GET /metrics` (Prometheus) com `Authorization: Bearer <token>`. Sem ele, a rota não existe. |
+   | `SESSION_DAYS` | não | Validade das sessões (padrão 30). |
+   | `AUTH_PER_MINUTE` | não | Tentativas de login/cadastro por IP por minuto (padrão 12). |
+   | `LOG_LEVEL` | não | `info` (padrão), `warn`, `debug`. |
+
+5. **Domains:** um subdomínio (por exemplo `api.seu-dominio.com`) com HTTPS, apontando para a porta **2567**. O WebSocket da vila (`/ws`) passa pelo mesmo domínio.
+6. Teste: `https://api.seu-dominio.com/health` deve responder `{"ok":true,...,"db":"ok"}`.
+
+> Segredos (senha do banco, tokens) ficam só no painel do Easypanel. Nunca no repositório.
+
+### 3. Versão web na VPS (opcional)
+
+1. Outro **App**, Dockerfile da raiz, porta **80**.
+2. Em **Build args**, defina `VITE_API_URL=https://api.seu-dominio.com`. O endereço do servidor entra no build.
+3. Domínio com HTTPS e **Auto Deploy** ligado.
 
 O nginx já vem configurado com compressão, cache longo para os arquivos com hash e revalidação do `index.html` (assim, atualizações chegam na hora).
 
-**Na Fase 1:**
-- **Servidor do jogo:** um segundo App (Node, porta 2567) no mesmo projeto.
-- **Banco:** um serviço PostgreSQL do próprio Easypanel.
-- **Ligação entre eles:** o cliente web aponta para o servidor por uma variável de ambiente no build.
+### Tudo de uma vez com Docker Compose
+
+Em qualquer VPS com Docker:
+
+```bash
+cp deploy/.env.example deploy/.env      # preencha senhas e endereços
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+```
+
+### Netlify + servidor na VPS
+
+Na Netlify, em **Site configuration → Environment variables**, crie `VITE_API_URL` com o endereço do servidor e faça um novo deploy. Inclua o endereço `https://<nome>.netlify.app` em `CORS_ORIGINS` do servidor.
+
+Sem `VITE_API_URL`, o jogo funciona normalmente, só que offline (o botão "Jogar online" não aparece).
+
+### Backup do banco
+
+No Easypanel, ative os backups do serviço Postgres. Ou, manualmente:
+
+```bash
+docker exec <container-do-postgres> pg_dump -U postgres tessaria | gzip > tessaria-$(date +%F).sql.gz
+```
 
 ## Android
 
@@ -67,6 +112,8 @@ O app abre em paisagem, em tela cheia imersiva, e não deixa a tela apagar duran
 
 ## Checklist antes de publicar uma versão
 
-- [ ] `npm test` passando (e `npm run test:balance`, se mexeu em combate)
+- [ ] `npm test` e `npm run test:server` passando (e `npm run test:balance`, se mexeu em combate)
+- [ ] `npm run typecheck` sem erros
 - [ ] `version` atualizada no `package.json` e entrada nova no `CHANGELOG.md`
 - [ ] Testado no celular na horizontal (toque, menus, bolsa)
+- [ ] Online: `/health` do servidor ok, login de convidado e vila funcionando no endereço publicado

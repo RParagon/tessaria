@@ -56,6 +56,7 @@ function tessariaGame() {
 
 export default defineConfig({
   plugins: [tessariaGame()],
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   build: {
     target: 'es2020',
     sourcemap: true,
