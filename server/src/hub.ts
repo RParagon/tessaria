@@ -165,7 +165,7 @@ export class Hub {
     p.actTokens = Math.min(ACT_BURST, p.actTokens + (now - p.actRefill) / 1000 * ACT_RATE); p.actRefill = now;
     if (p.actTokens < 1) { inc('hub_act_drops'); return; }
     p.actTokens -= 1;
-    const c = Number.isInteger(m.c) && m.c >= 0 && m.c <= 2 ? m.c : 0;
+    const c = Number.isInteger(m.c) && m.c >= 0 && m.c <= 3 ? m.c : 0;
     p.yaw = yaw % 6.2832; p.dirty = true;
     p.room.broadcast({ t: 'act', id: p.id, a: m.a as Act, c, yaw: +p.yaw.toFixed(2) }, p);
   }

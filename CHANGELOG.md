@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.10.2 · Efeitos dos outros jogadores
+- Na vila online, quem assiste agora vê os projéteis e as partículas das ações dos outros jogadores: o rastro dos golpes da Lâmina e do Giro, o raio e a Nova do Arcano (com as runas de gelo, cometa e Nova dupla), as flechas e a Chuva de Flechas do Arco, o círculo do poder Desfiado na esquiva e a poeira dos passos na corrida. São só visuais: não causam dano nem lentidão.
+- A mensagem `act` passa a dizer também a runa da habilidade e o poder da esquiva, e ganhou a ação `volley` (Chuva de Flechas).
+
 ## 0.10.1 · Animações dos outros jogadores
 - **Correção:** na vila online, o ataque, as habilidades e a esquiva dos outros jogadores apareciam tremidos ou nem apareciam. A ação agora vai como mensagem própria (`act`), no quadro exato em que começa, e o servidor repassa na hora, com cota de 6 por segundo. Quem assiste vê a animação desde o início: o combo da Lâmina, a postura de mira do Arco e do Arcano, e a esquiva com o rastro.
 - Uma ação interrompe o emote do outro jogador, como já acontecia com o seu.

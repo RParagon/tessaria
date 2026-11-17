@@ -20,10 +20,20 @@ function netRegion(key) { const n = NETON(); if (n) n.setRegion(key, lookOfPlaye
 function netLook() { const n = NETON(); if (n) n.setLook(lookOfPlayer()); }
 let netPosAcc = 0, netAct = null, netActT = 0;
 const NET_ACTS = ['swing', 'cast', 'shoot', 'spin', 'nova', 'dash'];
+/** Detalhe que muda o efeito visual: golpe do combo, runa da habilidade ou poder da esquiva. */
+function netActInfo(a) {
+  if (a === 'swing') return P.combo || 0;
+  if (a === 'dash') return hasPow('desfiado') ? 1 : 0;
+  if (a === 'spin' || a === 'nova' || a === 'volley') return curRune();
+  return 0;
+}
 function netTick(dt) {
   const n = NETON(); if (!n || !RG || RG.key !== 'hub' || !P) return;
   // Ação nova (ou o mesmo golpe repetido): vai na hora, sem esperar a próxima posição.
-  if (P.act && NET_ACTS.includes(P.act) && (P.act !== netAct || P.actT < netActT)) n.sendAct(P.act, P.combo || 0, P.yaw);
+  if (P.act && NET_ACTS.includes(P.act) && (P.act !== netAct || P.actT < netActT)) {
+    const a = P.act === 'shoot' && P.fxSkill ? 'volley' : P.act;   // a Chuva de Flechas usa a mesma pose do tiro
+    n.sendAct(a, netActInfo(a), P.yaw);
+  }
   netAct = P.act; netActT = P.actT;
   netPosAcc += dt; if (netPosAcc < .1) return; netPosAcc = 0;
   n.sendPos(P.x, P.z, P.yaw, P.moveAmt || 0, P.act || '');
@@ -63,9 +73,56 @@ function applyEmote(A, em, t) {
   else if (em === 'sentar') { A[1].ty = -.48; A[6].rx = A[7].rx = -1.45; A[4].rx = A[5].rx = -.25; A[2].rx = .1; }
 }
 // Duração de cada ação, igual à do jogador local (core/player.js).
-const REMOTE_ACT_DUR = { swing: .3, cast: .3, shoot: .25, spin: .5, nova: .45, dash: .18 };
+const REMOTE_ACT_DUR = { swing: .3, cast: .3, shoot: .25, volley: .25, spin: .5, nova: .45, dash: .18 };
+/** Mão de um jogador remoto (mesmo cálculo de handPos, em core/player.js). */
+function remoteHand(r, which) {
+  if (!r.W) return [r.x, 1.2, r.z];
+  const bw = [.86, 1, 1.18][r.look.body ?? 1];
+  return which === 'staff' ? tp(r.W[8], [-.38 * bw, .85 + 1.1, .06]) : tp(r.W[9] || r.W[4], [.38 * bw + .02, .85, .1]);
+}
+/** Efeitos de uma ação remota: as mesmas partículas e projéteis de doAttack, doSkill e doDash,
+ *  só visuais (time 'fx': sem dano, sem mira automática, sem lentidão). */
+function remoteFx(r, a, c, yaw) {
+  if (r.x === undefined || !P || Math.hypot(r.x - P.x, r.z - P.z) > 24) return;
+  const d = [Math.sin(yaw), Math.cos(yaw)], x = r.x, z = r.z;
+  if (a === 'swing') {
+    const heavy = c === 2, from = c === 1 ? 1 : -1;
+    for (let i = 0; i < 22; i++) { const k = i / 21, an = yaw + from * (1.25 - k * 2.5) * (heavy ? .55 : 1), rad = heavy ? rr(1.2, 2.7) : rr(1.4, 2.3); spawn({ x: x + Math.sin(an) * rad, y: heavy ? lerp(1.9, .3, k) : rr(.75, 1.15), z: z + Math.cos(an) * rad, vx: Math.sin(an) * 2.5, vz: Math.cos(an) * 2.5, life: .12 + k * .1, s0: heavy ? .26 : .2, s1: .04, b0: 1, b1: .25, mat: 7 }); }
+    if (heavy) G.later.push({ t: .07, fn: () => burst(r.x + d[0] * 1.9, .2, r.z + d[1] * 1.9, 18, 7, 3.5, .35, .14) });
+  } else if (a === 'cast') {
+    const tip = remoteHand(r, 'staff');
+    burst(tip[0], tip[1], tip[2], 10, 7, 2.5, .22, .12);
+    shoot({ x: tip[0], y: Math.max(1.0, tip[1]), z: tip[2], vx: d[0] * 14, vz: d[1] * 14, life: .95, dmg: 0, team: 'fx', mat: 7, size: .36, r: .4, trail: 1, bolt: true });
+  } else if (a === 'shoot') {
+    const bow = remoteHand(r, 'bow');
+    for (let i = 0; i < 6; i++) spawn({ x: bow[0], y: bow[1], z: bow[2], vx: d[0] * rr(1, 3) + rr(-.5, .5), vy: rr(-.3, .6), vz: d[1] * rr(1, 3) + rr(-.5, .5), life: .18, s0: .1, s1: .02, b0: 1, b1: .2, mat: 7 });
+    shoot({ x: bow[0], y: Math.max(.9, bow[1]), z: bow[2], vx: d[0] * 22, vz: d[1] * 22, life: .7, dmg: 0, team: 'fx', mat: 7, size: .2, r: .35, trail: .35, arrow: true });
+  } else if (a === 'spin') {
+    const R2 = c === 2 ? 4.6 : 3.5;
+    for (let i = 0; i < 70; i++) { const an = i / 70 * 6.28; spawn({ x: x + Math.cos(an) * 1.2, y: rr(.4, 1.3), z: z + Math.sin(an) * 1.2, vx: Math.cos(an) * R2 * 1.4, vz: Math.sin(an) * R2 * 1.4, life: rr(.3, .5), s0: .22, s1: .05, b0: 1, b1: .2, mat: 7, drag: 3 }); }
+    if (c === 1) G.zones.push({ x, z, r: 3.2, t: 0, dur: 3, dmg: 0, tick: 0, team: 'fx' });
+  } else if (a === 'nova') {
+    if (c === 2) { const tip = remoteHand(r, 'staff'); shoot({ x: tip[0], y: 1.6, z: tip[2], vx: d[0] * 12, vz: d[1] * 12, life: .9, dmg: 0, team: 'fx', mat: 7, size: .95, r: .8, trail: 1, fxBoom: true }); }
+    else {
+      const mat = c === 1 ? 122 : 7;
+      const nova = () => {
+        if (r.x === undefined) return;
+        for (let i = 0; i < 48; i++) { const an = i / 48 * 6.28; spawn({ x: r.x + Math.cos(an) * 1.1, y: .1, z: r.z + Math.sin(an) * 1.1, vx: Math.cos(an) * 4.5, vy: .4, vz: Math.sin(an) * 4.5, life: .55, s0: .2, s1: .04, b0: 1, b1: .2, mat, drag: 2 }); }
+        for (let i = 0; i < 16; i++) { const an = i / 16 * 6.28; shoot({ x: r.x, y: 1.3, z: r.z, vx: Math.sin(an) * 11, vz: Math.cos(an) * 11, life: 1.1, dmg: 0, team: 'fx', mat, size: .32, r: .4, trail: 1 }); }
+      };
+      nova(); if (c === 3) G.later.push({ t: .45, fn: nova });
+    }
+  } else if (a === 'volley') {
+    const volley = () => { if (r.x === undefined) return; for (let i = 0; i < 9; i++) { const an = yaw - .36 + i / 8 * .72; shoot({ x: r.x + Math.sin(an) * .5, y: 1.15, z: r.z + Math.cos(an) * .5, vx: Math.sin(an) * 20, vz: Math.cos(an) * 20, life: .8, dmg: 0, team: 'fx', mat: 7, size: .22, r: .35, trail: .6, arrow: true }); } };
+    volley(); if (c === 3) { G.later.push({ t: .16, fn: volley }); G.later.push({ t: .32, fn: volley }); }
+  } else if (a === 'dash' && c === 1) {
+    tels.push({ kind: 'circle', x, z, r: 2.2, t: 0, dur: .5, mat: 7, fn: () => burst(x, .5, z, 30, 7, 5, .5, .18) });
+  }
+}
 /** Começo de uma ação de outro jogador: toca a animação desde o início. */
 function startRemoteAct(r, a, c, yaw) {
+  remoteFx(r, a, c, yaw);
+  if (a === 'volley') a = 'shoot';
   r.act = a; r.actT = 0; r.combo = c || 0; r.tyaw = yaw; if (r.yaw !== undefined) r.yaw = yaw;
   r.emote = null;                                    // a ação interrompe o emote, como no jogador local
   if (a === 'cast' || a === 'shoot') r.aimAgo = 0;
@@ -99,6 +156,8 @@ function drawRemotes(dt, t) {
     r.walkPh = (r.walkPh || 0) + dt * 7 * r.m; r.emoteT = (r.emoteT ?? 9) + dt; r.chatT = (r.chatT ?? 9) + dt;
     if (!r.anim || r.anim.length !== s.model.bones.length) r.anim = newAnim(s.model);
     updateRemoteAct(r, dt);
+    // Poeira dos passos na corrida, como no jogador local (core/player.js).
+    { const stepN = Math.floor(r.walkPh / Math.PI); if (stepN !== r.lastStep) { r.lastStep = stepN; if (r.m > .55 && !(r.dashT > 0) && Math.hypot(r.x - P.x, r.z - P.z) < 24) { const sd = stepN % 2 ? .15 : -.15, cx = Math.cos(r.yaw), sx2 = -Math.sin(r.yaw); for (let i = 0; i < 3; i++) spawn({ x: r.x + cx * sd + rr(-.08, .08), y: .08, z: r.z + sx2 * sd + rr(-.08, .08), vx: rr(-.3, .3), vy: rr(.2, .5), vz: rr(-.3, .3), life: rr(.3, .5), s0: .09, s1: .18, b0: .3, b1: .05, mat: 120, drag: 2 }); } } }
     poseRemote(r, t);
     if (r.ghosts) for (const g of r.ghosts) if (g.t < .18) drawModel(s.model, r.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
     r.W = drawModel(s.model, r.anim, r.x, 0, r.z, r.yaw, 1, {});

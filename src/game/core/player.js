@@ -125,7 +125,7 @@ function setAim() { const d = aimDir(); P.aimYaw = Math.atan2(d[0], d[1]); P.aim
 function doAttack() {
   if (G.mode !== 'play' || P.dieT >= 0) return;
   const st = stats(), cls = G.char.cls, d = setAim();
-  P.atkCd = st.atkCd; P.actT = 0;
+  P.atkCd = st.atkCd; P.actT = 0; P.fxSkill = false;
   const crit = () => Math.random() < stats().crit;
   if (cls === 'lamina') {
     P.combo = (G.time - (P.lastSwing || -9) < .8) ? ((P.combo || 0) + 1) % 3 : 0; P.lastSwing = G.time;
@@ -182,7 +182,7 @@ function doDash() {
 }
 function doSkill() {
   if (G.mode !== 'play' || P.dieT >= 0 || P.skillCd > 0) return;
-  const st = stats(), cls = G.char.cls, rn = curRune(); P.skillCd = st.skillCd; P.actT = 0; sfx('skill');
+  const st = stats(), cls = G.char.cls, rn = curRune(); P.skillCd = st.skillCd; P.actT = 0; P.fxSkill = true; sfx('skill');
   if (cls === 'lamina') {
     P.act = 'spin'; P.iframe = .35; const R2 = rn === 2 ? 4.6 : 3.5;
     if (rn === 2) for (const e of enemies) { if (e.dieT >= 0 || e.spawnT > 0) continue; const dx = P.x - e.x, dz = P.z - e.z, d = Math.hypot(dx, dz); if (d < 7.5 && d > 1.2) { e.x += dx / d * (d - 1.2) * .7; e.z += dz / d * (d - 1.2) * .7; collide(e, e.def.r * e.scale); } }
