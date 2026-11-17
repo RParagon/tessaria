@@ -148,7 +148,8 @@ for (const kind of STORES) {
 
     test('telemetria de erros e métricas protegidas', async () => {
       assert.equal((await api(S.url, 'POST', '/telemetry/error', { version: '0.10.0', message: 'TypeError: x', stack: 'at y' })).status, 204);
-      assert.equal((await api(S.url, 'GET', '/metrics')).status, 404);
+      assert.equal((await api(S.url, 'GET', '/metrics')).status, 401);
+      assert.equal((await fetch(S.url + '/metrics', { headers: { authorization: 'Bearer errado' } })).status, 401);
       const m = await fetch(S.url + '/metrics', { headers: { authorization: 'Bearer segredo-metricas' } });
       const txt = await m.text();
       assert.match(txt, /tessaria_client_errors \d+/); assert.match(txt, /tessaria_accounts_total \d+/);

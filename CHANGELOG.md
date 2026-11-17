@@ -2,6 +2,7 @@
 
 ## Não lançado
 - Página de Política de Privacidade em `/privacidade.html` (exigida pelo Google para o login com Google)
+- `/metrics` responde 401 (em vez de 404) quando o token falta ou está errado, como o Metrics Endpoint do Grafana Cloud exige; comparação do token em tempo constante
 
 ## 0.10.0 · Fase 1: fundação online
 - **Servidor online** (`server/`): Node 22 + TypeScript, Fastify e WebSocket, PostgreSQL com migrações (ou memória em dev), Docker para o Easypanel

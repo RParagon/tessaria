@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
@@ -58,6 +59,7 @@ export async function buildApp({ config, store }: AppOptions): Promise<App> {
     const a = await store.accountById(id);
     return a && !a.banned ? a : null;
   }
+  const sameSecret = (a: string | null, b: string) => { if (!a) return false; const h = (x: string) => createHash('sha256').update(x).digest(); return timingSafeEqual(h(a), h(b)); };
   const bearer = (req: FastifyRequest) => { const h = req.headers.authorization; return h && h.startsWith('Bearer ') ? h.slice(7) : null; };
   const auth = async (req: FastifyRequest, rep: FastifyReply) => {
     const a = await accountFromToken(bearer(req));
@@ -75,7 +77,10 @@ export async function buildApp({ config, store }: AppOptions): Promise<App> {
   });
   app.get('/config', async () => ({ version: config.version, protocol: PROTOCOL_VERSION, hubCap: HUB_CAP, googleClientId: config.googleClientId }));
   app.get('/metrics', async (req, rep) => {
-    if (!config.metricsToken || bearer(req) !== config.metricsToken) return fail(rep, 404, 'Não encontrado.');
+    // Sem METRICS_TOKEN a rota não existe. Com ele, token ausente ou errado recebe 401:
+    // coletores como o Metrics Endpoint do Grafana Cloud exigem esse código para aceitar a URL.
+    if (!config.metricsToken) return fail(rep, 404, 'Não encontrado.');
+    if (!sameSecret(bearer(req), config.metricsToken)) { rep.header('www-authenticate', 'Bearer'); return fail(rep, 401, 'Não autorizado.'); }
     const c = await store.counts().catch(() => ({ accounts: -1, saves: -1, mail: -1 }));
     rep.type('text/plain; version=0.0.4').send(renderMetrics({ accounts_total: c.accounts, saves_total: c.saves, mail_total: c.mail }));
   });
