@@ -53,6 +53,7 @@ export type ClientMsg =
   | { t: 'emote'; e: Emote }
   | { t: 'act'; a: Act; c: number; yaw: number }      // c: golpe do combo, runa da habilidade ou poder da esquiva (0..3)
   | { t: 'look'; look: Look }
+  | { t: 'time'; c: number }   // pedido da hora do servidor (c: hora do cliente no envio)
   // amigos e grupo (docs/ONLINE.md). Fora da vila a conexão continua aberta só para isso.
   | { t: 'where'; r: string; n?: number }        // região atual (chave do jogo) e nível da Fenda
   | { t: 'pinvite'; name: string }              // convidar para o grupo
@@ -64,7 +65,8 @@ export type ClientMsg =
 
 // Servidor → cliente
 export type ServerMsg =
-  | { t: 'welcome'; id: number; room: string; players: PublicPlayer[]; v: number }   // room vazio: conectado fora da vila
+  | { t: 'welcome'; id: number; room: string; players: PublicPlayer[]; v: number; now?: number }
+  | { t: 'time'; c: number; s: number }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
   | { t: 'join'; p: PublicPlayer }
   | { t: 'leave'; id: number }
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação

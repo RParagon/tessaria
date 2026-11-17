@@ -47,6 +47,11 @@ export class Net {
   private inflight: Promise<void> | null = null;
   private lastPos = '';
   private lastPosAt = 0;
+  /** Diferença entre a hora do servidor e a deste aparelho (ms). Usada pelo relógio da vila. */
+  clockOffset = 0;
+  private clockRtt = Infinity;
+  /** Hora do servidor, em ms: a mesma para todos os jogadores (com folga de alguns ms). */
+  serverNow() { return Date.now() + this.clockOffset; }
 
   on(fn: Listener) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   private emit(ev: string, data?: any) { for (const fn of this.listeners) { try { fn(ev, data); } catch (e) { console.error(e); } } }
@@ -238,6 +243,8 @@ export class Net {
     const G = (window as any).TessGame;
     switch (m.t) {
       case 'welcome':
+        if (typeof m.now === 'number' && this.clockRtt === Infinity) this.clockOffset = m.now - Date.now();
+        for (let i = 0; i < 3; i++) setTimeout(() => this.send({ t: 'time', c: Date.now() }), 200 + i * 400);
         this.myId = m.id; this.room = m.room; this.connected = true; this.clearRemotes(); m.players.forEach(p => this.addRemote(p));
         this.lastPos = ''; if (this.look) this.send({ t: 'look', look: this.look });
         // Conectou fora da vila e o jogador já voltou para ela (ou o contrário): avisa onde está.
@@ -253,6 +260,12 @@ export class Net {
       }
       case 'emote': if (m.id === this.myId) G?.myEmote(m.e); else G?.remoteEmote(m.id, m.e); break;
       case 'act': if (m.id !== this.myId && this.remotes.has(m.id)) G?.remoteAct(m.id, m.a, m.c, m.yaw); break;
+      case 'time': {
+        // Mini-NTP: fica com a medida de menor ida e volta.
+        const now = Date.now(), rtt = now - m.c;
+        if (rtt >= 0 && rtt < this.clockRtt) { this.clockRtt = rtt; this.clockOffset = m.s + rtt / 2 - now; }
+        break;
+      }
       case 'look': { const r = this.remotes.get(m.id); if (r) r.look = m.look; break; }
       case 'title': { const r = this.remotes.get(m.id); if (r) r.title = m.title; break; }
       case 'sys': this.pushChat({ kind: 'sys', text: m.text, ts: Date.now() }); break;

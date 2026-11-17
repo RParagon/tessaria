@@ -54,6 +54,15 @@ for (const kind of STORES) {
       A.c.close(); B.c.close();
     });
 
+    test('relógio: welcome traz a hora do servidor e o pedido de hora é respondido', async () => {
+      const A = await join();
+      assert.ok(Math.abs(A.w.now - Date.now()) < 2000);
+      const c = Date.now(); A.c.send({ t: 'time', c });
+      const r = await A.c.waitFor(m => m.t === 'time' && m.c === c);
+      assert.ok(r.s >= c - 5 && r.s <= Date.now() + 5);
+      A.c.close();
+    });
+
     test('o título muda para todos quando o save sobe de nível', async () => {
       const A = await join(), B = await join();
       await api(S.url, 'PUT', '/save', { rev: 1, data: baseSave({ lvl: 5 }) }, B.a.token);

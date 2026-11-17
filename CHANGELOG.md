@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 0.10.3 · Vila sincronizada
+- **Relógio da vila:** moradores e galinhas andam por uma rota calculada a partir da hora do servidor, medida com ida e volta (mini-NTP). Todos os jogadores veem a mesma vila, sem trocar mensagens. Depois de conversar com você, o morador volta caminhando para a rota; ao entrar na vila, ele já aparece no lugar certo
+- Fugir das galinhas continua sendo só na sua tela, e elas voltam à rota comum logo depois
+
 ## 0.10.2 · Amigos, grupo e efeitos dos outros jogadores
 - **Design do online** em `docs/ONLINE.md` (grupos, dificuldade, Fio de Elo, história em grupo, trocas, mercado, guilda, ranking) e roadmap da Fase 2 em 12 passos
 - **Amigos** (Fase 2.1): pedir pelo nome, pelo comando `/amigo` ou tocando no nome na vila; lista com quem está online e onde; aviso quando um amigo entra ou sai; bloquear (some o chat da pessoa e ela não pede amizade nem convida)

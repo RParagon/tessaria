@@ -51,6 +51,21 @@ test('dois jogadores se veem na vila, conversam e usam emotes', async ({ browser
   await A.page.waitForFunction(() => (window as any).TessNet.players().some((p: any) => p.emote === 'dancar'), null, { timeout: 5000 });
   await B.page.waitForFunction(() => (window as any).__T.P.emote === 'dancar', null, { timeout: 5000 });
 
+  // Relógio da vila: moradores e galinhas no mesmo lugar para os dois
+  await A.page.waitForTimeout(1600);   // tempo para as medidas de relógio
+  const where = (pg: Page) => pg.evaluate(() => (window as any).__T.ev(`({
+    npcs: npcs.filter(n => n.visible && n.wander).map(n => [n.id, +n.x.toFixed(2), +n.z.toFixed(2)]),
+    galinhas: critters.map(c => [+(c.x - c.ox).toFixed(2), +(c.z - c.oz).toFixed(2)]),
+  })`));
+  const [wa, wb] = await Promise.all([where(A.page), where(B.page)]);
+  expect(wa.npcs.length).toBeGreaterThan(2);
+  for (let i = 0; i < wa.npcs.length; i++) {
+    expect(wb.npcs[i][0]).toBe(wa.npcs[i][0]);
+    expect(Math.hypot(wa.npcs[i][1] - wb.npcs[i][1], wa.npcs[i][2] - wb.npcs[i][2]), `morador ${wa.npcs[i][0]}`).toBeLessThan(.6);
+  }
+  for (let i = 0; i < wa.galinhas.length; i++)
+    expect(Math.hypot(wa.galinhas[i][0] - wb.galinhas[i][0], wa.galinhas[i][1] - wb.galinhas[i][1]), `galinha ${i}`).toBeLessThan(.6);
+
   await B.ctx.close();
   await A.page.waitForFunction(() => (window as any).TessNet.players().length === 0, null, { timeout: 10_000 });
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);

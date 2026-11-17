@@ -7,28 +7,62 @@ function spawnCritters() {
   const pn = HUB.pen, m = getModel('chicken');
   for (let i = 0; i < 5; i++) critters.push({ model: m, anim: newAnim(m), x: rr((pn.x0 + 1) * T + .4, pn.x1 * T - .4), z: rr((pn.y0 + 1) * T + .4, pn.y1 * T - .4), yaw: rr(0, 6.28), tg: null, wait: rr(0, 2), peck: 0, ph: 0, moving: 0 });
 }
+// ---------- relógio da vila ----------
+// Moradores e galinhas andam por uma rota que é função da hora do servidor (TessNet.serverNow),
+// com sorteio por semente. Todos os jogadores fazem a mesma conta e veem a mesma vila, sem trocar mensagens.
+// Offline, vale a hora do aparelho.
+function villageTime() { const n = window.TessNet; return (n && n.enabled && n.connected ? n.serverNow() : Date.now()) / 1000; }
+function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h | 0; }
+const legRand = (seed, k) => rng(seed ^ Math.imul(k | 0, 2654435761))();
+/** Onde o morador deve estar na hora t: anda do ponto do trecho anterior até o do trecho atual e espera o resto. */
+function npcScheduled(n, t) {
+  const pts = n.wander, sp = n.spd || 1.5;
+  if (!n.legLen) { let md = 0; for (const a of pts) for (const b of pts) md = Math.max(md, Math.hypot(a[0] - b[0], a[1] - b[1])); n.legLen = md / sp + 3; n.seed = hashStr(n.id); }
+  const k = Math.floor(t / n.legLen), f = t - k * n.legLen;
+  const A = pts[Math.floor(legRand(n.seed, k - 1) * pts.length)], B = pts[Math.floor(legRand(n.seed, k) * pts.length)];
+  const d = Math.hypot(B[0] - A[0], B[1] - A[1]), dur = d / sp;
+  if (f < dur && d > .01) { const u = f / dur; return { x: A[0] + (B[0] - A[0]) * u, z: A[1] + (B[1] - A[1]) * u, yaw: Math.atan2(B[0] - A[0], B[1] - A[1]), moving: true, walk: f * sp * 2.6 }; }
+  return { x: B[0], z: B[1], yaw: null, moving: false, walk: 0 };
+}
 function updateNPCs(dt) {
   if (!RG || RG.key !== 'hub') return;
+  const vt = villageTime();
   for (const n of npcs) {
     if (!n.visible || !n.wander) continue;
     const talking = n.talkT > 0 || (G.mode === 'dialog' && DLG.cur && DLG.cur.who === n.name);
-    if (talking) { n.moveAmt = lerp(n.moveAmt || 0, 0, .2); continue; }
-    n.wait = (n.wait ?? rr(0, 2)) - dt;
-    if (!n.tg && n.wait <= 0) { n.tg = pick(n.wander); n.tgT = 0; }
-    if (n.tg) {
-      n.tgT += dt; const dx = n.tg[0] - n.x, dz = n.tg[1] - n.z, d = Math.hypot(dx, dz);
-      if (d < .35 || n.tgT > 9) { n.tg = null; n.wait = rr(1.5, 5); }
-      else { const sp = n.spd || 1.5; n.x += dx / d * sp * dt; n.z += dz / d * sp * dt; collide(n, .3); n.wyaw = Math.atan2(dx, dz); n.moveAmt = lerp(n.moveAmt || 0, 1, .15); n.walkPh = (n.walkPh || 0) + dt * sp * 2.6; }
-    } else n.moveAmt = lerp(n.moveAmt || 0, 0, .15);
+    if (talking) { n.moveAmt = lerp(n.moveAmt || 0, 0, .2); n.backT = 20; continue; }
+    n.backT = Math.max(0, (n.backT || 0) - dt);
+    const s = npcScheduled(n, vt), gap = Math.hypot(s.x - n.x, s.z - n.z);
+    // Depois de conversar com você, o morador caminha de volta para a rota comum (até 20 s).
+    // Em qualquer outro caso (entrar na vila, relógio corrigido), ele já aparece no lugar certo.
+    if (gap > 1.2 && n.backT > 0 && gap < 25) {
+      // voltando para a rota comum depois de uma conversa (ou de um empurrão)
+      const sp = (n.spd || 1.5) * 1.6, k = Math.min(1, sp * dt / gap);
+      n.x += (s.x - n.x) * k; n.z += (s.z - n.z) * k; n.wyaw = Math.atan2(s.x - n.x, s.z - n.z);
+      n.moveAmt = lerp(n.moveAmt || 0, 1, .15); n.walkPh = (n.walkPh || 0) + dt * sp * 2.6;
+    } else {
+      n.x = s.x; n.z = s.z; n.backT = 0;
+      if (s.moving) { n.wyaw = s.yaw; n.moveAmt = lerp(n.moveAmt || 0, 1, .15); n.walkPh = s.walk; }
+      else n.moveAmt = lerp(n.moveAmt || 0, 0, .15);
+    }
+    collide(n, .3);
   }
   const pn = HUB.pen, x0 = (pn.x0 + 1) * T + .3, x1 = pn.x1 * T - .3, z0 = (pn.y0 + 1) * T + .3, z1 = pn.y1 * T - .3;
-  for (const c of critters) {
-    c.peck = Math.max(0, c.peck - dt); c.wait -= dt;
-    const flee = P && Math.hypot(P.x - c.x, P.z - c.z) < 2.2;
-    if (flee) c.tg = [clamp(c.x + (c.x - P.x) * 2, x0, x1), clamp(c.z + (c.z - P.z) * 2, z0, z1)];
-    if (!c.tg && c.wait <= 0) { if (Math.random() < .5) { c.peck = .6; c.wait = rr(.8, 2); } else c.tg = [rr(x0, x1), rr(z0, z1)]; }
-    if (c.tg) { const dx = c.tg[0] - c.x, dz = c.tg[1] - c.z, d = Math.hypot(dx, dz); if (d < .15) { c.tg = null; c.wait = rr(.4, 2); c.moving = 0; } else { const sp = flee ? 3.2 : 1.1; c.x += dx / d * sp * dt; c.z += dz / d * sp * dt; c.yaw = Math.atan2(dx, dz); c.moving = 1; c.ph += dt * sp; } } else c.moving = 0;
-  }
+  const cLeg = Math.hypot(x1 - x0, z1 - z0) / 1.1 + 1.5;
+  const cPt = (i, k) => [x0 + (x1 - x0) * legRand(7919 * (i + 1), k * 2), z0 + (z1 - z0) * legRand(7919 * (i + 1), k * 2 + 1)];
+  critters.forEach((c, i) => {
+    // rota comum (andar e ciscar), mais um desvio só local quando o herói chega perto
+    const tt = vt + i * 1.37, k = Math.floor(tt / cLeg), f = tt - k * cLeg, A = cPt(i, k - 1), B = cPt(i, k);
+    const d = Math.hypot(B[0] - A[0], B[1] - A[1]), dur = d / 1.1, mv = f < dur;
+    const bx = mv ? A[0] + (B[0] - A[0]) * f / dur : B[0], bz = mv ? A[1] + (B[1] - A[1]) * f / dur : B[1];
+    c.ox = c.ox || 0; c.oz = c.oz || 0;
+    const flee = P && Math.hypot(P.x - (bx + c.ox), P.z - (bz + c.oz)) < 2.2;
+    if (flee) { const ax = bx + c.ox - P.x, az = bz + c.oz - P.z, al = Math.hypot(ax, az) || 1; c.ox += ax / al * 3.2 * dt; c.oz += az / al * 3.2 * dt; c.yaw = Math.atan2(ax, az); }
+    else { const dk = Math.exp(-dt * .8); c.ox *= dk; c.oz *= dk; if (mv) c.yaw = Math.atan2(B[0] - A[0], B[1] - A[1]); }
+    c.x = clamp(bx + c.ox, x0, x1); c.z = clamp(bz + c.oz, z0, z1);
+    c.moving = mv || flee ? 1 : 0; c.ph += dt * (flee ? 3.2 : mv ? 1.1 : 0);
+    const pf = (f - dur) % 2.2; c.peck = !mv && !flee && pf < .6 ? .6 - pf : 0;   // cisca de tempos em tempos, parada
+  });
 }
 function project(x, y, z) {
   if (!VP) return null;

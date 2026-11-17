@@ -29,7 +29,7 @@ interface Player {
   look: Look; title: string;
   x: number; z: number; yaw: number; m: number; a: string;
   lastPos: number; synced: boolean; dirty: boolean; alive: boolean;
-  actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number;
+  actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number; timeReqs: number;
 }
 
 class Room {
@@ -95,13 +95,13 @@ export class Hub {
       friends: new Set(links.filter(l => l.state === 'amigo').map(l => l.otherId)), blocks: new Set(blocks.map(b => b.id)), lastInvite: 0,
       look: lookFromSave(save), title: titleFromSave(save),
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
-      actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0,
+      actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0,
     };
     const old = this.byAccount.get(account.id);
     this.byAccount.set(account.id, p);
     if (old) { send(old, { t: 'kick', reason: 'Sua conta entrou em outro lugar.' }); old.ws.close(4000, 'duplicada'); this.leave(old); }
     if (where === 'hub') this.enterRoom(p);
-    else send(p, { t: 'welcome', id: p.id, room: '', players: [], v: PROTOCOL_VERSION });
+    else send(p, { t: 'welcome', id: p.id, room: '', players: [], v: PROTOCOL_VERSION, now: Date.now() });
     inc('hub_joins');
     ws.on('message', (raw, isBinary) => { if (isBinary) return; this.onMessage(p, raw.toString()); });
     ws.on('pong', () => { p.alive = true; });
@@ -117,7 +117,7 @@ export class Hub {
     const room = this.pickRoom();
     p.room = room; p.synced = false; p.dirty = true;
     room.players.set(p.id, p);
-    send(p, { t: 'welcome', id: p.id, room: room.label, players: [...room.players.values()].filter(o => o !== p).map(pub), v: PROTOCOL_VERSION });
+    send(p, { t: 'welcome', id: p.id, room: room.label, players: [...room.players.values()].filter(o => o !== p).map(pub), v: PROTOCOL_VERSION, now: Date.now() });
     room.broadcast({ t: 'join', p: pub(p) }, p);
   }
   private leaveRoom(p: Player) {
@@ -153,6 +153,7 @@ export class Hub {
       case 'chat': return void this.onChat(p, msg.text);
       case 'emote': return p.room ? this.onEmote(p, msg.e) : undefined;
       case 'act': return p.room ? this.onAct(p, msg) : undefined;
+      case 'time': if (p.timeReqs++ < 20 && typeof msg.c === 'number' && Number.isFinite(msg.c)) send(p, { t: 'time', c: msg.c, s: Date.now() }); return;
       case 'look': return this.onLook(p, msg.look);
       case 'where': return this.onWhere(p, msg.r, msg.n);
       case 'pinvite': return void this.invite(p, msg.name);

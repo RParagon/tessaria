@@ -86,7 +86,7 @@ O save fica em `localStorage`, com a chave `fios-de-tessaria-v1`: um JSON com pe
 - **Contas:** e-mail e senha (scrypt), convidado (pode virar conta depois) e Google (token verificado com as chaves públicas do Google). Sessões são tokens aleatórios de 256 bits; o banco guarda só o hash.
 - **Save na nuvem:** cada gravação leva a revisão anterior (`rev`). Se outra aba ou aparelho gravou antes, o servidor responde *conflito* e o jogador escolhe o que carregar. Saves impossíveis (item acima do teto, nível que caiu, Centelhas demais para o tempo jogado) são **recusados**; casos estranhos mas possíveis só ficam registrados para auditoria.
 - **Correio:** o item sai do save de quem envia e entra no correio numa transação só. O id do item vira uma *lápide*: um save antigo que ainda tenha o item é recusado. Assim não dá para duplicar item reenviando save velho.
-- **Vila:** a posição vem do cliente, mas o servidor limita área e velocidade (um salto vira um passo; o cliente reenvia a posição parada 1 vez por segundo para convergir). O chat tem cota (3 mensagens, +1 a cada 2 s), filtro e silêncio de 5 minutos para quem insiste em palavrão. Uma conexão por conta.
+- **Vila:** a posição vem do cliente, mas o servidor limita área e velocidade (um salto vira um passo; o cliente reenvia a posição parada 1 vez por segundo para convergir). Moradores e galinhas seguem o **relógio da vila**: a posição é uma função da hora do servidor (`TessNet.serverNow()`, sincronizada no `welcome` e com pedidos `time`), então todos veem a mesma vila. O chat tem cota (3 mensagens, +1 a cada 2 s), filtro e silêncio de 5 minutos para quem insiste em palavrão. Uma conexão por conta.
 
 ### Testes
 
