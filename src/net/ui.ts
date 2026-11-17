@@ -4,6 +4,7 @@
 import type { Net, ChatLine } from './online';
 import { EMOTES, EMOTE_LABEL, CHAT_MAX } from '../../shared/protocol';
 import { nameProblem } from '../../shared/text';
+import { PARTY_MAX } from '../../shared/social';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string, root: ParentNode = document) => root.querySelector(s) as T;
 const h = (tag: string, attrs: Record<string, any> = {}, ...kids: Array<Node | string | null | false>) => {
@@ -55,6 +56,7 @@ export function mountOnlineUI(net: Net) {
 
   function render() {
     box.innerHTML = '';
+    if (view === 'amigos') return renderFriends();
     const close = h('button', { class: 'net-x', 'aria-label': 'Fechar', onclick: closeModal, text: '✕' });
     if (view === 'entrar') {
       box.append(close, h('h2', { id: 'netTitle', text: 'Jogar online' }),
@@ -74,7 +76,8 @@ export function mountOnlineUI(net: Net) {
       const a = net.account;
       box.append(close, h('h2', { id: 'netTitle', text: a.name }),
         h('p', { class: 'sub', text: a.guest ? 'Conta de convidado: proteja com e-mail e senha para não perder o progresso se trocar de aparelho.' : (a.email ? `Conta ${a.email}${a.google ? ' · Google' : ''}` : 'Conta Google') }),
-        h('button', { class: 'px gold', onclick: () => chooseProgress(), text: 'Continuar online' }));
+        h('button', { class: 'px gold', onclick: () => chooseProgress(), text: 'Continuar online' }),
+        h('button', { class: 'px', onclick: () => openModal('amigos'), text: 'Amigos' }));
       if (a.guest) {
         const f = h('form', { class: 'net-form', onsubmit: (e: Event) => { e.preventDefault(); act(() => net.upgrade(($('#netEmail', box) as HTMLInputElement).value, ($('#netPass', box) as HTMLInputElement).value, ($('#netName', box) as HTMLInputElement).value || undefined), () => { game()?.toast('CONTA PROTEGIDA', true, 'agora você entra com e-mail e senha'); render(); }); } },
           h('h3', { class: 'hsec', text: 'PROTEGER CONTA' }), field('Novo nome (opcional)', 'netName', 'text', { maxlength: 16, placeholder: a.name }), field('E-mail', 'netEmail', 'email', { maxlength: 254 }), field('Senha', 'netPass', 'password', { maxlength: 200, autocomplete: 'new-password' }), h('button', { class: 'px', type: 'submit', text: 'Proteger conta' }));
@@ -86,6 +89,50 @@ export function mountOnlineUI(net: Net) {
       }
       box.append(h('p', { id: 'netMsg', class: 'net-msg', hidden: true }), h('button', { class: 'px net-alt', onclick: async () => { await net.logout(); refreshTitle(); closeModal(); game()?.toast('Você saiu da conta.'); }, text: 'Sair da conta' }));
     }
+  }
+
+  function renderFriends() {
+    const close = h('button', { class: 'net-x', 'aria-label': 'Fechar', onclick: closeModal, text: '✕' });
+    const L = net.friendsList;
+    box.append(close, h('h2', { id: 'netTitle', text: 'Amigos' }));
+    const add = h('form', { class: 'net-form net-inline', onsubmit: (e: Event) => { e.preventDefault(); const n = ($('#netFriend', box) as HTMLInputElement).value.trim(); if (!n) return; act(() => net.addFriend(n), () => { renderSoon(); msg(net.isFriend(n) ? `${n} agora é seu amigo.` : `Pedido enviado para ${n}.`, 'ok'); }); } },
+      field('Adicionar pelo nome do Tecelão', 'netFriend', 'text', { maxlength: 16 }), h('button', { class: 'px', type: 'submit', text: 'Pedir' }));
+    box.append(add, h('p', { id: 'netMsg', class: 'net-msg', hidden: true }));
+    if (!L) { box.append(h('p', { class: 'sub', text: 'Carregando…' })); void net.friends().then(() => { if (!modal.hidden && view === 'amigos') render(); }); return; }
+    const row = (title: string, sub: string, online: boolean | null, ...btns: HTMLElement[]) =>
+      h('div', { class: 'net-frow' + (online ? ' on' : '') }, h('div', { class: 'nm' }, h('b', { text: (online === null ? '' : online ? '● ' : '○ ') + title }), h('small', { text: sub })), h('div', { class: 'act' }, ...btns));
+    const b = (text: string, fn: () => Promise<{ ok: boolean; error?: string }> | void, gold = false) => h('button', { class: 'px' + (gold ? ' gold' : ''), text, onclick: () => { const r = fn(); if (r) act(() => r, renderSoon); } });
+    if (L.incoming.length) {
+      box.append(h('h3', { class: 'hsec', text: 'PEDIDOS RECEBIDOS' }));
+      for (const f of L.incoming) box.append(row(f.name, 'quer ser seu amigo', null, b('Aceitar', () => net.acceptFriend(f.name), true), b('Recusar', () => net.removeFriend(f.name))));
+    }
+    box.append(h('h3', { class: 'hsec', text: `AMIGOS (${L.friends.length})` }));
+    if (!L.friends.length) box.append(h('p', { class: 'sub', text: 'Toque no nome de alguém na vila para adicionar, ou peça pelo nome acima.' }));
+    for (const f of L.friends) {
+      const sub = f.online ? [f.where, f.title].filter(Boolean).join(' · ') : 'offline' + (f.lastSeen ? ' · visto ' + ago(f.lastSeen) : '');
+      const inParty = !!net.party?.members.some(m => m.name === f.name);
+      const btns = [f.online && !inParty && (!net.party || net.isLeader) ? b('Convidar', () => { net.invite(f.name); msg(`Convite enviado para ${f.name}.`, 'ok'); }, true) : null,
+        confirmBtn('Remover', `Remover ${f.name}?`, () => net.removeFriend(f.name))].filter(Boolean) as HTMLElement[];
+      box.append(row(f.name, sub, f.online, ...btns));
+    }
+    if (L.outgoing.length) {
+      box.append(h('h3', { class: 'hsec', text: 'PEDIDOS ENVIADOS' }));
+      for (const f of L.outgoing) box.append(row(f.name, 'esperando resposta', null, b('Cancelar', () => net.removeFriend(f.name))));
+    }
+    if (L.blocked.length) {
+      box.append(h('h3', { class: 'hsec', text: 'BLOQUEADOS' }));
+      for (const f of L.blocked) box.append(row(f.name, 'não pode pedir amizade, convidar nem falar com você', null, b('Desbloquear', () => net.unblock(f.name))));
+    }
+  }
+  function confirmBtn(text: string, ask: string, fn: () => Promise<{ ok: boolean; error?: string }>) {
+    let armed = false;
+    const el = h('button', { class: 'px', text, onclick: () => { if (!armed) { armed = true; el.textContent = 'Confirmar'; el.title = ask; setTimeout(() => { armed = false; el.textContent = text; }, 3000); return; } act(fn, renderSoon); } });
+    return el;
+  }
+  const renderSoon = () => { if (!modal.hidden && view === 'amigos') render(); };
+  function ago(iso: string) {
+    const m = Math.max(0, (Date.now() - Date.parse(iso)) / 60000);
+    return m < 2 ? 'agora há pouco' : m < 60 ? `há ${Math.round(m)} min` : m < 48 * 60 ? `há ${Math.round(m / 60)} h` : `há ${Math.round(m / 1440)} dias`;
   }
 
   // ---------- login com Google (Google Identity Services) ----------
@@ -172,33 +219,131 @@ export function mountOnlineUI(net: Net) {
   const hud = document.querySelector('#hud') || document.body;
   hud.append(chat, chatBtn); (document.querySelector('.hud-l') || hud).append(chip);
 
-  const inHub = () => { const g = game(); return !!(g && g.region === 'hub' && (g.mode === 'play' || g.mode === 'dialog') && net.connected); };
+  const playing = () => { const g = game(); return !!(g && (g.mode === 'play' || g.mode === 'dialog')); };
+  const inHub = () => { const g = game(); return !!(g && g.region === 'hub' && playing() && net.inRoom); };
+  /** O chat abre na vila, e fora dela quando há grupo (aí vai para o grupo). */
+  const chatOk = () => inHub() || (playing() && net.connected && !!net.party);
   function updateChip() {
-    const g = game(), playing = g && (g.mode === 'play' || g.mode === 'dialog' || g.mode === 'menu') && !!net.account && !net.offline;
-    chip.hidden = !playing;
-    if (playing) {
+    const g = game(), on = g && (g.mode === 'play' || g.mode === 'dialog' || g.mode === 'menu') && !!net.account && !net.offline;
+    chip.hidden = !on;
+    if (on) {
       const s = ({ salvo: '☁ salvo', pendente: '☁ salvando…', enviando: '☁ salvando…', recusado: '⚠ não salvo', conflito: '⚠ conflito', 'sem-rede': '⚠ sem conexão', desligado: '' } as Record<string, string>)[net.sync] || '';
-      const hubTxt = g!.region === 'hub' ? (net.connected ? `● ${net.room} · ${net.players().length + 1} online` : '○ conectando…') : '';
+      const hubTxt = g!.region === 'hub' ? (net.inRoom ? `● ${net.room} · ${net.players().length + 1} online` : '○ conectando…') : '';
       chip.textContent = [hubTxt, s].filter(Boolean).join('  ');
       chip.dataset.state = net.sync;
     }
-    const hub = inHub();
-    chat.hidden = !hub; chatBtn.hidden = !hub || !input.hidden;
-    if (!hub && !input.hidden) closeChat();
+    const ok = chatOk();
+    chat.hidden = !ok; chatBtn.hidden = !ok || !input.hidden;
+    friendsBtn.hidden = !(on && playing() && net.connected);
+    input.placeholder = inHub() ? 'Mensagem (Enter envia, Esc fecha) · /g fala com o grupo' : 'Mensagem para o grupo (Enter envia, Esc fecha)';
+    emotes.hidden = input.hidden || !inHub();
+    if (!ok && !input.hidden) closeChat();
+    renderParty();
   }
-  function openChat() { if (!inHub()) return; input.hidden = false; emotes.hidden = false; chat.classList.add('open'); chatBtn.hidden = true; input.focus(); }
+  function openChat() { if (!chatOk()) return; input.hidden = false; emotes.hidden = !inHub(); chat.classList.add('open'); chatBtn.hidden = true; input.focus(); }
   function closeChat() { input.hidden = true; emotes.hidden = true; chat.classList.remove('open'); input.blur(); updateChip(); }
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { const t = input.value.trim(); if (t) net.chat(t); input.value = ''; if (!t) closeChat(); e.preventDefault(); }
+    if (e.key === 'Enter') { const t = input.value.trim(); if (t) { if (inHub() || t.startsWith('/')) net.chat(t); else net.partyChat(t); } input.value = ''; if (!t) closeChat(); e.preventDefault(); }
     else if (e.key === 'Escape') { closeChat(); e.preventDefault(); }
     e.stopPropagation();
   });
   addEventListener('keydown', e => {
-    if (e.key === 'Enter' && input.hidden && inHub() && game()?.mode === 'play' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); openChat(); }
+    if (e.key === 'Enter' && input.hidden && chatOk() && game()?.mode === 'play' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) { e.preventDefault(); openChat(); }
   });
+
+  // ---------- amigos e grupo no HUD ----------
+  const friendsBtn = h('button', { class: 'px net-friendsbtn', hidden: true, 'aria-label': 'Amigos', onclick: () => { game()?.sfx('ui'); openModal('amigos'); }, text: 'Amigos' });
+  const partyBox = h('div', { class: 'net-party', hidden: true, 'aria-label': 'Grupo' });
+  hud.append(friendsBtn, partyBox);
+  let partyKey = '';
+  function renderParty() {
+    const pt = net.party, show = !!pt && playing();
+    partyBox.hidden = !show; if (!show) { partyKey = ''; return; }
+    const key = JSON.stringify(pt); if (key === partyKey) return; partyKey = key;
+    partyBox.innerHTML = '';
+    partyBox.append(h('div', { class: 'net-ptitle', text: `GRUPO ${pt!.members.length}/${PARTY_MAX}` }));
+    for (const m of pt!.members) {
+      const me = m.name === net.account?.name;
+      const el = h('button', { class: 'net-pm' + (m.online ? '' : ' off') + (me ? ' me' : ''), onclick: (e: MouseEvent) => partyMenu(m.name, me, e) },
+        h('b', { text: (m.leader ? '★ ' : '') + m.name }), h('small', { text: `${CLS[m.cls] || ''} Nv ${m.lvl} · ${m.online ? m.where : 'caiu da conexão'}` }));
+      partyBox.append(el);
+    }
+  }
+  function partyMenu(name: string, me: boolean, e: MouseEvent) {
+    const items: Array<[string, () => void]> = [];
+    if (me) items.push(['Sair do grupo', () => net.leaveParty()]);
+    else {
+      if (net.isLeader) items.push(['Passar a liderança', () => net.lead(name)], ['Tirar do grupo', () => net.kick(name)]);
+      if (!net.isFriend(name)) items.push(['Adicionar amigo', () => void friendAct(() => net.addFriend(name), `Pedido enviado para ${name}.`)]);
+    }
+    popMenu(name, items, e.clientX, e.clientY);
+  }
+
+  // menu flutuante (tocar no nome de alguém na vila ou no painel do grupo)
+  const pop = h('div', { class: 'net-pop panel', hidden: true, role: 'menu' });
+  document.body.append(pop);
+  const closePop = () => { pop.hidden = true; };
+  addEventListener('pointerdown', e => { if (!pop.hidden && !pop.contains(e.target as Node)) closePop(); }, true);
+  function popMenu(title: string, items: Array<[string, () => void]>, x: number, y: number) {
+    if (!items.length) return;
+    pop.innerHTML = ''; pop.append(h('b', { text: title }));
+    for (const [label, fn] of items) pop.append(h('button', { class: 'px', role: 'menuitem', text: label, onclick: () => { game()?.sfx('ui'); closePop(); fn(); } }));
+    pop.hidden = false;
+    const r = pop.getBoundingClientRect();
+    pop.style.left = Math.max(8, Math.min(innerWidth - r.width - 8, x - r.width / 2)) + 'px';
+    pop.style.top = Math.max(8, Math.min(innerHeight - r.height - 8, y + 12)) + 'px';
+  }
+  async function friendAct(fn: () => Promise<{ ok: boolean; error?: string; state?: string }>, okText: string) {
+    const r = await fn();
+    game()?.toast(r.ok ? (r.state === 'amigos' ? 'Agora vocês são amigos.' : okText) : (r.error || 'Algo deu errado.'), false, 'AMIGOS', r.ok ? undefined : '#ff8a6a');
+  }
+  document.addEventListener('tess:player', (ev: Event) => {
+    const { name, x, y } = (ev as CustomEvent).detail as { name: string; x: number; y: number };
+    if (!name || !net.inRoom) return;
+    const inMine = !!net.party?.members.some(m => m.name === name), items: Array<[string, () => void]> = [];
+    if (!inMine && (!net.party || (net.isLeader && net.party.members.length < PARTY_MAX))) items.push(['Convidar para o grupo', () => net.invite(name)]);
+    if (!net.isFriend(name)) items.push(['Adicionar amigo', () => void friendAct(() => net.addFriend(name), `Pedido enviado para ${name}.`)]);
+    let armed = false;
+    items.push(['Bloquear', () => {
+      if (!armed) { armed = true; popMenu(name, [[`Bloquear ${name}? Toque de novo`, () => void friendAct(() => net.block(name), `${name} foi bloqueado.`)]], x, y); }
+    }]);
+    popMenu(name, items, x, y);
+  });
+
+  // convite de grupo: cartão com Aceitar e Recusar, que some quando expira
+  const invBox = h('div', { class: 'net-invites' });
+  document.body.append(invBox);
+  function renderInvites() {
+    invBox.innerHTML = '';
+    const now = Date.now(); net.invites = net.invites.filter(i => i.exp > now);
+    for (const i of net.invites) {
+      const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, i.exp - now) + 'ms';
+      invBox.append(h('div', { class: 'net-invite panel', role: 'alertdialog', 'aria-label': `Convite de ${i.from}` },
+        h('span', { text: `${i.from} convidou você para o grupo (${i.size + 1}/${PARTY_MAX})` }),
+        h('div', { class: 'act' },
+          h('button', { class: 'px gold', text: 'Aceitar', onclick: () => { game()?.sfx('ui'); net.acceptInvite(i.from); renderInvites(); } }),
+          h('button', { class: 'px', text: 'Recusar', onclick: () => { net.declineInvite(i.from); renderInvites(); } })),
+        bar));
+    }
+  }
+  setInterval(() => { if (net.invites.length && net.invites.some(i => i.exp <= Date.now())) renderInvites(); }, 1000);
+  net.on((ev, data) => {
+    if (ev === 'pinvite') { game()?.sfx('ui'); renderInvites(); }
+    if (ev === 'party') { if (!data) renderInvites(); updateChip(); }
+    if (ev === 'friends') renderSoon();
+    if (ev === 'social') {
+      const n = data.name as string;
+      if (data.ev === 'pedido') game()?.toast(`${n} quer ser seu amigo`, false, 'AMIGOS · ABRA A LISTA PARA ACEITAR');
+      if (data.ev === 'aceito') game()?.toast(`${n} agora é seu amigo`, false, 'AMIGOS');
+      if (data.ev === 'online') addLine({ kind: 'sys', text: `${n} entrou no jogo.`, ts: Date.now() });
+      if (data.ev === 'offline') addLine({ kind: 'sys', text: `${n} saiu do jogo.`, ts: Date.now() });
+    }
+  });
+
   function addLine(l: ChatLine) {
-    const row = h('div', { class: 'net-line' + (l.kind === 'sys' ? ' sys' : '') + (l.mine ? ' mine' : '') });
-    if (l.kind === 'chat') row.append(h('b', { text: l.name + ': ' }), document.createTextNode(l.text)); else row.textContent = l.text;
+    const row = h('div', { class: 'net-line' + (l.kind === 'sys' ? ' sys' : l.kind === 'grupo' ? ' grp' : '') + (l.mine ? ' mine' : '') });
+    if (l.kind === 'grupo') row.append(h('b', { text: '[Grupo] ' + l.name + ': ' }), document.createTextNode(l.text));
+    else if (l.kind === 'chat') row.append(h('b', { text: l.name + ': ' }), document.createTextNode(l.text)); else row.textContent = l.text;
     log.append(row); while (log.children.length > 30) log.firstChild!.remove();
     log.scrollTop = log.scrollHeight;
     setTimeout(() => row.classList.add('old'), 12000);

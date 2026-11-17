@@ -1,5 +1,6 @@
 // Protocolo da vila online (WebSocket) e tipos da API.
 // Mensagens são JSON curtos. Posições vêm do cliente (a vila não tem combate);
+// a mesma conexão leva amigos e grupo, inclusive fora da vila;
 // o servidor limita velocidade, área e frequência.
 
 export const PROTOCOL_VERSION = 1;
@@ -41,6 +42,8 @@ export function sanitizeLook(x: any): Look {
   };
 }
 
+import type { PartyView } from './social';
+
 export interface PublicPlayer { id: number; name: string; title: string; look: Look; x: number; z: number; yaw: number }
 
 // Cliente → servidor
@@ -49,11 +52,19 @@ export type ClientMsg =
   | { t: 'chat'; text: string }
   | { t: 'emote'; e: Emote }
   | { t: 'act'; a: Act; c: number; yaw: number }      // c: golpe do combo (0..2)
-  | { t: 'look'; look: Look };
+  | { t: 'look'; look: Look }
+  // amigos e grupo (docs/ONLINE.md). Fora da vila a conexão continua aberta só para isso.
+  | { t: 'where'; r: string; n?: number }        // região atual (chave do jogo) e nível da Fenda
+  | { t: 'pinvite'; name: string }              // convidar para o grupo
+  | { t: 'paccept'; from: string }              // aceitar o convite de alguém
+  | { t: 'pdecline'; from: string }
+  | { t: 'pleave' }
+  | { t: 'pkick'; name: string }                // só o líder
+  | { t: 'plead'; name: string };               // só o líder
 
 // Servidor → cliente
 export type ServerMsg =
-  | { t: 'welcome'; id: number; room: string; players: PublicPlayer[]; v: number }
+  | { t: 'welcome'; id: number; room: string; players: PublicPlayer[]; v: number }   // room vazio: conectado fora da vila
   | { t: 'join'; p: PublicPlayer }
   | { t: 'leave'; id: number }
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação
@@ -63,4 +74,9 @@ export type ServerMsg =
   | { t: 'look'; id: number; look: Look }
   | { t: 'title'; id: number; title: string }
   | { t: 'sys'; text: string }
-  | { t: 'kick'; reason: string };
+  | { t: 'kick'; reason: string }
+  | { t: 'party'; party: PartyView | null }
+  | { t: 'pinvite'; from: string; size: number; ms: number }
+  | { t: 'pchat'; name: string; text: string; ts: number }
+  /** Algo mudou na lista de amigos: o cliente recarrega. `ev` diz o quê, para o aviso. */
+  | { t: 'social'; ev: 'pedido' | 'aceito' | 'online' | 'offline'; name: string };

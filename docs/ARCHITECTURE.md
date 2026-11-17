@@ -95,6 +95,7 @@ O save fica em `localStorage`, com a chave `fios-de-tessaria-v1`: um JSON com pe
 
 ## Online: próximas fases (2 e 3)
 
+As regras de jogo do online (grupos, dificuldade, Fio de Elo, história em grupo, trocas, mercado, guilda e ranking) estão em [ONLINE.md](ONLINE.md). Esta seção trata só da parte técnica.
 
 A regra principal: **o servidor decide tudo o que importa.** Dano, drops, ouro, morte, trocas e mercado são calculados no servidor. O cliente desenha e envia os comandos do jogador.
 

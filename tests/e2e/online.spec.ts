@@ -57,6 +57,44 @@ test('dois jogadores se veem na vila, conversam e usam emotes', async ({ browser
   await A.ctx.close();
 });
 
+test('amigos e grupo: tocar no nome, convidar, aceitar e conversar fora da vila', async ({ browser }) => {
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arcano');
+  await A.page.evaluate(() => { const T = (window as any).__T; T.P.x = 44; T.P.z = 40; });
+  await B.page.evaluate(() => { const T = (window as any).__T; T.P.x = 46.5; T.P.z = 40; });
+  const nameTag = A.page.locator('#marks .tag.rp .rn', { hasText: B.name });
+  await expect(nameTag).toBeVisible();
+
+  // pedido de amizade pelo menu do nome
+  await nameTag.click();
+  await A.page.click('.net-pop button:has-text("Adicionar amigo")');
+  await B.page.waitForFunction(n => (window as any).TessNet.friendsList?.incoming.some((f: any) => f.name === n), A.name, { timeout: 10_000 });
+  await B.page.click('.net-friendsbtn');
+  await B.page.click('.net-frow:has-text("quer ser seu amigo") button:has-text("Aceitar")');
+  await expect(B.page.locator('.net-frow.on', { hasText: A.name })).toBeVisible();
+  await B.page.click('.net-modal .net-x');
+
+  // convite de grupo pelo menu do nome
+  await nameTag.click();
+  await A.page.click('.net-pop button:has-text("Convidar para o grupo")');
+  await B.page.click('.net-invite button:has-text("Aceitar")');
+  await expect(A.page.locator('.net-party .net-pm')).toHaveCount(2);
+  await expect(B.page.locator('.net-party .net-pm').first()).toContainText('★ ' + A.name);
+  await expect(A.page.locator('#marks .tag.rp.ally')).toBeVisible();
+
+  // B sai da vila: continua no grupo, aparece no Bosque, e o chat dele vai para o grupo
+  await B.page.evaluate(() => { const T = (window as any).__T; T.G.save.met.ysolde = true; T.travel('forest'); });
+  await expect(A.page.locator('.net-party .net-pm', { hasText: B.name })).toContainText('Bosque Sussurrante', { timeout: 20_000 });
+  await B.page.waitForFunction(() => (window as any).__T.RG.key === 'forest' && (window as any).TessGame.mode === 'play', null, { timeout: 20_000 });
+  await B.page.keyboard.press('Enter');
+  await B.page.keyboard.type('Vem pro bosque!');
+  await B.page.keyboard.press('Enter');
+  await expect(A.page.locator('.net-log')).toContainText('[Grupo] ' + B.name + ': Vem pro bosque!');
+  await expect(A.page.locator('#marks .tag.rp')).toHaveCount(0);
+
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
 test('quem assiste vê o ataque e a esquiva do outro jogador desde o início', async ({ browser }) => {
   const A = await onlinePlayer(browser, 'arcano'), B = await onlinePlayer(browser, 'lamina');
   await A.page.evaluate(() => { const T = (window as any).__T; T.P.x = 44; T.P.z = 40; });

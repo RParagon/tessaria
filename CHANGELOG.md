@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## Não lançado
+- **Design do online** em `docs/ONLINE.md` (grupos, dificuldade, Fio de Elo, história em grupo, trocas, mercado, guilda, ranking) e roadmap da Fase 2 em 12 passos
+- **Amigos** (Fase 2.1): pedir pelo nome, pelo comando `/amigo` ou tocando no nome na vila; lista com quem está online e onde; aviso quando um amigo entra ou sai; bloquear (some o chat da pessoa e ela não pede amizade nem convida)
+- **Grupo** (Fase 2.1): até 4 jogadores; convite tocando no nome na vila, por `/convidar` ou pela lista de amigos (amigos de qualquer lugar); cartão de convite de 60 s; líder (★), `/lider`, `/tirar`, `/sair`; painel do grupo no HUD com classe, nível e onde cada um está; chat do grupo com `/g`, e fora da vila o chat vai direto para o grupo; quem cai da conexão continua no grupo por 2 minutos
+- A conexão online continua aberta fora da vila (só para amigos e grupo)
+
 ## 0.10.1 · Animações dos outros jogadores
 - **Correção:** na vila online, o ataque, as habilidades e a esquiva dos outros jogadores apareciam tremidos ou nem apareciam. A ação agora vai como mensagem própria (`act`), no quadro exato em que começa, e o servidor repassa na hora, com cota de 6 por segundo. Quem assiste vê a animação desde o início: o combo da Lâmina, a postura de mira do Arco e do Arcano, e a esquiva com o rastro.
 - Uma ação interrompe o emote do outro jogador, como já acontecia com o seu.

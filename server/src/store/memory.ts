@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Account, ClaimResult, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
+import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
 import { INV_MAX } from '../../../shared/save';
 
 /**
@@ -14,6 +14,8 @@ export class MemoryStore implements Store {
   private tombs = new Map<string, Set<string>>();
   private mail: MailRow[] = [];
   private mailSeq = 0;
+  private friends = new Map<string, { from: string; to: string; accepted: boolean; at: Date }>();
+  private blocks = new Map<string, { a: string; b: string; at: Date }>();
   public auditLog: Array<{ accountId: string | null; kind: string; detail: any }> = [];
   public errors: any[] = [];
   public chat: Array<{ accountId: string; room: string; text: string }> = [];
@@ -87,6 +89,36 @@ export class MemoryStore implements Store {
     m.claimedAt = new Date();
     this.tombs.get(accountId)?.delete(m.item.id);
     return { ok: true, rev: s.rev, item: this.clone(m.item) };
+  }
+
+  async friendLinks(accountId: string, pendingDays: number): Promise<FriendLink[]> {
+    const out: FriendLink[] = [], cut = Date.now() - pendingDays * 864e5;
+    for (const f of this.friends.values()) {
+      if (f.from !== accountId && f.to !== accountId) continue;
+      if (f.accepted && f.to === accountId) continue;          // a amizade aparece uma vez, pela linha que sai da conta
+      if (!f.accepted && f.at.getTime() < cut) continue;
+      const otherId = f.from === accountId ? f.to : f.from, o = this.accounts.get(otherId); if (!o) continue;
+      out.push({ otherId, otherName: o.name, otherLastSeen: o.lastSeen, state: f.accepted ? 'amigo' : f.from === accountId ? 'enviado' : 'recebido', since: f.at });
+    }
+    return out.sort((x, y) => x.otherName.localeCompare(y.otherName));
+  }
+  async addFriendRequest(fromId: string, toId: string) {
+    const k = fromId + '>' + toId; if (!this.friends.has(k)) this.friends.set(k, { from: fromId, to: toId, accepted: false, at: new Date() });
+  }
+  async acceptFriend(accountId: string, otherId: string) {
+    const f = this.friends.get(otherId + '>' + accountId); if (!f) return false;
+    const at = new Date(); f.accepted = true; f.at = at;
+    this.friends.set(accountId + '>' + otherId, { from: accountId, to: otherId, accepted: true, at });
+    return true;
+  }
+  async removeFriend(a: string, b: string) { this.friends.delete(a + '>' + b); this.friends.delete(b + '>' + a); }
+  async blockedBy(accountId: string) {
+    return [...this.blocks.values()].filter(x => x.a === accountId).map(x => ({ id: x.b, name: this.accounts.get(x.b)?.name ?? '?' })).sort((x, y) => x.name.localeCompare(y.name));
+  }
+  async isBlocked(a: string, b: string) { return this.blocks.has(a + '>' + b) || this.blocks.has(b + '>' + a); }
+  async setBlock(accountId: string, otherId: string, on: boolean) {
+    const k = accountId + '>' + otherId;
+    if (on) { if (!this.blocks.has(k)) this.blocks.set(k, { a: accountId, b: otherId, at: new Date() }); } else this.blocks.delete(k);
   }
 
   async audit(accountId: string | null, kind: string, detail: any) { this.auditLog.push({ accountId, kind, detail }); }
