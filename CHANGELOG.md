@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## Não lançado
+- Página de Política de Privacidade em `/privacidade.html` (exigida pelo Google para o login com Google)
+
 ## 0.10.0 · Fase 1: fundação online
 - **Servidor online** (`server/`): Node 22 + TypeScript, Fastify e WebSocket, PostgreSQL com migrações (ou memória em dev), Docker para o Easypanel
 - **Contas:** e-mail e senha, Google e convidado; o convidado vira conta sem perder o progresso; troca de nome com filtro
