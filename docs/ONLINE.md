@@ -29,8 +29,8 @@ A fórmula foi escolhida para que o NI bata com o nível dos monstros de cada re
 | Onde cai | tier no Normal | NI no Normal | Nível base da região |
 |---|---|---|---|
 | Vila e Bosque Sussurrante | 1 | 1 | 1 |
-| Ossuário | 2 | 5 | 4 |
-| Picos de Brasa | 3 | 9 | 8 |
+| Ossuário Real | 2 | 5 | 4 |
+| Picos de Cinza | 3 | 9 | 8 |
 | Pântano Afogado | 4 | 13 | 13 |
 | Cidadela de Vidro | 5 | 17 | 16 |
 
@@ -99,10 +99,11 @@ Quem tenta receber um item acima do teto vê: "Nível de item 34. Lume pode rece
 - **Até 4 jogadores.**
 - **Convidar:** tocando no nome de alguém na vila → "Convidar para o grupo", digitando `/convidar Nome`, ou pela lista de amigos (no caso de amigos, de qualquer lugar).
 - O convite aparece como um cartão com "Aceitar" e "Recusar" e **expira em 60 segundos**.
-- Quem convida primeiro vira o **líder**. Se não houver grupo, o convite cria um.
+- Quem convida primeiro vira o **líder**. Se não houver grupo, o convite cria um. Depois disso, **só o líder convida**.
+- Quem não é amigo só pode ser convidado na mesma sala da vila. Amigos podem ser convidados de qualquer lugar.
 - Cada jogador está em **um grupo por vez**. Para aceitar outro convite, é preciso sair do atual.
 - **Sair:** botão no painel do grupo ou `/sair`.
-- **Líder:** pode passar a liderança (`/lider Nome`) e tirar alguém do grupo. Se o líder sai, a liderança passa para quem entrou no grupo há mais tempo.
+- **Líder:** pode passar a liderança (`/lider Nome`) e tirar alguém do grupo (`/tirar Nome`). Se o líder sai, a liderança passa para quem entrou no grupo há mais tempo.
 - **Queda de conexão:** quem cai tem 2 minutos para voltar e continua no grupo. Depois disso, sai.
 - **Grupo de 1:** se todos saírem, o grupo acaba.
 

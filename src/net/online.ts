@@ -3,11 +3,12 @@
 
 import { API_BASE, WS_BASE, call, tokens } from './api';
 import { EMOTES, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import type { FriendsList, PartyView } from '../../shared/social';
 
 export interface PublicAccount { id: string; name: string; guest: boolean; email: string | null; google: boolean }
 export interface Remote { id: number; name: string; title: string; look: Look; tx: number; tz: number; tyaw: number; m: number; a: string; x?: number; z?: number; yaw?: number; slot?: number; emote?: Emote; emoteT?: number; chat?: string; chatT?: number }
 export type SyncState = 'desligado' | 'salvo' | 'pendente' | 'enviando' | 'recusado' | 'conflito' | 'sem-rede';
-export interface ChatLine { kind: 'chat' | 'sys'; name?: string; text: string; ts: number; mine?: boolean }
+export interface ChatLine { kind: 'chat' | 'sys' | 'grupo'; name?: string; text: string; ts: number; mine?: boolean }
 
 type Listener = (ev: string, data?: any) => void;
 const VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
@@ -24,12 +25,19 @@ export class Net {
   room = '';
   connected = false;
   chatLog: ChatLine[] = [];
+  /** Grupo atual (null sem grupo) e convites recebidos ainda válidos. */
+  party: PartyView | null = null;
+  invites: Array<{ from: string; size: number; exp: number }> = [];
+  /** Última lista de amigos carregada (para os menus) e nomes bloqueados. */
+  friendsList: FriendsList | null = null;
 
   private listeners = new Set<Listener>();
   private remotes = new Map<number, Remote>();
   private remoteList: Remote[] = [];
   private ws: WebSocket | null = null;
   private wantHub = false;
+  private region = 'hub';
+  private regionN = 0;
   private look: Look | null = null;
   private myId = 0;
   private retry = 0;
@@ -141,11 +149,19 @@ export class Net {
   }
 
   // ---------- vila em tempo real ----------
-  setRegion(key: string, look: Look, _pos: [number, number] | null) {
+  /** A conexão fica aberta em qualquer região (amigos e grupo); só na vila ela entra numa sala. */
+  setRegion(key: string, look: Look, _pos: [number, number] | null, n = 0) {
     this.look = look;
-    if (key === 'hub' && this.account && !this.offline) { this.wantHub = true; this.connect(); }
-    else this.leaveHub();
+    const changed = key !== this.region || n !== this.regionN;
+    this.region = key; this.regionN = n;
+    if (key !== 'hub') { this.clearRemotes(); this.room = ''; }
+    if (!this.account || this.offline) return this.leaveHub();
+    this.wantHub = true;
+    if (this.ws && this.ws.readyState === 1) { if (changed) this.send({ t: 'where', r: key, ...(n ? { n } : {}) }); }
+    else this.connect();
   }
+  /** Na vila e com a sala conectada. */
+  get inRoom() { return this.connected && !!this.room; }
   setLook(look: Look) { this.look = look; this.send({ t: 'look', look }); }
   players(): Remote[] { return this.remoteList; }
   sendPos(x: number, z: number, yaw: number, m: number, a: string) {
@@ -160,17 +176,46 @@ export class Net {
   chat(text: string) { if (text.trim()) this.send({ t: 'chat', text }); }
   emote(e: Emote) { if (EMOTES.includes(e)) this.send({ t: 'emote', e }); }
 
+  // ---------- grupo ----------
+  invite(name: string) { this.send({ t: 'pinvite', name }); }
+  acceptInvite(from: string) { this.invites = this.invites.filter(i => i.from !== from); this.send({ t: 'paccept', from }); }
+  declineInvite(from: string) { this.invites = this.invites.filter(i => i.from !== from); this.send({ t: 'pdecline', from }); }
+  leaveParty() { this.send({ t: 'pleave' }); }
+  kick(name: string) { this.send({ t: 'pkick', name }); }
+  lead(name: string) { this.send({ t: 'plead', name }); }
+  partyChat(text: string) { if (text.trim()) this.send({ t: 'chat', text: '/g ' + text }); }
+  get isLeader() { return !!this.party && this.party.leader === this.account?.name; }
+
+  // ---------- amigos ----------
+  async friends(): Promise<FriendsList | null> {
+    if (!this.account) return null;
+    const r = await call('GET', '/friends');
+    if (r.status === 200) { this.friendsList = r.data; this.emit('friends', r.data); }
+    return this.friendsList;
+  }
+  private async social(path: string, name: string) {
+    const r = await call('POST', path, { name });
+    if (r.error) return { ok: false as const, error: r.error };
+    void this.friends(); return { ok: true as const, state: r.data?.state as string | undefined };
+  }
+  addFriend(name: string) { return this.social('/friends', name); }
+  acceptFriend(name: string) { return this.social('/friends/accept', name); }
+  removeFriend(name: string) { return this.social('/friends/remove', name); }
+  block(name: string) { return this.social('/blocks', name); }
+  unblock(name: string) { return this.social('/blocks/remove', name); }
+  isFriend(name: string) { const n = name.toLowerCase(); return !!this.friendsList?.friends.some(f => f.name.toLowerCase() === n); }
+
   private send(m: object) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); }
   private connect() {
     if (!WS_BASE || !tokens.get() || (this.ws && this.ws.readyState <= 1)) return;
     clearTimeout(this.retryTimer);
-    const ws = new WebSocket(`${WS_BASE}?token=${encodeURIComponent(tokens.get()!)}`);
+    const ws = new WebSocket(`${WS_BASE}?token=${encodeURIComponent(tokens.get()!)}&r=${encodeURIComponent(this.region)}${this.regionN ? '&n=' + this.regionN : ''}`);
     this.ws = ws;
     ws.onopen = () => { this.retry = 0; };
     ws.onmessage = ev => { try { this.onMsg(JSON.parse(ev.data)); } catch (e) { console.error(e); } };
     ws.onclose = ev => {
       if (this.ws !== ws) return;
-      this.ws = null; this.connected = false; this.clearRemotes(); this.emit('hub', { connected: false });
+      this.ws = null; this.connected = false; this.room = ''; this.clearRemotes(); this.emit('hub', { connected: false });
       if (this.wantHub && ev.code !== 4000) { const wait = Math.min(15000, 1000 * 2 ** this.retry++); this.retryTimer = window.setTimeout(() => this.connect(), wait); }
     };
   }
@@ -178,7 +223,9 @@ export class Net {
     this.wantHub = false; clearTimeout(this.retryTimer);
     if (this.ws) { const ws = this.ws; this.ws = null; ws.close(1000); }
     if (this.connected) { this.connected = false; this.emit('hub', { connected: false }); }
-    this.clearRemotes();
+    this.room = ''; this.clearRemotes();
+    if (this.party) { this.party = null; this.emit('party', null); }
+    this.invites = [];
   }
   private clearRemotes() { this.remotes.clear(); this.remoteList = []; }
   private addRemote(p: PublicPlayer) {
@@ -191,7 +238,9 @@ export class Net {
       case 'welcome':
         this.myId = m.id; this.room = m.room; this.connected = true; this.clearRemotes(); m.players.forEach(p => this.addRemote(p));
         this.lastPos = ''; if (this.look) this.send({ t: 'look', look: this.look });
-        this.emit('hub', { connected: true, room: m.room, count: this.remotes.size + 1 }); break;
+        // Conectou fora da vila e o jogador já voltou para ela (ou o contrário): avisa onde está.
+        if ((m.room === '') !== (this.region !== 'hub') || this.regionN) this.send({ t: 'where', r: this.region, ...(this.regionN ? { n: this.regionN } : {}) });
+        this.emit('hub', { connected: true, room: m.room, count: this.remotes.size + 1 }); void this.friends(); break;
       case 'join': this.addRemote(m.p); this.emit('hub', { connected: true, room: this.room, count: this.remotes.size + 1, joined: m.p.name }); break;
       case 'leave': { const r = this.remotes.get(m.id); this.remotes.delete(m.id); this.remoteList = [...this.remotes.values()]; this.emit('hub', { connected: true, room: this.room, count: this.remotes.size + 1, left: r?.name }); break; }
       case 'snap': for (const [id, x, z, yaw, mv, a] of m.ps) { const r = this.remotes.get(id); if (r) { r.tx = x; r.tz = z; r.tyaw = yaw; r.m = mv; r.a = a; } } break;
@@ -204,6 +253,12 @@ export class Net {
       case 'look': { const r = this.remotes.get(m.id); if (r) r.look = m.look; break; }
       case 'title': { const r = this.remotes.get(m.id); if (r) r.title = m.title; break; }
       case 'sys': this.pushChat({ kind: 'sys', text: m.text, ts: Date.now() }); break;
+      case 'party': this.party = m.party; this.emit('party', m.party); break;
+      case 'pinvite':
+        this.invites = this.invites.filter(i => i.from !== m.from && i.exp > Date.now());
+        this.invites.push({ from: m.from, size: m.size, exp: Date.now() + m.ms }); this.emit('pinvite', m); break;
+      case 'pchat': this.pushChat({ kind: 'grupo', name: m.name, text: m.text, ts: m.ts, mine: m.name === this.account?.name }); break;
+      case 'social': this.emit('social', m); void this.friends(); break;
       case 'kick': this.wantHub = false; this.pushChat({ kind: 'sys', text: m.reason, ts: Date.now() }); this.emit('kick', m.reason); break;
     }
   }

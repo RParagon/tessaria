@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { MIGRATIONS } from './migrations';
-import type { Account, ClaimResult, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
+import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
 import { INV_MAX } from '../../../shared/save';
 
 type Row = Record<string, any>;
@@ -117,6 +117,43 @@ export class PgStore implements Store {
       await tx`DELETE FROM tombstones WHERE account_id = ${accountId} AND item_id = ${m.item.id}`;
       return { ok: true, rev: u.rev, item: m.item } as const;
     }) as Promise<ClaimResult>;
+  }
+
+  async friendLinks(accountId: string, pendingDays: number): Promise<FriendLink[]> {
+    const rows = await this.sql`
+      SELECT f.from_id, f.to_id, f.accepted, f.created_at, a.id AS other_id, a.name AS other_name, a.last_seen AS other_last_seen
+      FROM friends f JOIN accounts a ON a.id = CASE WHEN f.from_id = ${accountId} THEN f.to_id ELSE f.from_id END
+      WHERE (f.from_id = ${accountId} AND (f.accepted OR f.created_at > now() - make_interval(days => ${pendingDays})))
+         OR (f.to_id = ${accountId} AND NOT f.accepted AND f.created_at > now() - make_interval(days => ${pendingDays}))
+      ORDER BY lower(a.name)`;
+    return rows.map(r => ({ otherId: r.other_id, otherName: r.other_name, otherLastSeen: r.other_last_seen, state: r.accepted ? 'amigo' : r.from_id === accountId ? 'enviado' : 'recebido', since: r.created_at }));
+  }
+  async addFriendRequest(fromId: string, toId: string) {
+    await this.sql`INSERT INTO friends (from_id, to_id) VALUES (${fromId}, ${toId}) ON CONFLICT DO NOTHING`;
+  }
+  async acceptFriend(accountId: string, otherId: string) {
+    return this.sql.begin(async tx => {
+      const r = await tx`UPDATE friends SET accepted = true, created_at = now() WHERE from_id = ${otherId} AND to_id = ${accountId} RETURNING 1`;
+      if (!r.length) return false;
+      await tx`INSERT INTO friends (from_id, to_id, accepted) VALUES (${accountId}, ${otherId}, true)
+        ON CONFLICT (from_id, to_id) DO UPDATE SET accepted = true, created_at = now()`;
+      return true;
+    }) as Promise<boolean>;
+  }
+  async removeFriend(a: string, b: string) {
+    await this.sql`DELETE FROM friends WHERE (from_id = ${a} AND to_id = ${b}) OR (from_id = ${b} AND to_id = ${a})`;
+  }
+  async blockedBy(accountId: string) {
+    const rows = await this.sql`SELECT a.id, a.name FROM blocks b JOIN accounts a ON a.id = b.blocked_id WHERE b.account_id = ${accountId} ORDER BY lower(a.name)`;
+    return rows.map(r => ({ id: r.id as string, name: r.name as string }));
+  }
+  async isBlocked(a: string, b: string) {
+    const r = await this.sql`SELECT 1 FROM blocks WHERE (account_id = ${a} AND blocked_id = ${b}) OR (account_id = ${b} AND blocked_id = ${a}) LIMIT 1`;
+    return r.length > 0;
+  }
+  async setBlock(accountId: string, otherId: string, on: boolean) {
+    if (on) await this.sql`INSERT INTO blocks (account_id, blocked_id) VALUES (${accountId}, ${otherId}) ON CONFLICT DO NOTHING`;
+    else await this.sql`DELETE FROM blocks WHERE account_id = ${accountId} AND blocked_id = ${otherId}`;
   }
 
   async audit(accountId: string | null, kind: string, detail: any) {

@@ -1,6 +1,10 @@
 # Histórico de versões
 
 ## Não lançado
+- **Design do online** em `docs/ONLINE.md` (grupos, dificuldade, Fio de Elo, história em grupo, trocas, mercado, guilda, ranking) e roadmap da Fase 2 em 12 passos
+- **Amigos** (Fase 2.1): pedir pelo nome, pelo comando `/amigo` ou tocando no nome na vila; lista com quem está online e onde; aviso quando um amigo entra ou sai; bloquear (some o chat da pessoa e ela não pede amizade nem convida)
+- **Grupo** (Fase 2.1): até 4 jogadores; convite tocando no nome na vila, por `/convidar` ou pela lista de amigos (amigos de qualquer lugar); cartão de convite de 60 s; líder (★), `/lider`, `/tirar`, `/sair`; painel do grupo no HUD com classe, nível e onde cada um está; chat do grupo com `/g`, e fora da vila o chat vai direto para o grupo; quem cai da conexão continua no grupo por 2 minutos
+- A conexão online continua aberta fora da vila (só para amigos e grupo)
 - Página de Política de Privacidade em `/privacidade.html` (exigida pelo Google para o login com Google)
 - `/metrics` responde 401 (em vez de 404) quando o token falta ou está errado, como o Metrics Endpoint do Grafana Cloud exige; comparação do token em tempo constante
 

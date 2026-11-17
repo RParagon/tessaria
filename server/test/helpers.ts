@@ -5,6 +5,7 @@ import { loadConfig, type Config } from '../src/config';
 import { MemoryStore } from '../src/store/memory';
 import { PgStore } from '../src/store/pg';
 import type { Store } from '../src/store/types';
+import type { HubOptions } from '../src/hub';
 
 /** Bancos a testar: sempre memória; PostgreSQL se TEST_DATABASE_URL estiver definido. */
 export const STORES: Array<'memoria' | 'postgres'> = process.env.TEST_DATABASE_URL ? ['memoria', 'postgres'] : ['memoria'];
@@ -17,13 +18,13 @@ export async function resetPg(url: string) {
 
 export interface TestServer { url: string; ws: string; store: Store; close: () => Promise<void>; config: Config }
 
-export async function startServer(kind: 'memoria' | 'postgres', over: Partial<Config> = {}): Promise<TestServer> {
+export async function startServer(kind: 'memoria' | 'postgres', over: Partial<Config> = {}, hub: HubOptions = {}): Promise<TestServer> {
   let store: Store;
   if (kind === 'postgres') { await resetPg(process.env.TEST_DATABASE_URL!); store = new PgStore(process.env.TEST_DATABASE_URL!); }
   else store = new MemoryStore();
   await store.migrate();
   const config = loadConfig({ port: 0, host: '127.0.0.1', logLevel: 'silent', production: false, corsOrigins: [], authPerMinute: 10_000, ...over });
-  const { app } = await buildApp({ config, store });
+  const { app } = await buildApp({ config, store, hub });
   await app.listen({ port: 0, host: '127.0.0.1' });
   const port = (app.server.address() as any).port;
   return { url: `http://127.0.0.1:${port}`, ws: `ws://127.0.0.1:${port}/ws`, store, config, close: async () => { await app.close(); await store.close(); } };
