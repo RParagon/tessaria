@@ -136,7 +136,7 @@ function updateTriggers(dt) {
   if (RG.key === 'hub') { const [fx, fz] = HUB.fountain, d = Math.hypot(fx - P.x, fz - P.z); if (d < 3.4 && d < bd) { bd = d; nearInter = { kind: 'shrine', x: fx, z: fz, hub: true }; } }
   const pr = $('#prompt'), tu = $('#tUse');
   if (nearInter && P.dieT < 0) {
-    const HL = { bank: 'Banco do Tear', wardrobe: 'Abrir o guarda-roupa', bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar', obelisk: nearInter.kind === 'obelisk' ? (obelList().includes(nearInter.obId) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
+    const HL = { bank: 'Banco do Tear', wardrobe: 'Abrir o guarda-roupa', bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar · ' + HUB.fishSpots[nearInter.spot || 0].n, fishery: 'Pesqueiro: mercado, iscas e varas', obelisk: nearInter.kind === 'obelisk' ? (obelList().includes(nearInter.obId) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
     const label = HL[nearInter.kind] || (nearInter.kind === 'appletree' ? 'Deixar a maçã na macieira' : nearInter.kind === 'altar' ? 'Desafiar ' + BOSSDEF[REG[RG.key].boss].name.split(',')[0] + ' de novo · ' + curDiff().n : nearInter.kind === 'npc' ? 'Falar com ' + nearInter.npc.name : nearInter.kind === 'shrine' ? 'Descansar e salvar' : nearInter.kind === 'chest' ? 'Abrir baú' : nearInter.kind === 'portal' ? (nearInter.to === 'hub' ? 'Voltar à Vila Brasa' : 'Entrar: ' + REG[nearInter.to].name) : nearInter.kind === 'dragon' ? 'Falar com Varkhaz' : nearInter.kind === 'board' ? 'Ver contratos' : nearInter.kind === 'riftportal' ? 'Entrar na Fenda do Tear' : 'Usar');
     pr.innerHTML = (G.touch ? '' : '<kbd>E</kbd>') + label; pr.hidden = false; tu.hidden = !G.touch;
     if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' || k === 'wardrobe' || k === 'bank' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
@@ -165,7 +165,8 @@ function interact() {
   if (it.kind === 'npc' && it.npc.merc !== undefined) { it.npc.talkT = 3; openWShop(it.npc.merc); return; }
   if (it.kind === 'npc') { const n = it.npc; n.talkT = 4; G.save.met['t_' + n.id] = true; const lines = questLines(n.id) || DIALOG[n.id](); say(lines, () => updateObjective()); }
   else if (it.kind === 'bench') sitBench(it);
-  else if (it.kind === 'fish') fishAction();
+  else if (it.kind === 'fish') fishAction(it.spot);
+  else if (it.kind === 'fishery') openFishery();
   else if (it.kind === 'obelisk') useObelisk(it);
   else if (it.kind === 'cave') enterCave(it);
   else if (it.kind === 'shrine') {
@@ -248,7 +249,8 @@ function loadRegion(key, atCp) {
     { const m = makeModel('npc-bardo', () => buildHumanoid(BARD.cfg, 152)); npcs.push({ ...BARD, model: m, anim: newAnim(m), yaw: BARD.baseYaw, talkT: 0, visible: true }); }
     for (const n of EAST_NPCS) { const m = makeModel('npc-' + n.id, () => buildHumanoid(n.cfg, n.base)); npcs.push({ ...n, model: m, anim: newAnim(m), yaw: n.baseYaw || 0, talkT: 0, visible: true }); }
     for (const [bx, bz, by] of HUB.benches) inter.push({ kind: 'bench', x: bx, z: bz, yaw: by, r: 1.6 });
-    inter.push({ kind: 'fish', x: HUB.fish[0] + 1.4, z: HUB.fish[1], r: 2.2 });
+    HUB.fishSpots.forEach((f, i) => inter.push({ kind: 'fish', spot: i, x: f.x + 1.4, z: f.z, r: 2.2 }));   // lago e píeres do rio
+    inter.push({ kind: 'fishery', x: HUB.fishery[0], z: HUB.fishery[1], r: 2 });   // banca do Pesqueiro: mercado, iscas e varas
     for (const [dx, dz] of HUB.dummies) { const e = spawnEnemy('skel', dx, dz, 0); e.type = 'dummy'; e.model = getModel('dummy'); e.anim = newAnim(e.model); e.scale = 1; e.dummy = true; e.spawnT = 0; e.hp = e.maxHp = 5000; e.yaw = 0; e.log = []; }
     if (G.save.q && G.save.q.nina && G.save.q.nina.st === 'active') placeNina();
   } else if (key === 'home') {
@@ -470,32 +472,59 @@ function sitBench(it) {
   const n = NETON(); if (n && n.room) n.emote('sentar');
   sfx('ui');
 }
-/** Pesca: lançar a linha, esperar o peixe morder (2 a 6 s) e puxar na janela de 0,9 s. */
-const FISH = [
-  { n: 'Lambari', p: .62, g: 6, c: '#d8d2c4' }, { n: 'Tilápia-de-Brasa', p: .27, g: 15, c: '#6fd36a' },
-  { n: 'Carpa Dourada', p: .1, g: 45, c: '#ffbf3d' }, { n: 'Peixe-Lua', p: .01, g: 160, c: '#c07bff' },
-];
+/** Pesca: lançar a linha (gasta uma isca, se escolhida), esperar o peixe morder e puxar na janela.
+ * Peixes pesados pedem mais puxões; se a vara for fraca para ele, a linha arrebenta. O peixe vai para o cesto
+ * (vende na banca do Pesqueiro, com preço do mercado) e dá XP de Pescador. Regras em shared/fish.ts (TessFish). */
+const TF = window.TessFish;
+const fishLv = () => TF.fisherLevel((G.save && G.save.fxp) || 0);
+const curSpot = () => HUB.fishSpots[G.fishing ? G.fishing.spot : (G.fishSpot || 0)] || HUB.fishSpots[0];
 function hasRod() { const s = G.save; return !!(s && (s.rod || (s.q && s.q.vara && s.q.vara.st === 'done') || (s.st && s.st.fish > 0))); }   // quem já pescava antes da missão fica com a vara
-function fishAction() {
-  const F = G.fishing;
-  if (!hasRod()) { toast('Sem vara de pesca', false, 'O PESCADOR IVO, AQUI NO LAGO, PODE AJUDAR'); sfx('ui'); return; }
+function fishAction(spot = 0) {
+  const F = G.fishing, s = G.save;
+  if (!hasRod()) { toast('Sem vara de pesca', false, 'O PESCADOR IVO, NO PESQUEIRO, PODE AJUDAR', '#ffbf3d'); sfx('ui'); return; }
   if (G.fishCatch) return;
-  if (!F) { P.yaw = Math.atan2(HUB.fish[0] + 4 - P.x, HUB.fish[1] - P.z); G.fishing = { t: 0, biteAt: 2.6 + Math.random() * 4, bite: false }; P.emote = null; toast('Linha lançada…', false, 'APERTE DE NOVO QUANDO O PEIXE MORDER'); sfx('ui'); return; }
+  if (!F) {
+    G.fishSpot = spot; const sp = HUB.fishSpots[spot] || HUB.fishSpots[0];
+    s.bait = s.bait || {}; let bait = s.baitSel && (s.bait[s.baitSel] || 0) > 0 ? TF.baitById(s.baitSel) : null;
+    if (bait) s.bait[bait.id]--;
+    const f = TF.rollFish(sp.water, fishLv(), bait ? bait.id : null);
+    P.yaw = Math.atan2(sp.x + 4 - P.x, sp.z - P.z);
+    G.fishing = { t: 0, spot, f, bait: bait ? bait.id : null, pulls: 0, biteAt: (2.6 + Math.random() * 4) * (bait ? bait.bite : 1), bite: false };
+    P.emote = null; sfx('ui');
+    toast('Linha lançada…', false, (bait ? bait.n.toUpperCase() + ' · RESTAM ' + s.bait[bait.id] : 'SEM ISCA') + ' · APERTE QUANDO O PEIXE MORDER');
+    return;
+  }
   if (F.t < .7) return;   // ainda lançando
   if (!F.bite) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast('Puxou cedo demais', false, 'O PEIXE FUGIU'); return; }
+  const f = F.f, rodLv = s.rodLv || 0;
+  if (f.rod > rodLv) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast('A LINHA ARREBENTOU!', true, f.n.toUpperCase() + ' É PESADO DEMAIS · PRECISA DA ' + TF.RODS[f.rod].n.toUpperCase(), '#ff8a6a'); sfx('hurt'); return; }
+  F.pulls++;
+  if (F.pulls < f.w) {   // peixe grande: briga; puxe de novo na próxima janela
+    F.biteT = 0; F.fight = (F.fight || 0) + 1; G.shake = Math.max(G.shake, .15); sfx('hit');
+    const b = fishBob(G.time); burst(b[0], .15, b[2], 16, 15, 3, .4, .12);
+    toast('ELE ESTÁ BRIGANDO!', true, 'PUXE DE NOVO · ' + F.pulls + '/' + f.w, f.c); return;
+  }
   G.fishing = null;
-  let r = Math.random(), f = FISH[0]; for (const x of FISH) { if (r < x.p) { f = x; break; } r -= x.p; }
-  addGold(f.g); gainXp(Math.round(f.g * .6));
-  const st = G.save.st = G.save.st || {}; st.fish = (st.fish || 0) + 1;
+  const st = s.st = s.st || {}; st.fish = (st.fish || 0) + 1;
+  s.fish = s.fish || {}; s.fish[f.id] = Math.min(9999, (s.fish[f.id] || 0) + 1);
+  s.fcount = s.fcount || {}; const first = !s.fcount[f.id]; s.fcount[f.id] = (s.fcount[f.id] || 0) + 1;
+  const lv0 = fishLv(); s.fxp = (s.fxp || 0) + f.fx * (first ? 3 : 1); const lv1 = fishLv();
+  gainXp(Math.round(f.g * .35));
   G.fishCatch = { t: 0, f, from: fishBob(G.time) };   // o peixe salta da água até a mão do herói
-  setTimeout(() => { toast(f.n.toUpperCase(), f.p < .05, '+' + f.g + ' CENTELHAS · ' + st.fish + ' PEIXES PESCADOS', f.c); sfx(f.p < .05 ? 'legend' : 'lvl'); }, 650);
+  const rare = (f.rare || 0) >= 2;
+  setTimeout(() => {
+    toast(f.n.toUpperCase(), rare || first, (first ? 'NOVO NA COLEÇÃO · ' : '') + 'NO CESTO (' + s.fish[f.id] + ') · VENDA NA BANCA DO PESQUEIRO', f.c); sfx(rare ? 'legend' : 'lvl');
+    if (lv1 > lv0) setTimeout(() => { toast('PESCADOR NÍVEL ' + lv1, true, 'MAIS PEIXE RARO E MAIS TEMPO PARA PUXAR', '#9cf6ff'); sfx('lvl'); }, 1600);
+  }, 650);
   const b = fishBob(G.time); burst(b[0], .15, b[2], 22, 15, 3, .5, .12); writeSave();
 }
-/** Onde a boia está agora (balança na água; afunda na mordida). */
+/** Janela para puxar: a vara e o nível de Pescador dão mais tempo. */
+const fishWindow = () => .9 + TF.RODS[(G.save && G.save.rodLv) || 0].win + fishLv() * .01;
+/** Onde a boia está agora (balança na água; afunda na mordida e corre de um lado para o outro na briga). */
 function fishBob(t) {
-  const F = G.fishing, bx = HUB.fish[0] + 4.2, bz = HUB.fish[1] - .2;
-  const dip = F && F.bite ? -.12 - Math.abs(Math.sin(t * 22)) * .08 : 0;
-  return [bx + (F && F.bite ? Math.sin(t * 17) * .08 : 0), .06 + Math.sin(t * 2.4) * .03 + dip, bz];
+  const F = G.fishing, sp = curSpot(), bx = sp.x + 4.2, bz = sp.z - .2;
+  const dip = F && F.bite ? -.12 - Math.abs(Math.sin(t * 22)) * .08 : 0, run = F && F.fight ? Math.sin(t * 5) * .5 : 0;
+  return [bx + (F && F.bite ? Math.sin(t * 17) * .08 : 0), .06 + Math.sin(t * 2.4) * .03 + dip, bz + run];
 }
 /** Missão da vara: minhocas-de-brasa escondidas pelo Bairro Leste (brilham no chão). */
 const WORMS = [[101, 22], [113.5, 44], [127, 36.5], [139, 25]];
@@ -533,8 +562,8 @@ function updateHubLife(dt) {
   if (F) {
     F.t += dt;
     if (!F.bite && F.t >= Math.max(F.biteAt, .8)) { /* nunca morde antes de a linha cair na água */ F.bite = true; F.biteT = 0; toast('PEIXE MORDEU!', true, 'APERTE AGORA'); sfx('hit'); const b = fishBob(G.time); burst(b[0], .15, b[2], 14, 15, 2, .4, .1); }
-    else if (F.bite && (F.biteT += dt) > .9) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast('O peixe escapou', false, 'TENTE DE NOVO'); }
-    if (Math.hypot(P.x - HUB.fish[0] - 1.4, P.z - HUB.fish[1]) > 3) G.fishing = null;
+    else if (F.bite && (F.biteT += dt) > fishWindow()) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast(F.pulls ? 'Ele se soltou' : 'O peixe escapou', false, 'TENTE DE NOVO'); }
+    const sp = curSpot(); if (Math.hypot(P.x - sp.x - 1.4, P.z - sp.z) > 3) G.fishing = null;
   }
   if (G.fishCatch && (G.fishCatch.t += dt) > (G.fishCatch.miss ? .6 : 1.3)) { if (!G.fishCatch.miss) { P.emote = 'comemorar'; P.emoteT = 4.6; } G.fishCatch = null; }
   if (G.save && G.save.q && G.save.q.vara && G.save.q.vara.st === 'active') updateWorms(dt);

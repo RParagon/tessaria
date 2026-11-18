@@ -55,7 +55,8 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
 ## Fase 3 · Mundo compartilhado e PvP (3 a 4 semanas)
 
 - [x] Ermos compartilhados, com até 30 jogadores por sala (0.34.0)
-- [ ] Salas dos Ermos separadas por faixa (Normal e Difícil, Expert e Mestre, Tormento) e monstros compartilhados nas salas públicas
+- [x] Salas dos Ermos separadas por faixa (Normal e Difícil, Expert e Mestre, Tormento) e o grupo na sala do líder (0.35.0)
+- [ ] Monstros compartilhados nas salas públicas dos Ermos (o servidor simula)
 - [x] **Zona PvP no Ermo Profundo (0.34.0):**
   - quem pode ser atacado aparece em vermelho; amigos e grupo nunca se acertam;
   - lá está o melhor loot e os Alfas.

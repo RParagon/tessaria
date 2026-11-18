@@ -199,6 +199,17 @@ export class Net {
   ikill(n: number, el: boolean, th: boolean, x: number, z: number, b?: number) { this.send({ t: 'ikill', n, el: el ? 1 : 0, th: th ? 1 : 0, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, ...(b === undefined ? {} : { b }) }); }
   px(d: object, to?: number) { this.send(to === undefined ? { t: 'px', d } : { t: 'px', to, d }); }
   get groupRift() { return !!this.party && this.party.members.length > 1 && this.isLeader && this.connected; }
+  // ---------- mercado de peixes (Pesqueiro) ----------
+  /** Preços do mercado compartilhado (null offline ou sem resposta: o jogo usa o mercado local). */
+  async fishMarket(): Promise<Record<string, { p: number; d: number }> | null> {
+    if (!this.account || this.offline) return null;
+    const r = await call('GET', '/fish/market', undefined, 6000); return r.status === 200 ? r.data.prices : null;
+  }
+  /** Vende no mercado compartilhado: devolve o total pago (ou null, e o jogo vende no mercado local). */
+  async sellFish(fish: string, n: number): Promise<{ total: number; prices: Record<string, { p: number; d: number }> } | null> {
+    if (!this.account || this.offline) return null;
+    const r = await call('POST', '/fish/sell', { fish, n }, 8000); return r.status === 200 ? r.data : null;
+  }
   // ---------- Ermos abertos ----------
   /** Na sala pública dos Ermos (não na instância do grupo). */
   get inOpenWilds() { return this.connected && this.region === 'wilds' && !!this.room && !this.inst; }

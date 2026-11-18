@@ -44,6 +44,7 @@ class Room {
   bounds = HUB_BOUNDS;
   inst: Instance | null = null;
   loots = new Map<string, Loot>();
+  band = 0;   // Ermos: faixa de dificuldade (WILDS_BANDS)
   /** vila: salas da vila · ermos: salas públicas dos Ermos · inst: instância do grupo */
   constructor(public id: string, public label: string, public kind: 'vila' | 'ermos' | 'inst' = 'vila') { if (kind === 'ermos') this.bounds = INST_BOUNDS; }
   get wilds() { return this.kind === 'ermos' || this.inst?.kind === 'wilds'; }
@@ -71,6 +72,9 @@ const grantId = () => 'g' + randomBytes(6).toString('hex');
 const ctxOf = (save: any) => ({ diff: Number.isInteger(save?.diff) ? Math.max(0, Math.min(6, save.diff)) : 0, sorte: Array.isArray(save?.talents) && save.talents.includes('sorte'), act2: !!save?.bosses?.glass });
 /** Maior dificuldade que o jogador desbloqueou (nível mínimo e, nos Tormentos, o Ato II): a mesma regra de diffOk no jogo. */
 const maxDiff = (q: { lvl: number; act2: boolean }) => { let d = 0; for (let i = 0; i < DIFF_LEVEL.length; i++) if (q.lvl >= DIFF_LEVEL[i] && (i < 4 || q.act2)) d = i; return d; };
+/** Faixas das salas dos Ermos: Normal e Difícil · Expert e Mestre · Tormento. */
+const WILDS_BANDS = ['Normal e Difícil', 'Expert e Mestre', 'Tormento'];
+const bandOf = (diff: number) => (diff <= 1 ? 0 : diff <= 3 ? 1 : 2);
 const DIFF_NAME = ['Normal', 'Difícil', 'Expert', 'Mestre', 'Tormento I', 'Tormento II', 'Tormento III'];
 
 export class Hub {
@@ -108,11 +112,24 @@ export class Hub {
   get online() { return this.byAccount.size; }
 
   /** Sala com vaga (vila ou Ermos abertos); cria a próxima se todas estiverem cheias. */
-  private pickRoom(kind: 'vila' | 'ermos' = 'vila'): Room {
-    const cap = kind === 'vila' ? HUB_CAP : WILDS_CAP;
-    for (const r of this.rooms.values()) if (r.kind === kind && r.players.size < cap) return r;
-    let n = 1; while (this.rooms.has(kind === 'vila' ? 'vila-' + n : 'ermos-' + n)) n++;
-    const r = kind === 'vila' ? new Room('vila-' + n, `Vila Brasa #${n}`) : new Room('ermos-' + n, `Ermos #${n}`, 'ermos');
+  private pickRoom(kind: 'vila' | 'ermos' = 'vila', p?: Player): Room {
+    if (kind === 'ermos') return this.pickWilds(p);
+    for (const r of this.rooms.values()) if (r.kind === kind && r.players.size < HUB_CAP) return r;
+    let n = 1; while (this.rooms.has('vila-' + n)) n++;
+    const r = new Room('vila-' + n, `Vila Brasa #${n}`);
+    this.rooms.set(r.id, r); return r;
+  }
+  /** Ermos abertos: salas por faixa de dificuldade (novatos não caem com veteranos). Quem está em grupo vai para a sala do líder (ou de outro do grupo), se couber. */
+  private pickWilds(p?: Player): Room {
+    const party = p && this.partyOf.get(p.account.id);
+    if (party) for (const id of [party.leader, ...party.members]) {
+      const o = this.byAccount.get(id), r = o && o !== p ? o.room : null;
+      if (r && r.kind === 'ermos' && r.players.size < WILDS_CAP) return r;
+    }
+    const band = bandOf(p?.diff ?? 0);
+    for (const r of this.rooms.values()) if (r.kind === 'ermos' && r.band === band && r.players.size < WILDS_CAP) return r;
+    let n = 1; while (this.rooms.has(`ermos-${band}-${n}`)) n++;
+    const r = new Room(`ermos-${band}-${n}`, `Ermos #${n} · ${WILDS_BANDS[band]}`, 'ermos'); r.band = band;
     this.rooms.set(r.id, r); return r;
   }
 
@@ -133,7 +150,7 @@ export class Hub {
     this.byAccount.set(account.id, p);
     if (old) { send(old, { t: 'kick', reason: 'Sua conta entrou em outro lugar.' }); old.ws.close(4000, 'duplicada'); this.leave(old); }
     if (where === 'hub') this.enterRoom(p);
-    else if (where === 'wilds') this.enterRoom(p, this.pickRoom('ermos'));
+    else if (where === 'wilds') this.enterRoom(p, this.pickRoom('ermos', p));
     else send(p, { t: 'welcome', id: p.id, room: '', players: [], v: PROTOCOL_VERSION, now: Date.now() });
     inc('hub_joins');
     ws.on('message', (raw, isBinary) => { if (isBinary) return; this.onMessage(p, raw.toString()); });
@@ -408,7 +425,7 @@ export class Hub {
     if (!same) {
       if (p.room) this.leaveRoom(p);
       if (target === 'vila') this.enterRoom(p);
-      else if (target === 'ermos') this.enterRoom(p, this.pickRoom('ermos'));
+      else if (target === 'ermos') this.enterRoom(p, this.pickRoom('ermos', p));
       else if (target) { this.enterRoom(p, target); this.sendParty(target.inst!.party); }
       else if (Number.isInteger(i)) send(p, { t: 'iclosed', inst: i as number });
     }

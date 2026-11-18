@@ -60,9 +60,9 @@ function refreshHudVis() {
   $('#keys').hidden = G.touch; $('#abar').hidden = G.touch;
   { const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); $('#poseBar').hidden = !pv; if (!pv) { G.pvPose = null; G.pvZoom = 1; document.querySelectorAll('#poseBar button').forEach(x => x.classList.remove('on')); } }
 }
-function showOnly(id) { for (const s of ['#bank', '#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap']) $(s).hidden = s !== id; }
+function showOnly(id) { for (const s of ['#bank', '#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap', '#fishery']) $(s).hidden = s !== id; }
 function openMenu(which) {
-  if (G.mode !== 'play' && !(G.mode === 'dialog' && (which === 'forge' || which === 'shop'))) return;
+  if (G.mode !== 'play' && !(G.mode === 'dialog' && (which === 'forge' || which === 'shop' || which === 'fishery'))) return;
   $('#dialog').hidden = true; DLG.q = []; DLG.cur = null;
   G.mode = 'menu'; input.atk = false; sfx('ui');
   G.menu = which; $('#prompt').hidden = true; $('#tUse').hidden = true;
@@ -70,7 +70,7 @@ function openMenu(which) {
   if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; G.sellAllArm = false; renderShop(); }
   if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; resetMailOnline(); renderMail(); }
   if (which === 'profile') renderProfile(); if (which === 'bank') renderBank();
-  if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap();
+  if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap(); if (which === 'fishery') renderFishery();
   if (which === 'forge') renderForge(); if (which === 'journal') renderJournal(); if (which === 'pause') renderPause();
   showOnly('#' + which); refreshHudVis();
 }
@@ -174,6 +174,66 @@ function renderWShop() {
   else { const it = S2.items[wsSel].it; det.innerHTML = `<h3 style="color:${RAR[it.rar].c}">${it.name}</h3><div class="meta">${SLOTN[it.slot]} · ${RAR[it.rar].n} · Poder ${itemScore(it)}</div><ul>${itemLinesHTML(it, s.eq[it.slot])}</ul>`; }
 }
 $('#wsClose').onclick = () => closeMenus();
+/* ---- Pesqueiro: mercado de peixes (preço que cai quando muitos vendem o mesmo peixe), iscas, varas e coleção ---- */
+let fsTab = 'mercado', fsPrices = null, fsBusy = false;
+function openFishery(tab) { if (tab) fsTab = tab; if (G.menu === 'fishery') return renderFishery(); fsPrices = null; openMenu('fishery'); const n = NETON(); if (n) n.fishMarket().then(p => { fsPrices = p; if (G.menu === 'fishery') renderFishery(); }); }
+/** Preço agora: o do mercado compartilhado (online) ou o do mercado local deste save. */
+function fishPriceNow(id) { if (fsPrices && fsPrices[id]) return fsPrices[id]; const now = Date.now(); return { p: TF.fishPrice(G.save.fmkt || {}, id, now), d: TF.fishTrendDelta(id, now) }; }
+async function sellFishUI(id, n) {
+  const s = G.save; if (fsBusy || !s.fish || (s.fish[id] || 0) < n || n <= 0) return;
+  fsBusy = true; let total = null;
+  try { const net = NETON(); const r = net ? await net.sellFish(id, n) : null; if (r) { total = r.total; fsPrices = r.prices; } } catch (e) { }
+  if (total === null) { s.fmkt = s.fmkt || {}; total = TF.sellFish(s.fmkt, id, n, Date.now()); }   // offline: mercado local
+  fsBusy = false;
+  s.fish[id] -= n; if (!s.fish[id]) delete s.fish[id];
+  s.gold += total; sfx('clink'); toast('+' + total + ' CENTELHAS', false, n + '× ' + TF.fishById(id).n.toUpperCase(), '#ffbf3d'); writeSave(); renderFishery();
+}
+function renderFishery() {
+  const s = G.save, list = $('#fsList'), lv = fishLv(); list.innerHTML = '';
+  document.querySelectorAll('#fishery .ftabs button').forEach(b => { b.classList.toggle('on', b.dataset.ft === fsTab); b.onclick = () => { fsTab = b.dataset.ft; sfx('ui'); renderFishery(); }; });
+  const row = (html, btns) => { const r = document.createElement('div'); r.className = 'shoprow'; r.innerHTML = html; for (const b of btns || []) r.appendChild(b); list.appendChild(r); return r; };
+  const btn = (txt, on, fn, gold) => { const b = document.createElement('button'); b.className = 'px' + (gold && on ? ' gold' : ''); b.textContent = txt; b.disabled = !on; b.onclick = fn; return b; };
+  if (fsTab === 'mercado') {
+    const have = TF.FISH.filter(f => (s.fish && s.fish[f.id]) > 0);
+    $('#fsSub').innerHTML = (fsPrices ? 'Mercado de toda Tessária: ' : 'Mercado da vila (offline): ') + 'cada peixe vendido baixa o preço daquele peixe, e ele volta a subir com o tempo. A tendência muda a cada hora. Você tem <b style="color:var(--gold)">' + s.gold + '</b> Centelhas.';
+    if (!have.length) row('<div class="nm">Seu cesto está vazio.<small>Pesque no lago ou nos píeres do rio e volte aqui para vender.</small></div>');
+    let all = 0;
+    for (const f of have) {
+      const n = s.fish[f.id], pr = fishPriceNow(f.id), d = Math.round(pr.d * 100); all += pr.p * n;
+      row(`<span class="fish-dot" style="--fc:${f.c}"></span><div class="nm"><span style="color:${f.c}">${f.n}</span><small>${n} no cesto · valor normal ${f.g}</small></div><div class="fprice">${pr.p} ✦<small class="${d >= 0 ? 'fup' : 'fdown'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(d)}% na hora</small></div>`,
+        [btn('Vender 1', true, () => sellFishUI(f.id, 1)), btn('Todos', n > 1, () => sellFishUI(f.id, Math.min(99, n)), true)]);
+    }
+    if (have.length) { const r = row(`<div class="nm">Vender o cesto inteiro<small>Cerca de ${all} Centelhas (o preço cai um pouco a cada peixe)</small></div>`); r.appendChild(btn('Vender tudo', true, async () => { for (const f of have) await sellFishUI(f.id, Math.min(99, s.fish[f.id] || 0)); }, true)); }
+    row('<div class="nm" style="width:100%"><small>Preços de hoje</small>' + TF.FISH.filter(f => s.fcount && s.fcount[f.id]).map(f => { const pr = fishPriceNow(f.id); return `<span style="color:${f.c}">${f.n}</span> ${pr.p}`; }).join(' · ') + '</div>');
+  } else if (fsTab === 'loja') {
+    s.bait = s.bait || {}; const rodLv = s.rodLv || 0;
+    $('#fsSub').innerHTML = 'Isca escolhida: <b>' + (s.baitSel && TF.baitById(s.baitSel) ? TF.baitById(s.baitSel).n : 'nenhuma') + '</b>. Cada lançamento gasta uma. Você tem <b style="color:var(--gold)">' + s.gold + '</b> Centelhas.';
+    row(`<span class="fish-dot unk"></span><div class="nm">Sem isca<small>Pesca normal, sem gastar nada</small></div>`, [btn(!s.baitSel ? 'Usando' : 'Usar', !!s.baitSel, () => { s.baitSel = null; writeSave(); renderFishery(); })]);
+    for (const b of TF.BAITS) {
+      const lock = lv < b.lv, n = s.bait[b.id] || 0;
+      row(`<span class="fish-dot" style="--fc:${b.id === 'fio' ? '#9cf6ff' : b.id === 'grilo' ? '#ff8a5a' : '#c08a5a'}"></span><div class="nm">${b.n} <small>${b.desc} · você tem ${n}${lock ? ' · Pescador nível ' + b.lv : ''}</small></div>`,
+        [btn(s.baitSel === b.id ? 'Usando' : 'Usar', !lock && n > 0 && s.baitSel !== b.id, () => { s.baitSel = b.id; writeSave(); renderFishery(); }),
+         btn(b.pack + ' por ' + b.price + ' ✦', !lock && s.gold >= b.price, () => { spend(b.price); s.bait[b.id] = n + b.pack; if (!s.baitSel) s.baitSel = b.id; sfx('pick'); writeSave(); renderFishery(); }, true)]);
+    }
+    const cur = TF.RODS[rodLv], nx = TF.RODS[rodLv + 1];
+    row(`<span class="fish-dot" style="--fc:#a0703a"></span><div class="nm">${cur.n}<small>Sua vara atual${rodLv ? ' · +' + cur.win.toFixed(1) + ' s para puxar' : ''}${TF.FISH.some(f => f.rod > rodLv) ? ' · peixe mais pesado arrebenta a linha' : ' · aguenta qualquer peixe'}</small></div>`);
+    if (nx) row(`<span class="fish-dot" style="--fc:#ffbf3d"></span><div class="nm">${nx.n}<small>Aguenta peixes mais pesados (${TF.FISH.filter(f => f.rod === rodLv + 1).map(f => f.n).join(', ') || 'os maiores'}) · +${nx.win.toFixed(1)} s para puxar</small></div>`,
+      [btn(nx.price + ' ✦', s.gold >= nx.price, () => { spend(nx.price); s.rodLv = rodLv + 1; toast(nx.n.toUpperCase(), true, 'PEIXES MAIS PESADOS NÃO ARREBENTAM A LINHA', '#ffbf3d'); sfx('legend'); writeSave(); renderFishery(); }, true)]);
+  } else {
+    const fxp = s.fxp || 0, a = TF.fisherXpFor(lv), b = TF.fisherXpFor(lv + 1), pct = lv >= TF.FISHER_MAX ? 100 : Math.round((fxp - a) / (b - a) * 100);
+    const got = TF.FISH.filter(f => s.fcount && s.fcount[f.id]).length;
+    $('#fsSub').innerHTML = `<b style="color:#9cf6ff">Pescador nível ${lv}</b> · ${Math.floor(fxp)} XP${lv < TF.FISHER_MAX ? ' (próximo em ' + b + ')' : ''}<div class="fbar"><i style="width:${pct}%"></i></div>Cada nível: mais peixe raro e mais tempo para puxar. Peixe novo na coleção dá XP em dobro. Coleção: <b>${got}/${TF.FISH.length}</b>.`;
+    const grid = document.createElement('div'); grid.className = 'fgrid'; list.appendChild(grid);
+    const WN = { lago: 'lago', rio: 'rio', remanso: 'remanso' };
+    for (const f of TF.FISH) {
+      const c = s.fcount && s.fcount[f.id], r = document.createElement('div'); r.className = 'shoprow';
+      r.innerHTML = c ? `<span class="fish-dot" style="--fc:${f.c}"></span><div class="nm"><span style="color:${f.c}">${f.n}</span><small>${c} pescados · ${f.at.map(w => WN[w]).join(', ')}${f.w > 1 ? ' · briga ' + f.w + '×' : ''}</small></div>`
+        : `<span class="fish-dot unk"></span><div class="nm">???<small>${f.at.map(w => WN[w]).join(', ')}${f.lv > 1 ? ' · Pescador ' + f.lv : ''}${f.rod ? ' · ' + TF.RODS[f.rod].n : ''}${f.id === 'rei' ? ' · só com Isca de Fio' : ''}</small></div>`;
+      grid.appendChild(r);
+    }
+  }
+}
+$('#fsClose').onclick = () => closeMenus();
 /** Mapa dos Ermos: o que você explorou, obeliscos e acampamentos. Num obelisco, toque num obelisco desperto para viajar. */
 function renderWMap() {
   const travel0 = G.wmTravel !== undefined && G.wmTravel !== null, mapOk = hasMap();

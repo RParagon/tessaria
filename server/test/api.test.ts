@@ -17,6 +17,22 @@ for (const kind of STORES) {
       assert.equal(c.body.googleClientId, 'cliente-teste');
     });
 
+    test('mercado de peixes: preços públicos, vender baixa o preço daquele peixe, save do Pesqueiro validado', async () => {
+      const m0 = await api(S.url, 'GET', '/fish/market');
+      assert.equal(m0.status, 200); const p0 = m0.body.prices.truta.p;
+      assert.ok(p0 > 0 && m0.body.prices.rei.p > p0);
+      const a = await register(S.url);
+      assert.equal((await api(S.url, 'POST', '/fish/sell', { fish: 'truta', n: 5 })).status, 401);
+      assert.equal((await api(S.url, 'POST', '/fish/sell', { fish: 'tubarao', n: 1 }, a.token)).status, 422);
+      const s1 = await api(S.url, 'POST', '/fish/sell', { fish: 'truta', n: 20 }, a.token);
+      assert.equal(s1.status, 200); assert.ok(s1.body.total > 0 && s1.body.total < p0 * 20, `total ${s1.body.total}`);
+      assert.ok(s1.body.prices.truta.p < p0); assert.equal(s1.body.prices.lambari.p, m0.body.prices.lambari.p);   // só a truta barateou
+      const ok = await api(S.url, 'PUT', '/save', { rev: 0, data: baseSave({ fish: { truta: 3 }, bait: { minhoca: 9 }, baitSel: 'minhoca', rodLv: 2, fxp: 140, fcount: { truta: 3 } }) }, a.token);
+      assert.equal(ok.status, 200);
+      const bad = await api(S.url, 'PUT', '/save', { rev: ok.body.rev, data: baseSave({ fish: { tubarao: 1 }, rodLv: 9 }) }, a.token);
+      assert.equal(bad.status, 422);
+    });
+
     test('registro, login por e-mail e por nome, /me e logout', async () => {
       const r = await api(S.url, 'POST', '/auth/register', { name: 'Ysa_01', email: 'ysa@exemplo.com', password: 'senha1234' });
       assert.equal(r.status, 201); assert.ok(r.body.token);

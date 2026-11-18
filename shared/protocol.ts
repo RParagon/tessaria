@@ -10,7 +10,7 @@ export const VISIBLE_MAX = 12;      // jogadores remotos desenhados ao mesmo tem
 export const CHAT_MAX = 140;
 /** Diferença máxima de nível entre o líder e quem entra na Fenda ou nos Ermos do grupo. */
 export const PARTY_LVL_GAP = 10;
-export const HUB_BOUNDS = { x0: 4, x1: 150, z0: 4, z1: 92 };   // vila + Bairro Leste + Santuário da Fenda
+export const HUB_BOUNDS = { x0: 4, x1: 206, z0: 4, z1: 92 };   // vila + Bairro Leste + Santuário da Fenda + Pesqueiro
 export const MAX_SPEED = 12;        // unidades/s (corrida + esquiva com folga)
 // ---------- instâncias (co-op) ----------
 /** Bases de Fenda que o jogo conhece (core/progression.js, RTYPES). */

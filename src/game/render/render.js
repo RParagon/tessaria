@@ -4,7 +4,7 @@
    ========================================================= */
 let dpr = 1, pxDev = 4, VP = null;
 const EMOTES_PV = ['acenar', 'comemorar', 'dancar', 'sentar'];   // poses do espelho
-const IVO_BOB = [126.4, 50.2];
+const IVO_BOB = [IVO_PIER[0] + 5.6, IVO_PIER[1] + .3];   // boia do Ivo, no rio do Pesqueiro
 /** Auras cosméticas: partículas em volta do herói (o seu e os dos outros jogadores). */
 function auraFx(x, z, aura, t, dt) {
   if (!aura || aura === 'nenhuma') return; const A = AURAS.find(a => a[0] === aura); if (!A) return; const m = A[3], r = Math.random;
@@ -15,7 +15,7 @@ function auraFx(x, z, aura, t, dt) {
   else if (aura === 'sombra') { if (r() < dt * 18) spawn({ x: x + rr(-.5, .5), y: rr(0, .3), z: z + rr(-.5, .5), vx: rr(-.15, .15), vy: rr(.3, .8), vz: rr(-.15, .15), life: rr(.8, 1.3), s0: .12, s1: .03, b0: Math.random() < .3 ? .3 : 1, b1: .1, mat: Math.random() < .35 ? 29 : m }); }
   else if (aura === 'fios') { for (let k = 0; k < 3; k++) for (let s = 0; s < 10; s++) { const u = s / 10, a = t * 1.5 + k * 2.094 + u * 4, rad = .7; dyn(x + Math.cos(a) * rad, .2 + u * 1.9, z + Math.sin(a) * rad, .5 + .5 * u, m, .05); } }
 }   // boia do Pescador Ivo no lago do Bairro Leste
-const FISH_MAT = { 'Lambari': 28, 'Tilápia-de-Brasa': 13, 'Carpa Dourada': 14, 'Peixe-Lua': 26 };
+const FISH_MAT = { 'Lambari': 28, 'Tilápia-de-Brasa': 13, 'Carpa Dourada': 14, 'Peixe-Lua': 26, 'Truta-Prateada': 28, 'Bagre-Velho': 12, 'Dourado-do-Rio': 14, 'Enguia-de-Fio': 7, 'Salmão-Brasa': 13, 'Rei-do-Rio': 14 };
 /** Vara (curva, verga na mordida), linha com barriga até a boia e o peixe saltando até a mão. */
 function drawFishing(t) {
   const F = G.fishing, C = G.fishCatch, bw = [.86, 1, 1.18][G.char.body ?? 1];

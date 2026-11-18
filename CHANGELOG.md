@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.35.0 · Pesqueiro e Ermos por faixa
+- **Pesqueiro do Ivo:** a vila cresceu para o leste. Uma passagem ao sul da rua principal leva a um rio que desce do lago (o riacho tem ponte de tábuas), com a casa do Ivo, a banca de peixes e quatro píeres: do Norte, da Corredeira, do Salgueiro e o Remanso Fundo. O Ivo agora pesca no rio
+- **Dez peixes:** Lambari, Tilápia-de-Brasa, Truta-Prateada, Bagre-Velho, Carpa Dourada, Dourado-do-Rio, Enguia-de-Fio, Salmão-Brasa, Peixe-Lua e o Rei-do-Rio, que vive no Remanso e só sobe para a Isca de Fio. Cada água tem os seus
+- **Briga e varas:** peixe pesado briga e pede 2 a 4 puxões seguidos; se a vara for fraca para ele, a linha arrebenta. Cinco varas (Bambu, Reforçada, Carvalho, Brasa e Tear) aguentam mais peso e dão mais tempo para puxar
+- **Iscas:** Minhoca (morde mais rápido), Grilo-de-Brasa (Pescador 4) e Isca de Fio (Pescador 9), em pacotes. Cada lançamento gasta uma; dá para pescar sem isca
+- **Pescador:** XP própria e nível de 1 a 30 (mais peixe raro e mais tempo para puxar); peixe novo na coleção dá XP em dobro. A aba Pescador mostra a coleção e as pistas dos que faltam
+- **Mercado de peixes:** o peixe vai para o cesto e é vendido na banca. Cada peixe vendido baixa o preço daquele peixe, que se recupera com o tempo (metade da queda some em 40 min), e a tendência de cada peixe muda a cada hora (▲▼). **Online, o mercado é um só para todos**: se muita gente vende truta, a truta barateia para todo mundo
+- **Ermos abertos por faixa:** as salas públicas dos Ermos se separam por dificuldade (Normal e Difícil · Expert e Mestre · Tormento), e quem está em grupo cai na sala do líder
+- Servidor: mercado de peixes (`GET /fish/market`, `POST /fish/sell`), validação do cesto, iscas, vara e XP de Pescador no save, limites da vila ampliados
+
 ## 0.34.0 · Ermos abertos e PvP no Ermo Profundo
 - **Ermos abertos:** quem entra nos Ermos sem estar nos Ermos do grupo cai numa sala pública (`Ermos #1`, até 30 jogadores) e vê os outros Tecelões andando, lutando, com emotes, auras e chat. Cada jogo continua com os próprios monstros; para caçar os mesmos, abram os Ermos do grupo
 - **PvP no Ermo Profundo:** no anel de fora os jogadores podem se atacar com golpes, giros, projéteis e o Golpe do Tear. O nome de quem pode ser atacado fica vermelho com ⚔, e ao entrar chega o aviso **PVP ATIVO**. O dano entre jogadores é 30% do golpe, no máximo 20% da vida de quem leva

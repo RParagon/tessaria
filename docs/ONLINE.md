@@ -258,12 +258,19 @@ Já no jogo (0.34.0):
   - O servidor só aceita itens válidos para o seu nível de progresso.
 - **Teleporte:** a viagem pelo obelisco e o renascer avisam o servidor, que aceita o salto (no máximo um a cada 3 s); fora disso vale o limite de velocidade.
 
+- **Salas por faixa (0.35.0):** **Normal e Difícil**, **Expert e Mestre** e **Tormento** (I a III), pela dificuldade do save. Quem está em grupo vai para a sala do líder (ou de outro do grupo) se couber.
+
 Ainda por vir:
 
 - **A dificuldade do menu não vale nos Ermos.** O perigo vem da zona.
-- **Salas por faixa**, para não misturar novatos com veteranos: **Normal e Difícil**, **Expert e Mestre**, e **Tormento** (I a III).
-- O grupo entra na sala do líder.
 - Monstros compartilhados nas salas públicas (o servidor simula: Fase 2, Caminho B).
+
+## Mercado de peixes (Pesqueiro)
+
+- Um mercado só para todos os jogadores online, no servidor (em memória: recomeça calmo quando o servidor reinicia).
+- Cada espécie tem uma pressão de oferta: cada peixe vendido soma 1, e a pressão cai pela metade a cada 40 min. O preço vai de 100% (mercado calmo) até 35% (inundado) do valor base, vezes a tendência da hora (80% a 125%), igual em todos os aparelhos.
+- `GET /fish/market` (público) devolve preço e variação da hora; `POST /fish/sell` (conta, até 40 por minuto, até 99 peixes por venda) vende um a um, com o preço caindo a cada peixe.
+- Offline, o jogo usa a mesma regra num mercado local do save.
 
 ## Social no celular
 

@@ -12,6 +12,7 @@
 // A autoridade completa vem na Fase 2, com o combate no servidor.
 
 import { itemProblems, type Item } from './items';
+import { fishById, baitById, RODS } from './fish';
 
 export const MAX_SAVE_BYTES = 400_000;
 export const BOSSES = ['forest', 'crypt', 'peaks', 'swamp', 'glass'];
@@ -87,6 +88,12 @@ export function validateSave(s: unknown, opts: { prev?: AnySave | null; elapsedM
     if (!Array.isArray(v.cos) || v.cos.length > RARE_COSMETICS.length) errors.push('estilos raros inválidos');
     else for (const k of v.cos) if (!RARE_COSMETICS.includes(k)) errors.push(`estilo raro desconhecido: ${k}`);
   }
+
+  // Pesqueiro: cesto de peixes, iscas, vara e XP de Pescador.
+  if (v.fish !== undefined) { if (!v.fish || typeof v.fish !== 'object' || Array.isArray(v.fish)) errors.push('cesto de peixes inválido'); else for (const [k, n] of Object.entries(v.fish)) if (!fishById(k) || !isInt(n, 0, 9999)) errors.push(`peixe inválido: ${k}`); }
+  if (v.bait !== undefined) { if (!v.bait || typeof v.bait !== 'object' || Array.isArray(v.bait)) errors.push('iscas inválidas'); else for (const [k, n] of Object.entries(v.bait)) if (!baitById(k) || !isInt(n, 0, 9999)) errors.push(`isca inválida: ${k}`); }
+  if (v.rodLv !== undefined && !isInt(v.rodLv, 0, RODS.length - 1)) errors.push('vara inválida');
+  if (v.fxp !== undefined && !isNum(v.fxp, 0, 1e9)) errors.push('XP de Pescador inválida');
 
   const tierMax = maxItemTier(v), ids = new Set<string>();
   for (const { where, it } of allItems(v)) {

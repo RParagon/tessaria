@@ -291,7 +291,7 @@ for (const kind of STORES) {
       const A = await account(baseSave({ lvl: 30 })), B = await account(baseSave({ lvl: 30 })), C = await account(baseSave({ lvl: 30 }));
       await befriend(A, B);
       const a = await connect(A, 'wilds'), b = await connect(B, 'wilds'), c = await connect(C, 'wilds');
-      assert.equal(a.w.room, 'Ermos #1'); assert.equal(c.w.room, 'Ermos #1');
+      assert.equal(a.w.room, 'Ermos #1 · Normal e Difícil'); assert.equal(c.w.room, a.w.room);
       // Ermo Profundo: ladrilho (40, 175), longe do centro (200, 175)
       a.c.send({ t: 'pos', x: 80, z: 350, yaw: 0, m: 0, a: '' }); b.c.send({ t: 'pos', x: 82, z: 350, yaw: 0, m: 0, a: '' }); c.c.send({ t: 'pos', x: 84, z: 350, yaw: 0, m: 0, a: '' });
       await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 84));
@@ -331,9 +331,26 @@ for (const kind of STORES) {
       c.c.send({ t: 'ldrop', x: 84, z: 350, gold: 7, items: [], at: 999 });
       await a.c.waitFor(m => m.t === 'ldrop' && m.gold === 7);
       const D = await account(), d = await connect(D, 'wilds');
-      assert.equal(d.w.room, 'Ermos #1');
+      assert.equal(d.w.room, a.w.room);
       await d.c.waitFor(m => m.t === 'ldrop' && m.gold === 7);
       a.c.close(); b.c.close(); c.c.close(); d.c.close();
+    });
+
+    test('Ermos abertos por faixa: Tormento não cai com Normal; quem está em grupo vai para a sala do líder', async () => {
+      const T = await account(baseSave({ lvl: 30, diff: 4, bosses: { glass: true } })), F = await account(baseSave({ lvl: 25 }));
+      await befriend(T, F);   // em salas diferentes, só amigo convida
+      const t = await connect(T, 'wilds');
+      assert.equal(t.w.room, 'Ermos #1 · Tormento');
+      const f = await connect(F);
+      t.c.send({ t: 'pinvite', name: F.account.name });
+      await f.c.waitFor(m => m.t === 'pinvite'); f.c.send({ t: 'paccept', from: T.account.name });
+      await t.c.waitFor(m => m.t === 'party' && m.party?.members.length === 2);
+      f.c.send({ t: 'where', r: 'wilds' });
+      const w = await f.c.waitFor(m => m.t === 'welcome' && m.room !== f.w.room);
+      assert.equal(w.room, 'Ermos #1 · Tormento');
+      const G2 = await account(baseSave({ lvl: 25 })), g = await connect(G2, 'wilds');
+      assert.match(g.w.room, /Normal e Difícil$/);
+      t.c.close(); f.c.close(); g.c.close();
     });
 
     test('dificuldade do grupo: a do líder, limitada à que todos desbloquearam; o Pronto? leva a dificuldade e o nível do líder', async () => {

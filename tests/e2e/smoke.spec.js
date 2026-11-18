@@ -97,7 +97,7 @@ test('Vila 2.0: Bairro Leste com Bardo, bonecos de treino, fogueira com bancos e
   page.on('pageerror', e => errors.push(e.message));
   await newGame(page);
   const ev = src => page.evaluate(s => window.__T.ev(s), src);
-  expect(await ev('[RG.W, npcs.some(n => n.id === "bardo"), enemies.filter(e => e.dummy).length, inter.filter(i => i.kind === "bench").length, inter.some(i => i.kind === "fish")]')).toEqual([76, true, 3, 4, true]);
+  expect(await ev('[RG.W, npcs.some(n => n.id === "bardo"), enemies.filter(e => e.dummy).length, inter.filter(i => i.kind === "bench").length, inter.filter(i => i.kind === "fish").length]')).toEqual([104, true, 3, 4, 5]);
   // boneco: registra o dano, mostra o DPS e não cai
   for (let i = 0; i < 40; i++) await ev("hurtEnemy(enemies.find(e => e.dummy), 200, 0, 1, false)");
   expect(await ev('(e => e.dieT < 0 && e.hp > 0 && e.log.length === 40)(enemies.find(e => e.dummy))')).toBe(true);
@@ -124,11 +124,11 @@ test('Vila 2.0: Bairro Leste com Bardo, bonecos de treino, fogueira com bancos e
   await page.waitForFunction(() => window.__T.nearInter?.kind === 'fish', null, { timeout: 5000 });
   const ouro = await ev('G.save.gold');
   await page.keyboard.press('e');
-  await ev('G.fishing.biteAt = .05');
+  await ev("G.fishing.biteAt = .05; G.fishing.f = TessFish.fishById('lambari')");
   await page.waitForFunction(() => window.__T.ev('!!(G.fishing && G.fishing.bite)'), null, { timeout: 5000 });
   await page.keyboard.press('e');
   await page.waitForFunction(() => window.__T.ev('(G.save.st && G.save.st.fish) === 1'), null, { timeout: 3000 });
-  expect(await ev('G.save.gold')).toBeGreaterThan(ouro);
+  expect(await ev('[G.save.fish.lambari, G.save.gold === ' + ouro + ', G.save.fxp > 0]')).toEqual([1, true, true]);   // o peixe vai para o cesto (vende na banca)
   // banco perto da fogueira: senta e a vida volta
   await ev('P.hp = 5; sitBench(inter.find(i => i.kind === "bench"))');
   await page.waitForFunction(() => window.__T.ev('P.hp > 6'), null, { timeout: 5000 });
@@ -202,5 +202,55 @@ test('Bairro Leste vivo: Acendedora Lúcia caminha, Feirante Dora conversa, feir
   await page.keyboard.press('e');
   await expect(page.locator('#dialog')).toContainText('Feirante Dora');
   expect(await ev('G.ducks && G.ducks.length')).toBe(4);
+  expect(errors).toEqual([]);
+});
+
+test('Pesqueiro: rio com píeres, iscas e varas na banca, peixe pesado que arrebenta ou briga, cesto e mercado que barateia', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  await ev('G.save.rod = true; G.save.gold = 5000; P.hp = P.maxHp = 1e9');
+  expect(await ev('HUB.fishSpots.map(f => f.water)')).toEqual(['lago', 'rio', 'rio', 'rio', 'remanso']);
+  // banca do Pesqueiro: compra minhocas (escolhe sozinha) e vê o Pescador
+  await ev('P.x = HUB.fishery[0]; P.z = HUB.fishery[1] + .5');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'fishery', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await page.waitForSelector('#fishery:not([hidden])');
+  await page.click('#fishery .ftabs button[data-ft="loja"]');
+  await page.locator('#fsList .shoprow', { hasText: 'Minhoca' }).locator('button.gold').click();
+  expect(await ev('[G.save.bait.minhoca, G.save.baitSel, G.save.gold]')).toEqual([10, 'minhoca', 4960]);
+  await page.click('#fsClose');
+  // Remanso: lança (gasta uma isca); o Bagre-Velho é pesado para a vara de bambu: a linha arrebenta
+  await ev('(f => { P.x = f.x + 1.4; P.z = f.z; })(HUB.fishSpots[4])');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'fish' && window.__T.nearInter.spot === 4, null, { timeout: 5000 });
+  const cast = async fish => { await page.keyboard.press('e'); await ev(`G.fishing.biteAt = .05; G.fishing.f = TessFish.fishById('${fish}')`); await page.waitForFunction(() => window.__T.ev('!!(G.fishing && G.fishing.bite)'), null, { timeout: 5000 }); };
+  await cast('bagre');
+  expect(await ev('G.save.bait.minhoca')).toBe(9);
+  await page.keyboard.press('e');
+  expect(await ev('[!!G.fishing, (G.save.fish || {}).bagre || 0]')).toEqual([false, 0]);
+  await page.waitForFunction(() => window.__T.ev('!G.fishCatch'), null, { timeout: 3000 });
+  // vara reforçada na banca; agora o bagre briga: dois puxões
+  await ev("openFishery('loja')"); await page.waitForSelector('#fishery:not([hidden])');
+  await page.locator('#fsList .shoprow', { hasText: 'Vara Reforçada' }).locator('button.gold').click();
+  expect(await ev('G.save.rodLv')).toBe(1);
+  await page.click('#fsClose');
+  await cast('bagre');
+  await page.keyboard.press('e');
+  expect(await ev('[!!G.fishing, G.fishing && G.fishing.pulls]')).toEqual([true, 1]);
+  await page.waitForFunction(() => window.__T.ev('G.fishing && G.fishing.t > .75'), null, { timeout: 3000 });
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => window.__T.ev('(G.save.fish || {}).bagre === 1'), null, { timeout: 3000 });
+  expect(await ev('[G.save.fcount.bagre, G.save.fxp > 0]')).toEqual([1, true]);
+  // mercado (offline: o da vila): vende um e o próximo sai mais barato
+  await ev("G.save.fish.bagre = 40; openFishery('mercado')"); await page.waitForSelector('#fishery:not([hidden])');
+  const p0 = await ev("fishPriceNow('bagre').p"), g0 = await ev('G.save.gold');
+  await page.locator('#fsList .shoprow', { hasText: 'Bagre-Velho' }).locator('button.gold').click();
+  await page.waitForFunction(() => window.__T.ev('!G.save.fish.bagre'), null, { timeout: 3000 });
+  expect(await ev('G.save.gold')).toBeGreaterThan(g0 + p0 * 25);
+  expect(await ev("fishPriceNow('bagre').p")).toBeLessThan(p0);
+  await page.click('#fishery .ftabs button[data-ft="pescador"]');
+  await expect(page.locator('#fsSub')).toContainText('Pescador nível');
+  await expect(page.locator('#fsList')).toContainText('Bagre-Velho');
   expect(errors).toEqual([]);
 });

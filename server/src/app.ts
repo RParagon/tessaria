@@ -14,6 +14,7 @@ import { inc, render as renderMetrics } from './metrics';
 import { nameProblem, maskText, cleanChat } from '../../shared/text';
 import { allItems, validateSave, MAX_SAVE_BYTES } from '../../shared/save';
 import { PROTOCOL_VERSION, HUB_CAP } from '../../shared/protocol';
+import { FISH, fishById, fishPrice, fishTrendDelta, sellFish, type MarketState } from '../../shared/fish';
 
 declare module 'fastify' { interface FastifyRequest { account?: Account } }
 
@@ -226,6 +227,19 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const r = await store.claimMail(req.account!.id, id);
     if (!r.ok) return fail(rep, r.reason === 'bolsa-cheia' ? 409 : 404, ({ 'bolsa-cheia': 'Sua bolsa está cheia.', 'ja-resgatado': 'Essa carta já foi aberta.', 'nao-encontrado': 'Carta não encontrada.', 'sem-save': 'Sincronize seu progresso antes de abrir cartas.' } as const)[r.reason]);
     inc('mail_claimed'); return { rev: r.rev, item: r.item };
+  });
+
+  // ---------- mercado de peixes (compartilhado: quanto mais gente vende o mesmo peixe, mais ele barateia) ----------
+  const market: MarketState = {};
+  const prices = () => { const now = Date.now(); return Object.fromEntries(FISH.map(f => [f.id, { p: fishPrice(market, f.id, now), d: +fishTrendDelta(f.id, now).toFixed(3) }])); };
+  app.get('/fish/market', async () => ({ prices: prices(), at: Date.now() }));
+  const SellFish = z.object({ fish: z.string().max(16), n: z.number().int().min(1).max(99) });
+  app.post('/fish/sell', { preHandler: auth, config: perAccount(40) }, async (req, rep) => {
+    const b = parse(SellFish, req.body, rep); if (!b) return;
+    if (!fishById(b.fish)) return fail(rep, 422, 'Peixe desconhecido.');
+    const total = sellFish(market, b.fish, b.n, Date.now());
+    inc('fish_sold', b.n);
+    return { total, prices: prices() };
   });
 
   // ---------- amigos e bloqueios (docs/ONLINE.md) ----------

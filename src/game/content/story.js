@@ -105,6 +105,8 @@ const DIALOG = {
   ivo() {
     const b = G.save.bosses, L = [{ who: 'Pescador Ivo', text: b.forest ? 'Os peixes voltaram depois que o bosque respirou. Coincidência? Acho que não.' : 'Faz sete invernos que não pesco nada. Mas venho todo dia. Vai que o lago lembra.' }];
     if (b.crypt) L.push({ who: 'Pescador Ivo', text: 'Meu pai jurava que viu o dragão beber água aqui, mansinho, antes de tudo. Ninguém acreditava nele.' });
+    if (hasRod()) L.push({ who: 'Pescador Ivo', text: pick(['Peixe grande briga: puxa, espera, puxa de novo. E vara fraca arrebenta, viu?', 'O Remanso, lá embaixo, é onde mora o Rei-do-Rio. Só sobe pra Isca de Fio.', 'O preço da banca muda toda hora. Vendeu muita truta? Ela barateia. Espera um pouco.']),
+      choices: [{ t: 'Abrir o Pesqueiro', fn: () => openFishery() }, { t: 'Até mais.' }] });
     return L;
   },
   brann() {
@@ -182,7 +184,7 @@ function epilogue(kind) {
   L.push('Ysolde mandou gravar a verdade sobre o Rei Morgrave na pedra da fonte, para que nenhuma criança cresça com a mentira.');
   if (done('lio')) L.push('Lio cantou a canção completa na praça. Dizem que, desde então, ninguém em Tessária esquece um nome.');
   if (done('mel')) L.push('O Pão de Mel com cogumelo de luz virou receita de festa. A fila dobra a esquina toda manhã.');
-  if (done('ivo')) L.push('Ivo pesca no lago com o anzol do pai e jura que os peixes agora brilham.');
+  if (done('ivo')) L.push('Ivo pesca no rio do Pesqueiro com o anzol do pai e jura que os peixes agora brilham.');
   L.push(kind === 'A' ? 'Tessária está inteira. Mas o Tear guarda ecos, e as Fendas continuam abertas para quem ainda tem fôlego.' : 'Tessária lembra. E enquanto lembrar, o Sol não se apaga.');
   return L;
 }

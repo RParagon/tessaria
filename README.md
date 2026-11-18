@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.34.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.35.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -35,7 +35,8 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
   - sete dificuldades, até Tormento III;
   - loot com raridades e lendários com poderes;
   - runas, talentos e itens aprimorados até +10.
-- **Vila Brasa:** o hub, com o Bairro Leste (fogueira com bancos, feira da Dora, a Acendedora Lúcia, patos no lago, o Bardo Tomé e seus rumores, arena com bonecos que mostram o seu dano por segundo e o lago onde o Pescador Ivo ensina a pescar: a missão dele dá a vara) e o **Santuário da Fenda**, uma praça de obsidiana e runas violeta com o portal sombrio da Fenda do Tear.
+- **Vila Brasa:** o hub, com o Bairro Leste (fogueira com bancos, feira da Dora, a Acendedora Lúcia, patos no lago, o Bardo Tomé e seus rumores, arena com bonecos que mostram o seu dano por segundo e o lago de pesca), o **Pesqueiro** e o **Santuário da Fenda**, uma praça de obsidiana e runas violeta com o portal sombrio da Fenda do Tear.
+- **Pesqueiro do Ivo:** a leste do Bairro Leste, um rio que desce do lago, com quatro píeres (o de baixo dá no Remanso Fundo) e dez peixes, do Lambari ao lendário Rei-do-Rio. A missão do Ivo dá a vara. Na banca: **iscas** (Minhoca, Grilo-de-Brasa, Isca de Fio) e **varas** melhores (peixe pesado briga e pede vários puxões; com vara fraca, a linha arrebenta). O peixe vai para o cesto, dá **XP de Pescador** (nível 1 a 30: mais peixe raro e mais tempo para puxar) e entra na coleção. Vende no **mercado de peixes**: cada peixe vendido baixa o preço daquele peixe, que se recupera com o tempo, e a tendência muda a cada hora. Online, o mercado é um só para todos os jogadores.
 - **Banco do Tear:** prédio de mármore na praça; o que fica no cofre não se perde. Nos Ermos, morrer derruba o que você carrega por 5 minutos, e online qualquer jogador pode pegar.
 - **Itens com peso:** a raridade máxima depende da área (Lendário só nas áreas fundas, nos Tormentos e com chefes) e itens fortes pedem nível para equipar.
 - **Casa do Tecelão:** baú permanente, mobília com bônus visíveis, o Correio do Tear para trocar itens com amigos e o **Guarda-Roupa**, para mudar o visual quando quiser, escolher o estilo da armadura (clássica, couro, placas, escamas ou tabardo real) e comprar estilos raros (auréola, cartola, óculos, orelhas de elfo, flor, tranças) e auras de partículas (brasas, vaga-lumes, pétalas, gelo, sombra violeta, fios dourados).

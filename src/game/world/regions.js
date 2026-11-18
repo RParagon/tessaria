@@ -14,10 +14,10 @@ const FRAG = [
   { r: 'peaks', t: 'O Tear', x: '"Todo fio arrancado pode ser recosturado. Mas só por mãos que lembrem de tudo: do medo, da culpa e da maçã."' },
 ];
 const REG = {
-  hub: { name: 'Vila Brasa', sub: 'O último lugar aceso', style: 'hub', W: 76, H: 48, seed: 3, torch: 21,
+  hub: { name: 'Vila Brasa', sub: 'O último lugar aceso', style: 'hub', W: 104, H: 48, seed: 3, torch: 21,
     // a vila original (sala 0) e o Bairro Leste (sala 1): fogueira, Bardo, arena de treino e lago de pesca
     // sala 2: o Santuário da Fenda, ao sul do Bairro Leste
-    rooms: [{ x: 22, y: 16, w: 19, h: 13, shape: 'rect', kind: 'start' }, { x: 59, y: 16, w: 14, h: 12, shape: 'rect' }, { x: 59, y: 38.5, w: 8.5, h: 7.5, shape: 'rect' }, { x: 47, y: 38.5, w: 2.2, h: 2, shape: 'rect' }], links: [[0, 1], [1, 3], [3, 2]] },   // 3: vestíbulo a oeste (entrada do santuário)
+    rooms: [{ x: 22, y: 16, w: 19, h: 13, shape: 'rect', kind: 'start' }, { x: 59, y: 16, w: 14, h: 12, shape: 'rect' }, { x: 59, y: 38.5, w: 8.5, h: 7.5, shape: 'rect' }, { x: 47, y: 38.5, w: 2.2, h: 2, shape: 'rect' }, { x: 88.5, y: 22, w: 13, h: 18, shape: 'rect' }], links: [[0, 1], [1, 3], [3, 2]] },   // 4: o Pesqueiro, a leste (rio)   // 3: vestíbulo a oeste (entrada do santuário)
   forest: { name: 'Bosque Sussurrante', sub: 'Onde as árvores lembram', style: 'forest', W: 50, H: 40, seed: 11, torch: 27, boss: 'golem', fio: 'FIO VERDE',
     rooms: [
       { x: 6, y: 34, r: 3, kind: 'start' }, { x: 15, y: 30, r: 4.5, en: { gosmo: 3 } }, { x: 6, y: 22, r: 3.5, frag: 0, en: { gosmo: 2 } },
@@ -62,13 +62,15 @@ const HUB = {
     { x: 27, y: 8, w: 3, h: 3, roof: 22 },   // a casa vizinha (33,8) deu lugar ao Banco do Tear
     { x: 4, y: 20, w: 3, h: 3, roof: 22 }, { x: 9, y: 22, w: 3, h: 3, roof: 23 }, { x: 26, y: 20, w: 3, h: 2, roof: 11, forge: true }, { x: 33, y: 20, w: 3, h: 3, roof: 22 },
     // Bairro Leste
-    { x: 47, y: 5, w: 4, h: 3, roof: 23 }, { x: 53, y: 5, w: 3, h: 3, roof: 22 }, { x: 47, y: 23, w: 3, h: 3, roof: 22 }, { x: 52, y: 24, w: 3, h: 3, roof: 23 }],
+    { x: 47, y: 5, w: 4, h: 3, roof: 23 }, { x: 53, y: 5, w: 3, h: 3, roof: 22 }, { x: 47, y: 23, w: 3, h: 3, roof: 22 }, { x: 52, y: 24, w: 3, h: 3, roof: 23 },
+    // Pesqueiro: a casa do Ivo (iscas e varas)
+    { x: 78, y: 8, w: 4, h: 3, roof: 11 }],
   fountain: [44, 32], portals: [{ to: 'forest', x: 24, z: 9 }, { to: 'crypt', x: 44, z: 8 }, { to: 'peaks', x: 64, z: 9 }, { to: 'swamp', x: 9, z: 33, yaw: 1.57 }, { to: 'wilds', x: 44, z: 56, yaw: 3.14 }, { to: 'glass', x: 145, z: 33, yaw: -1.57 }],
-  lamps: [[34, 24], [54, 24], [34, 40], [54, 40], [24, 15], [64, 15], [40, 14], [48, 14], [18, 32], [70, 32], [92, 24], [92, 40], [110, 21], [126, 21], [110, 43], [140, 30], [128, 40], [140, 18]],
-  spawn: [44, 42], stalls: [[26, 12, 16], [29, 12, 18], [52, 18, 15], [55, 18, 22]], /* as duas últimas: feira do Bairro Leste */ trees: [[3, 14], [17, 20], [39, 14], [38, 27], [3, 27], [12, 26], [36, 3], [72, 5], [72, 27], [46, 15], [58, 27], [63, 5]],
+  lamps: [[34, 24], [54, 24], [34, 40], [54, 40], [24, 15], [64, 15], [40, 14], [48, 14], [18, 32], [70, 32], [92, 24], [92, 40], [110, 21], [126, 21], [110, 43], [140, 30], [128, 40], [140, 18], [158, 22], [158, 50], [172, 36], [166, 66], [176, 14]],
+  spawn: [44, 42], stalls: [[26, 12, 16], [29, 12, 18], [52, 18, 15], [55, 18, 22], [82, 14, 16], [84, 14, 15]], /* as duas últimas: feira do Bairro Leste */ trees: [[3, 14], [17, 20], [39, 14], [38, 27], [3, 27], [12, 26], [36, 3], [72, 5], [72, 27], [46, 15], [58, 27], [63, 5]],
   pond: { x: 30.5, y: 25.5, rx: 2.8, ry: 1.6 }, lake: { x: 66, y: 23.6, rx: 4.4, ry: 2.4 },
   // Bairro Leste (coordenadas do mundo): fogueira com bancos, arena com bonecos, ponto de pesca
-  fire: [118, 31], benches: [[114.2, 31, 1.57], [121.8, 31, -1.57], [118, 27.2, 0], [118, 34.8, 3.14]], arena: { x: 134, z: 13, w: 7, h: 5 }, dummies: [[130, 13], [134, 13], [138, 13]], fish: [122.5, 47], pen: { x0: 14, y0: 23, x1: 18, y1: 27 },
+  fire: [118, 31], benches: [[114.2, 31, 1.57], [121.8, 31, -1.57], [118, 27.2, 0], [118, 34.8, 3.14]], arena: { x: 134, z: 13, w: 7, h: 5 }, dummies: [[130, 13], [134, 13], [138, 13]], fish: [122.5, 47], fishery: [166, 31.6],   /* fishery: banca do mercado de peixes (Pesqueiro) */ pen: { x0: 14, y0: 23, x1: 18, y1: 27 },
   // Santuário da Fenda (mundo): portal sombrio no estrado ao sul, pilares de obsidiana com chama violeta e arco na entrada
   sanct: { x: 118, z: 77, gate: [118, 68.5], pil: [[107, 67], [129, 67], [132, 78], [108, 87.5], [128, 87.5]], arch: [101.5, 77] },
   // Banco do Tear (mundo): entre a forja e a casa da praça, fachada para o sul
@@ -76,8 +78,19 @@ const HUB = {
   props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board'], [102, 16, 'crate'], [102.8, 16.6, 'barrel'], [98, 50, 'barrel'], [112, 52, 'crate'],
     // Bairro Leste: feira, poço, canteiros, feno e varal
     [101.6, 38.6, 'barrel'], [102.3, 39.4, 'crate'], [113.2, 38.4, 'crate'], [113.8, 39.3, 'barrel'], [123, 12, 'well'], [96, 30, 'flowers'], [104, 28, 'flowers'], [134, 33, 'flowers'], [140, 40, 'flowers'], [116, 20, 'flowers'],
-    [142, 25, 'hay'], [143.2, 26.3, 'hay'], [101, 46.5, 'line'], [120.5, 51.6, 'crate'], [121.3, 52.3, 'barrel'], [136, 20.5, 'crate']],
+    [142, 25, 'hay'], [143.2, 26.3, 'hay'], [101, 46.5, 'line'], [120.5, 51.6, 'crate'], [121.3, 52.3, 'barrel'], [136, 20.5, 'crate'],
+    // Pesqueiro: caixotes de peixe, barris de isca, redes e varal de peixe seco
+    [161, 28.4, 'barrel'], [161.8, 29.2, 'crate'], [171, 28.6, 'crate'], [156, 21, 'barrel'], [157, 21.8, 'crate'], [154, 44, 'hay'], [160, 60, 'flowers'], [156, 34, 'line'], [168, 40, 'barrel']],
 };
+/** Rio do Pesqueiro (ladrilhos): centro e meia largura em cada linha; o remanso é o poço largo ao sul. */
+const riverX = ty => 94 + Math.sin(ty * .22) * 1.6 + Math.sin(ty * .07 + 1) * 1.0;
+const riverHW = ty => 1.9 + 1.7 * Math.exp(-(((ty - 33) / 3) ** 2));
+/** Pontos de pesca: o píer do lago e quatro píeres no rio (o de baixo dá no remanso). x, z: começo do píer; a boia cai 4,2 adiante. */
+HUB.fishSpots = [{ x: HUB.fish[0], z: HUB.fish[1], water: 'lago', n: 'Lago do Bairro Leste' }].concat([[10, 'rio', 'Píer do Norte'], [19.5, 'rio', 'Píer da Corredeira'], [26.5, 'rio', 'Píer do Salgueiro'], [33, 'remanso', 'Remanso Fundo']].map(([ty, water, n]) => ({ x: Math.round(((riverX(ty) - riverHW(ty)) * T - 1.2) * 10) / 10, z: ty * T, water, n })));
+/** Píer do Ivo (não é ponto de pesca do jogador): ele pesca ali, perto da casa. */
+/** Ponte de tábuas sobre o riacho (mundo): liga o norte ao sul do Pesqueiro. */
+const HUB_BRIDGE = [161, 49.2];
+const IVO_PIER = [Math.round(((riverX(14.5) - riverHW(14.5)) * T - 1.2) * 10) / 10, 29];
 /** Bardo do Bairro Leste: fica fora de NPCS (as linhas de paleta dos moradores estão cheias) e usa as linhas 152-159, livres na vila. */
 const BARD = { id: 'bardo', name: 'Bardo Tomé', x: 121.6, z: 27.6, baseYaw: 2.6, cfg: { seed: 81, body: 1, hair: 'longo', hairCol: 2, skin: 3, outfit: 3, trim: 4, glow: 3, acc: 'pena', cape: true, gear: 'alaude' } };
 /** Moradores do Bairro Leste: linhas de paleta próprias (128-143), livres na vila (lá ninguém usa as cores do Cavaleiro e dos monstros). */
@@ -99,7 +112,7 @@ const NPCS = [
   { id: 'tarsa', name: 'Guarda Tarsa', x: 44, z: 13.5, wander: [[38, 13.5], [50, 13.5]], spd: 1.1, cfg: { seed: 66, body: 2, hair: 'curto', hairCol: 0, skin: 4, outfit: 6, trim: 1, glow: 1, acc: 'elmo', cape: true, cls: 'lamina', armor: 3 } },
   { id: 'mel', name: 'Padeira Mel', x: 33.6, z: 26.6, baseYaw: 3.14, cfg: { seed: 67, body: 1, hair: 'coque', hairCol: 2, skin: 0, outfit: 1, trim: 4, glow: 0, acc: 'padeiro', cape: false, apron: true } },
   { id: 'lio', name: 'Bardo Lio', x: 49.5, z: 35.5, baseYaw: -.6, cfg: { seed: 68, body: 0, hair: 'longo', hairCol: 3, skin: 1, outfit: 8, trim: 0, glow: 2, acc: 'pena', cape: true, gear: 'alaude' } },
-  { id: 'ivo', name: 'Pescador Ivo', x: 122.6, z: 51.4, baseYaw: 1.9, cfg: { seed: 69, body: 1, hair: 'curto', hairCol: 4, skin: 2, outfit: 5, trim: 2, glow: 0, acc: 'nenhum', cape: false, gear: 'vara', beard: 'barba' } },
+  { id: 'ivo', name: 'Pescador Ivo', x: IVO_PIER[0] + 2.4, z: IVO_PIER[1] + .1, baseYaw: 1.57, cfg: { seed: 69, body: 1, hair: 'curto', hairCol: 4, skin: 2, outfit: 5, trim: 2, glow: 0, acc: 'nenhum', cape: false, gear: 'vara', beard: 'barba' } },
   { id: 'brann', name: 'Vovô Brann', x: 21, z: 51.5, cfg: { seed: 70, body: 1, hair: 'careca', hairCol: 4, skin: 2, outfit: 10, trim: 2, glow: 0, acc: 'cachecol', cape: false, gear: 'bengala', beard: 'barba' } },
   { id: 'nina', name: 'Nina', x: 48, z: 26, scale: .7, wander: WANDER_KIDS, spd: 2.4, cfg: { seed: 71, body: 0, hair: 'rabo', hairCol: 3, skin: 4, outfit: 9, trim: 4, glow: 0, acc: 'nenhum', cape: false } },
 ];
@@ -191,6 +204,9 @@ function hubLakeD(px, pz) {
     const d = Math.hypot(nx, ny) + (vnoise(px * .22 + L.x, pz * .22) - .5) * .34 + Math.sin(a * 3 + L.x) * .07 + Math.sin(a * 5 + L.y) * .04;
     best = Math.min(best, d);
   }
+  const tx = px / T, ty = pz / T, wob = (vnoise(px * .25 + 40, pz * .25) - .5) * .3;
+  if (ty > 2 && ty < 46 && tx > 84) best = Math.min(best, Math.abs(tx - riverX(ty)) / riverHW(ty) + wob);   // rio do Pesqueiro
+  if (tx > 69.5 && tx < riverX(24)) best = Math.min(best, Math.abs(ty - (24.3 + Math.sin(tx * .5) * .45)) / .8 + wob);   // riacho: o lago desce até o rio
   return best;
 }
 function genRegion(key) {
@@ -228,12 +244,16 @@ function genRegion(key) {
     if (rm.kind === 'boss') roomTiles(rm, (x, y, inside, d) => { if (!inside && d > rm.r + .6 && d < rm.r + 3.2 && (grid[y][x] === ',' || grid[y][x] === '.')) G.gates.push([x, y]); });
   });
   if (key === 'hub') {
+    for (let y = 18; y <= 20; y++) for (let x = 71; x <= 77; x++) if (grid[y][x] === '#') grid[y][x] = ',';   // passagem do Bairro Leste para o Pesqueiro
+    for (let x = 70; x <= 78; x++) for (let y = 22; y <= 26; y++) if (grid[y][x] === '#' && hubLakeD((x + .5) * T, (y + .5) * T) < 1.3) grid[y][x] = '.';   // leito do riacho
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       if (grid[y][x] !== '.') continue;
       const cx = x + .5, cy = y + .5, pd = HUB.pond;
       if (Math.abs(cx - 22) < 1.3 || Math.abs(cy - 16.5) < 1.1 || (y < 7 && y > 2 && cx > 8 && cx < 37) || Math.hypot(cx - 22, cy - 16) < 4.6) grid[y][x] = ',';
       if (hubLakeD(cx * T, cy * T) < .97) grid[y][x] = '~';   // mesma forma orgânica do desenho
-      if (cx > 43 && (Math.abs(cy - 16.5) < 1.1 || Math.hypot(cx - 59, cy - 15.5) < 4.2 || Math.abs(cx - 59) < 1.1)) grid[y][x] = ',';   // caminhos e praça do Bairro Leste
+      if (cx > 43 && ((Math.abs(cy - 16.5) < 1.1 && cx < 73) || Math.hypot(cx - 59, cy - 15.5) < 4.2 || Math.abs(cx - 59) < 1.1)) grid[y][x] = ',';   // caminhos e praça do Bairro Leste
+      if (cx > 74 && cy > 18 && cy < 21 && cx < 80) grid[y][x] = ',';   // caminho até o Pesqueiro
+      if (Math.abs(cx - HUB_BRIDGE[0] / T) < 1.1 && cy > 18 && cy < 31) grid[y][x] = ',';   // trilha norte-sul do Pesqueiro (passa pela ponte do riacho)
       if (cy > 30 && (Math.hypot((cx - 59) / 8, (cy - 38.5) / 7) < 1 || (cx > 44 && cx < 52 && Math.abs(cy - 38.5) < 1.6))) grid[y][x] = ',';   // piso de pedra do Santuário da Fenda e do vestíbulo
     }
     for (const [x, y] of HUB.trees) grid[y][x] = '#';
@@ -241,7 +261,7 @@ function genRegion(key) {
     for (const [x, y] of [[21, 15], [22, 15], [21, 16], [22, 16]]) G.block.add(x + ',' + y);
     for (const [x, y] of HUB.stalls) G.block.add(x + ',' + y);
     for (const [x, y] of [[9, 18], [13, 28]]) G.block.add(x + ',' + y);
-    reserve(36, 13, 0); reserve(68.4, 47, 0); reserve(70.6, 46.8, 0);
+    reserve(36, 13, 0); reserve(68.4, 47, 0); reserve(70.6, 46.8, 0); for (const f of HUB.fishSpots) reserve(f.x + 1, f.z, 1); reserve(IVO_PIER[0] + 1, IVO_PIER[1], 1); reserve(HUB.fishery[0], HUB.fishery[1], 1);
     const pn = HUB.pen;
     for (let y = pn.y0; y <= pn.y1; y++) for (let x = pn.x0; x <= pn.x1; x++) { G.reserved.add(x + ',' + y); if ((x === pn.x0 || x === pn.x1 || y === pn.y0 || y === pn.y1) && !(y === pn.y0 && x === 16)) G.block.add(x + ',' + y); }
     for (const p of HUB.portals) reserve(p.x, p.z, 1);
@@ -568,7 +588,8 @@ function buildWorld(key, G) {
         if (i % 2 === 0) S.tube([[px, 0, pz, .07, 0], [px, .9, pz, .06, 0]], 12, { sub: 1, flags: 8 });
       }
       for (let k = 0; k < 4; k++) S.ell([A.x - A.w + 1 + k * 4, .02, A.z], [1.2, .02, 1.2], 9, 0);   // chão batido da arena
-      const [qx, qz] = HUB.fish; S.box([qx + 1.4, .14, qz], [1.6, .06, .5], 12, 0, { faces: 'tnsew' }); for (const d of [0, 1.4, 2.8]) S.tube([[qx + d, -.3, qz + .45, .07, 0], [qx + d, .14, qz + .45, .07, 0]], 12, { sub: 1 });
+      for (const [qx, qz] of HUB.fishSpots.map(f => [f.x, f.z]).concat([IVO_PIER])) { S.box([qx + 1.4, .14, qz], [1.6, .06, .5], 12, 0, { faces: 'tnsew' }); for (const d of [0, 1.4, 2.8]) for (const sz of [.45, -.45]) S.tube([[qx + d, -.3, qz + sz, .07, 0], [qx + d, .14, qz + sz, .07, 0]], 12, { sub: 1 }); }   // píeres: lago, rio e o do Ivo
+      { const [bx, bz] = HUB_BRIDGE; S.box([bx, .2, bz], [1.3, .07, 3.3], p => frac(p[2] * 1.4) < .12 ? 11 : 12, 0, { faces: 'tnsew' }); for (const sx of [-1.25, 1.25]) { S.tube([[bx + sx, .2, bz - 3.3, .05, 0], [bx + sx, .75, bz - 3.3, .05, 0]], 12, { sub: 1 }); S.tube([[bx + sx, .2, bz + 3.3, .05, 0], [bx + sx, .75, bz + 3.3, .05, 0]], 12, { sub: 1 }); S.tube([[bx + sx, .72, bz - 3.3, .04, 0], [bx + sx, .8, bz, .04, 0], [bx + sx, .72, bz + 3.3, .04, 0]], 12, { sub: 3 }); } }   // ponte de tábuas sobre o riacho
     }
     { const pd = HUB.pond, wx0 = (pd.x - pd.rx) * T + .4, wz = pd.y * T; S.box([wx0 + 1.6, .14, wz], [1.7, .06, .45], 12, 0, { faces: 'tnsew' }); for (let i = 0; i < 4; i++) for (const sz of [-.4, .4]) S.tube([[wx0 + .2 + i * 1.05, -.3, wz + sz, .06, 0], [wx0 + .2 + i * 1.05, .3, wz + sz, .06, 0]], 12, { sub: 1 }); }
     for (const [px, pz, kind] of HUB.props) {
