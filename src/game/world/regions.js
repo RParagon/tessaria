@@ -253,7 +253,8 @@ function genRegion(key) {
       for (const [x, y, ch] of flip) grid[y][x] = ch;
     }
     // morros: espaços abertos de 3x3 longe dos caminhos, espaçados entre si
-    { const ar = HUB.arena; for (let y = Math.floor((ar.z - ar.h - 2) / T); y <= (ar.z + ar.h + 2) / T; y++) for (let x = Math.floor((ar.x - ar.w - 2) / T); x <= (ar.x + ar.w + 2) / T; x++) G.reserved.add(x + ',' + y); reserve(HUB.fire[0], HUB.fire[1], 3); for (const [wx, wz] of WORMS) reserve(wx, wz, 2); for (const n of EAST_NPCS) for (const [wx, wz] of (n.wander || [])) reserve(wx, wz, 1); }   // arena, fogueira, minhocas e a rota da Lúcia ficam livres
+    { const ar = HUB.arena; for (let y = Math.floor((ar.z - ar.h - 2) / T); y <= (ar.z + ar.h + 2) / T; y++) for (let x = Math.floor((ar.x - ar.w - 2) / T); x <= (ar.x + ar.w + 2) / T; x++) G.reserved.add(x + ',' + y); reserve(HUB.fire[0], HUB.fire[1], 3); for (const [wx, wz] of WORMS) reserve(wx, wz, 2); for (const n of EAST_NPCS) for (const [wx, wz] of (n.wander || [])) reserve(wx, wz, 1);
+      for (let y = pn.y0 - 5; y <= pn.y1 + 2; y++) for (let x = pn.x0 - 3; x <= pn.x1 + 3; x++) G.reserved.add(x + ',' + y); }   // galinheiro e a frente da porteira ficam livres   // arena, fogueira, minhocas e a rota da Lúcia ficam livres
     G.hills = [];
     for (let y = 3; y < H - 3 && G.hills.length < 7; y++) for (let x = 3; x < W - 3 && G.hills.length < 7; x++) {
       if (hash2(x * 1.7, y * 2.9) < .86) continue;

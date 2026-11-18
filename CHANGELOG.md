@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 0.24.1 · Galinheiro livre
+- **Correção:** um dos morros novos caiu bem na frente da porteira do galinheiro da praça e impedia a entrada. Agora o galinheiro e a frente da porteira ficam reservados e nenhum morro ou recuo de borda nasce ali
+
 ## 0.24.0 · Vila mais orgânica
 - **Lagos de contorno natural:** o lago do Bairro Leste e a lagoa da praça perderam os degraus quadrados. A margem segue uma forma irregular desenhada ponto a ponto, com faixa de areia, juncos, pedras e vitórias-régias
 - **Bordas irregulares:** a linha de árvores que cerca a vila avança e recua em vez de formar retângulos. Caminhos, portais, casas e tudo que é usado em missões ficam livres
