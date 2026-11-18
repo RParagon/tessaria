@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.24.0 · Vila mais orgânica
+- **Lagos de contorno natural:** o lago do Bairro Leste e a lagoa da praça perderam os degraus quadrados. A margem segue uma forma irregular desenhada ponto a ponto, com faixa de areia, juncos, pedras e vitórias-régias
+- **Bordas irregulares:** a linha de árvores que cerca a vila avança e recua em vez de formar retângulos. Caminhos, portais, casas e tudo que é usado em missões ficam livres
+- **Morros:** sete morros gramados espalhados pelos espaços abertos, com pedras, flores e às vezes uma árvore, longe dos caminhos, da arena, da fogueira, das minhocas e da rota da Acendedora
+
 ## 0.23.0 · HUD novo, Bairro Leste vivo e coleta visível
 - **Retrato do herói no HUD:** um busto do seu personagem, desenhado pelo próprio motor, com as suas cores, cabelo, acessório e armadura; atualiza quando você troca o visual ou o equipamento
 - **Ícones 3D:** os ícones da barra de ações, das poções, das Centelhas, das Memórias e dos botões do topo agora são modelos de splats desenhados no estilo do jogo (espada, cajado, arco, esquiva, giro, nova, chuva de flechas, poção, bolsa, coração, gema, livro, engrenagem). Barra com cantos dourados e fundo próprio

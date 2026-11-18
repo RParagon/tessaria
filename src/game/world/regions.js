@@ -172,6 +172,16 @@ function genWilds(key, spec) {
   G.start = G.rooms[0];
   return G;
 }
+/** Lagos da vila com contorno orgânico (coordenadas do mundo). <1: água; 1 a 1,14: areia da margem. */
+function hubLakeD(px, pz) {
+  let best = 9;
+  for (const L of [HUB.pond, HUB.lake]) {
+    const nx = (px / T - L.x) / L.rx, ny = (pz / T - L.y) / L.ry, a = Math.atan2(ny, nx);
+    const d = Math.hypot(nx, ny) + (vnoise(px * .22 + L.x, pz * .22) - .5) * .34 + Math.sin(a * 3 + L.x) * .07 + Math.sin(a * 5 + L.y) * .04;
+    best = Math.min(best, d);
+  }
+  return best;
+}
 function genRegion(key) {
   if (REG[key].style === 'wilds') return genWilds(key, REG[key]);
   const spec = REG[key], { W, H } = spec, R = rng(spec.seed);
@@ -211,8 +221,7 @@ function genRegion(key) {
       if (grid[y][x] !== '.') continue;
       const cx = x + .5, cy = y + .5, pd = HUB.pond;
       if (Math.abs(cx - 22) < 1.3 || Math.abs(cy - 16.5) < 1.1 || (y < 7 && y > 2 && cx > 8 && cx < 37) || Math.hypot(cx - 22, cy - 16) < 4.6) grid[y][x] = ',';
-      if (((cx - pd.x) / pd.rx) ** 2 + ((cy - pd.y) / pd.ry) ** 2 < 1) grid[y][x] = '~';
-      const lk = HUB.lake; if (((cx - lk.x) / lk.rx) ** 2 + ((cy - lk.y) / lk.ry) ** 2 < 1) grid[y][x] = '~';
+      if (hubLakeD(cx * T, cy * T) < .97) grid[y][x] = '~';   // mesma forma orgânica do desenho
       if (cx > 43 && (Math.abs(cy - 16.5) < 1.1 || Math.hypot(cx - 59, cy - 15.5) < 4.2 || Math.abs(cx - 59) < 1.1)) grid[y][x] = ',';   // caminhos e praça do Bairro Leste
       if (cy > 30 && (Math.hypot((cx - 59) / 8, (cy - 38.5) / 7) < 1 || (cx > 44 && cx < 52 && Math.abs(cy - 38.5) < 1.6))) grid[y][x] = ',';   // piso de pedra do Santuário da Fenda e do vestíbulo
     }
@@ -230,6 +239,29 @@ function genRegion(key) {
     for (const n of EAST_NPCS) reserve(n.x, n.z, 0);
     for (const l of HUB.lamps) reserve(l[0], l[1], 0);
     for (const p of HUB.props) reserve(p[0], p[1], 0);
+    // bordas orgânicas: a linha de árvores avança e recua (nunca perto de caminhos, portais, casas ou coisas reservadas)
+    const nearPath = (x, y, r) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const c = grid[y + dy]?.[x + dx]; if (c === ',' || c === '~') return true; } return false; };
+    const free = (x, y) => !G.reserved.has(x + ',' + y) && !G.block.has(x + ',' + y);
+    const n4 = (x, y, ch) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy]?.[x + dx] === ch);
+    for (let pass = 0; pass < 2; pass++) {
+      const flip = [];
+      for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
+        const c = grid[y][x], n = vnoise(x * .33 + pass * 7, y * .33 + 11);
+        if (c === '.' && n < .36 && n4(x, y, '#') && free(x, y) && !nearPath(x, y, 2)) flip.push([x, y, '#']);
+        else if (c === '#' && n > .64 && n4(x, y, '.') && x > 3 && y > 3 && x < W - 4 && y < H - 4) flip.push([x, y, '.']);
+      }
+      for (const [x, y, ch] of flip) grid[y][x] = ch;
+    }
+    // morros: espaços abertos de 3x3 longe dos caminhos, espaçados entre si
+    { const ar = HUB.arena; for (let y = Math.floor((ar.z - ar.h - 2) / T); y <= (ar.z + ar.h + 2) / T; y++) for (let x = Math.floor((ar.x - ar.w - 2) / T); x <= (ar.x + ar.w + 2) / T; x++) G.reserved.add(x + ',' + y); reserve(HUB.fire[0], HUB.fire[1], 3); for (const [wx, wz] of WORMS) reserve(wx, wz, 2); for (const n of EAST_NPCS) for (const [wx, wz] of (n.wander || [])) reserve(wx, wz, 1); }   // arena, fogueira, minhocas e a rota da Lúcia ficam livres
+    G.hills = [];
+    for (let y = 3; y < H - 3 && G.hills.length < 7; y++) for (let x = 3; x < W - 3 && G.hills.length < 7; x++) {
+      if (hash2(x * 1.7, y * 2.9) < .86) continue;
+      let ok = true; for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1 && ok; dx++) { if (grid[y + dy][x + dx] !== '.' || !free(x + dx, y + dy)) ok = false; }
+      if (!ok || nearPath(x, y, 2) || G.hills.some(h => Math.hypot(h.x - x, h.y - y) < 9)) continue;
+      G.hills.push({ x, y, s: .8 + hash2(x, y) * .5, tree: hash2(y, x) > .45 });
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { G.block.add((x + dx) + ',' + (y + dy)); G.reserved.add((x + dx) + ',' + (y + dy)); }
+    }
   }
   G.start = G.rooms[0];
   return G;
@@ -307,6 +339,7 @@ function buildWorld(key, G) {
           if (mat === 8 && vnoise(px * .2 + 9, pz * .2) > .75) mat = 10;
         }
         h = (th - .5) * .03;
+        if (st === 'hub') { const ld = hubLakeD(px, pz); if (ld < 1) { S.pt([px, -.12, pz], [(R() - .5) * .3, 1, (R() - .5) * .3], 15, 0, .42, 4 | 16); continue; } if (ld < 1.14) { mat = ld < 1.06 ? 9 : (R() < .5 ? 9 : mat); nrm = [0, 1, 0]; } }   // margem orgânica: água e areia
         S.pt([px, h, pz], nrm, mat, 0, 2.4 / Math.sqrt(DF) * (1.05 + .4 * R()), 4);
       }
       if (st === 'glass') { const sol = (xx, yy) => { const c2 = G.grid[yy]?.[xx]; return c2 === '.' || c2 === ','; }; let f = ''; if (!sol(x, y - 1)) f += 'n'; if (!sol(x, y + 1)) f += 's'; if (!sol(x + 1, y)) f += 'e'; if (!sol(x - 1, y)) f += 'w'; if (f) S.box([wx, -.75, wz], [1, .75, 1], p => frac(p[1] * 1.6) < .1 ? 14 : 11, 0, { faces: f }); }
@@ -317,7 +350,13 @@ function buildWorld(key, G) {
         const px = x * T + R() * T, pz = y * T + R() * T;
         if (st === 'peaks') S.pt([px, -.15, pz], [0, 1, 0], 14, 0, .42 * (.8 + .4 * R()), 16, .7 + R() * .25);
         else if (st === 'glass') { if (R() < .035) S.pt([px, -2 - R() * 7, pz], [0, 1, 0], R() < .35 ? 14 : 13, 0, .08 + R() * .14, 16); }
+        else if (st === 'hub' && hubLakeD(px, pz) >= 1) S.pt([px, (R() - .5) * .02, pz], [0, 1, 0], hubLakeD(px, pz) < 1.08 ? 9 : 8, 0, 2.4 / Math.sqrt(DF) * 1.2, 4);   // borda do ladrilho fora do contorno: areia/grama
         else S.pt([px, -.12, pz], [(R() - .5) * .3, 1, (R() - .5) * .3], 15, 0, .42, 4 | 16);
+      }
+      if (st === 'hub') {   // juncos, pedras e vitórias-régias pela margem
+        if (R() < .35) { const rx = wx + (R() - .5) * 1.8, rz = wz + (R() - .5) * 1.8, ld = hubLakeD(rx, rz); if (ld > .9 && ld < 1.05) for (let k = 0; k < 4; k++) S.cone([rx + (R() - .5) * .3, -.1, rz + (R() - .5) * .3], [rx + (R() - .5) * .4, .6 + R() * .5, rz + (R() - .5) * .4], .035, R() < .3 ? 12 : 10, 0); }
+        if (R() < .18) { const lx = wx + (R() - .5) * 1.6, lz = wz + (R() - .5) * 1.6; if (hubLakeD(lx, lz) < .85) S.ell([lx, -.08, lz], [.3, .02, .28], 10, 0, { keep: d => Math.atan2(d[2], d[0]) < 2.6, min: 14 }); }
+        if (R() < .1) { const ox = wx + (R() - .5) * 1.8, oz = wz + (R() - .5) * 1.8; if (Math.abs(hubLakeD(ox, oz) - 1.02) < .06) S.ell([ox, .05, oz], [.25 + R() * .2, .18, .22], 11, 0); }
       }
       if (st === 'peaks' && R() < .12) emitters.push({ t: 'lava', x: wx, y: 0, z: wz });
       if (st === 'swamp') {
@@ -585,6 +624,14 @@ function buildWorld(key, G) {
     const own = gsave() && gsave().house && gsave().house.owned;
     if (own) { S.tube([[72.4, 0, 46.4, .06, 0], [72.4, 3.2, 46.4, .05, 0]], 12, { sub: 1, flags: 8 }); S.mem([[[72.45, 3.1, 46.4], [73.6, 3.0, 46.4], [72.45, 2.0, 46.4]], [[73.6, 3.0, 46.4], [73.5, 2.0, 46.4], [72.45, 2.0, 46.4]]], p => Math.abs(p[1] - 2.55) < .12 ? 7 : 17, () => 0, { flags: 8 }); for (const sx of [-1, 1]) { S.ell([68.4 + sx * .75, 1.7, 46.05], [.1, .14, .1], 14, 0, { min: 12 }); emitters.push({ t: 'glow', x: 68.4 + sx * .75, y: 1.7, z: 46.1 }); } S.box([68.4, .02, 46.6], [.55, .02, .35], 16, 0, { faces: 't' }); }
     else { S.tube([[70.6, 0, 46.8, .05, 0], [70.6, 1.3, 46.8, .05, 0]], 12, { sub: 1 }); S.box([70.6, 1.3, 46.85], [.45, .28, .04], p => Math.abs((p[0] - 70.6) * .6 - (p[1] - 1.3)) < .05 ? 16 : 11, 0, { faces: 'sn' }); }
+  }
+  if (key === 'hub' && G.hills) for (const h of G.hills) {   // morros gramados com pedras, flores e às vezes uma árvore
+    const wx = (h.x + .5) * T, wz = (h.y + .5) * T, s = h.s;
+    S.ell([wx, -.2, wz], [3.4 * s, 1.5 * s, 3.0 * s], (p, n) => n[1] < .35 ? 12 : vnoise(p[0] * .6, p[2] * .6) > .6 ? 10 : 8, 0, { keep: d => d[1] > 0 });
+    S.ell([wx + .4, 1.1 * s, wz - .3], [1.9 * s, .55 * s, 1.6 * s], 10, 0, { keep: d => d[1] > 0, noCheck: true });
+    for (let k = 0; k < 4; k++) { const a = k * 1.7 + h.x, r = 2.4 * s; S.ell([wx + Math.cos(a) * r, .25, wz + Math.sin(a) * r * .9], [.35, .28, .3], 11, 0); }
+    for (let k = 0; k < 10; k++) { const a = k * 2.4, r = (.6 + (k % 3) * .5) * s; S.ell([wx + Math.cos(a) * r, 1.15 * s + .12, wz + Math.sin(a) * r], .07, [16, 17, 28][k % 3], 0, { min: 6, noCheck: true }); }
+    if (h.tree) tree(wx - .3, wz + .2, 1.0);
   }
   if (key === 'hub') {   // Santuário da Fenda: estrado, círculos de runas, pilares de obsidiana e arco
     const sc = HUB.sanct, [gx, gz] = sc.gate;
