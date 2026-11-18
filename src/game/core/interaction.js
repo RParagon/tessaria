@@ -238,7 +238,7 @@ function loadRegion(key, atCp) {
     { const qb = G.save.q && G.save.q.brann; if (qb && qb.st === 'active' && !qb.p && G.save.ended) inter.push({ kind: 'appletree', x: 25, z: 51.4, r: 2.4 }); }
     { const [gx, gz] = HUB.sanct.gate; inter.push({ kind: 'riftportal', x: gx, z: gz, r: 3, y: .32, scale: .8, lit: !!G.save.bosses.forest, model: getModel('riftgate'), anim: newAnim(getModel('riftgate')), yaw: 0 }); }   // no Santuário da Fenda
     ensureContracts();
-    for (const p of HUB.portals) { const [lit, lock] = portalState(p.to); inter.push({ kind: 'portal', to: p.to, x: p.x, z: p.z, r: 2.2, lit, lock, model: getModel('portal'), anim: newAnim(getModel('portal')), yaw: p.yaw || 0 }); }
+    for (const p of HUB.portals) { const [lit, lock] = portalState(p.to); const mk = PORTAL_FX[p.to] !== undefined ? 'portal_' + p.to : 'portal'; inter.push({ kind: 'portal', to: p.to, x: p.x, z: p.z, r: 2.2, lit, lock, model: getModel(mk), anim: newAnim(getModel(mk)), yaw: p.yaw || 0 }); }   // um estilo por destino
     for (const n of NPCS) { const m = makeModel('npc-' + n.id, () => buildHumanoid(n.cfg, 32 + NPCS.indexOf(n) * 8)); npcs.push({ ...n, model: m, anim: newAnim(m), yaw: n.baseYaw || 0, talkT: 0, visible: n.id !== 'desf' || (G.save.bosses.forest && (!G.save.ended || G.save.ended === 'B')) }); }
     spawnCritters();
     // Bairro Leste: Bardo, bancos da fogueira, ponto de pesca e bonecos de treino

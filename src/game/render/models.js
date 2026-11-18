@@ -524,6 +524,42 @@ function buildRiftGate() {
   S.cone([0, 4.6, 0], [0, 5.5, 0], .3, 151, 0); S.cone([0, 4.6, 0], [0, 4.1, 0], .3, 151, 0);   // cristal no topo
   return { bones, data: S.build() };
 }
+/** Portais da vila, um estilo por destino (anel no plano XY, de frente para Z). */
+const PORTAL_FX = { forest: 26, crypt: 31, peaks: 27, swamp: 26, wilds: 30, glass: 150 };   // cor das faíscas de cada portal
+function buildPortalStyle(to) {
+  const S = new SplatSet(70 + to.length, 900), bones = [{ p: -1, v: [0, 0, 0] }], R = rng(to.length * 7 + 3);
+  const ringPts = (n, rx, ry, cy, r, jit = 0) => { const p = []; for (let i = 0; i < n; i++) { const a = i / n * 6.283; p.push([Math.cos(a) * rx + (R() - .5) * jit, cy + Math.sin(a) * ry + (R() - .5) * jit, (R() - .5) * jit * .5, r * (1 + (R() - .5) * jit), 0]); } return p; };
+  if (to === 'forest') {   // raízes e galhos trançados, copa de folhas e flores
+    S.tube(ringPts(20, 1.3, 1.55, 1.55, .17, .12), 12, { closed: true, sub: 3, noSolid: true });
+    for (let i = 0; i < 9; i++) { const a = .3 + i / 8 * 2.54; S.ell([Math.cos(a) * 1.4, 1.6 + Math.sin(a) * 1.7, (R() - .5) * .3], [.5, .38, .42], 13, 0, { keep: d => d[1] > -.4 }); }
+    for (const sx of [1, -1]) for (let k = 0; k < 3; k++) S.cone([sx * 1.2, .35, 0], [sx * (1.6 + k * .3), 0, (k - 1) * .5], .14, 12, 0);
+    for (let k = 0; k < 8; k++) { const a = .5 + k * .3; S.ell([Math.cos(a) * 1.55, 1.6 + Math.sin(a) * 1.85, .25], .07, k % 2 ? 16 : 17, 0, { noSolid: true, noCheck: true, min: 6 }); }
+    S.ell([0, 3.25, .1], .16, 26, 0, { noSolid: true });
+  } else if (to === 'crypt') {   // arco de pedra e ossos com caveiras e velas
+    S.tube(ringPts(18, 1.25, 1.5, 1.5, .2), (p) => frac((Math.atan2(p[1] - 1.5, p[0]) + 3.2) * 2.2) < .15 ? 29 : 11, { closed: true, sub: 3, noSolid: true });
+    for (const a of [1.57, .7, 2.44]) { const x = Math.cos(a) * 1.28, y = 1.5 + Math.sin(a) * 1.55; S.ell([x, y, .12], [.2, .2, .18], 28, 0); for (const s of [1, -1]) S.ell([x + s * .07, y + .02, .3], [.045, .05, .02], 29, 0, { noSolid: true, noCheck: true, min: 6 }); }
+    for (const sx of [1, -1]) { S.tube([[sx * 1.15, 0, .25, .05, 0], [sx * 1.15, .35, .25, .05, 0]], 28, { sub: 1 }); S.ell([sx * 1.15, .42, .25], .05, 20, 0, { noSolid: true, noCheck: true, min: 6 }); for (let k = 0; k < 3; k++) S.tube([[sx * (1.0 + k * .15), .05, -.2 + k * .2, .03, 0], [sx * (1.3 + k * .1), .1, -.1 + k * .2, .03, 0]], 28, { sub: 1, noSolid: true }); }
+  } else if (to === 'peaks') {   // basalto pontiagudo com rachaduras de lava
+    S.tube(ringPts(16, 1.3, 1.55, 1.55, .24, .16), (p, n) => R() < .12 ? 21 : 29, { closed: true, sub: 3, noSolid: true });
+    for (let i = 0; i < 7; i++) { const a = .4 + i / 6 * 2.34; S.cone([Math.cos(a) * 1.4, 1.55 + Math.sin(a) * 1.7, 0], [Math.cos(a) * 2.1, 1.55 + Math.sin(a) * 2.5, (R() - .5) * .3], .15, 29, 0); }
+    for (const sx of [1, -1]) S.ell([sx * 1.3, .3, 0], [.5, .35, .45], (p) => p[1] < .12 ? 21 : 29, 0);
+  } else if (to === 'swamp') {   // madeira afogada com musgo pendurado e juncos
+    S.tube(ringPts(18, 1.25, 1.5, 1.5, .18, .14), 19, { closed: true, sub: 3, noSolid: true });
+    for (let i = 0; i < 10; i++) { const a = .25 + i / 9 * 2.64, x = Math.cos(a) * 1.25, y = 1.5 + Math.sin(a) * 1.5; S.tube([[x, y, .1, .05, 0], [x + (R() - .5) * .1, y - .4 - R() * .5, .12, .015, 0]], 10, { sub: 2, noSolid: true }); }
+    for (const sx of [1, -1]) for (let k = 0; k < 5; k++) S.cone([sx * (1.3 + R() * .5), 0, (R() - .5) * .8], [sx * (1.3 + R() * .6), .8 + R() * .6, (R() - .5) * .8], .04, k % 2 ? 10 : 12, 0);
+    S.ell([0, 3.05, .1], .12, 26, 0, { noSolid: true });
+  } else if (to === 'wilds') {   // arco de pedra em blocos, bandeira e lampião
+    S.tube(ringPts(16, 1.3, 1.55, 1.55, .21), (p) => frac((Math.atan2(p[1] - 1.55, p[0]) + 3.2) * 2.4) < .12 ? 9 : 11, { closed: true, sub: 3, noSolid: true });
+    S.box([0, 3.2, .05], [.3, .18, .2], 11, 0);
+    S.mem([[[-.35, 3.0, .26], [.35, 3.0, .26], [0, 2.2, .27]]], 16, () => 0);   // bandeira
+    S.ell([1.05, 2.6, .3], .09, 14, 0, { noSolid: true, noCheck: true, min: 8 }); S.tube([[1.05, 2.9, .3, .01, 0], [1.05, 2.7, .3, .01, 0]], 12, { sub: 1, noSolid: true });
+    for (const sx of [1, -1]) for (let k = 0; k < 6; k++) S.cone([sx * (1.1 + R() * .5), 0, (R() - .5) * .6], [sx * (1.1 + R() * .5), .3 + R() * .2, (R() - .5) * .6], .05, k % 3 ? 8 : 13, 0);
+  } else if (to === 'glass') {   // prismas de cristal em volta
+    for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283, x = Math.cos(a) * 1.3, y = 1.55 + Math.sin(a) * 1.55; S.cone([x, y, 0], [x + Math.cos(a) * .55, y + Math.sin(a) * .55, (R() - .5) * .2], .16, i % 3 ? 28 : 150, 0); S.ell([x, y, 0], .14, 150, 0, { noSolid: true }); }
+  }
+  for (const sx of [1, -1]) S.box([sx * 1.25, .15, 0], [.38, .15, .38], to === 'peaks' ? 29 : 11, 0);
+  return { bones, data: S.build() };
+}
 function buildBoar() {
   const S = new SplatSet(95, 650), bones = [{ p: -1, v: [0, 0, 0] }, { p: 0, v: [0, .55, 0] }, { p: 1, v: [0, .62, .5] }];
   S.ell([0, .6, -.05], [.42, .4, .66], (p, n) => n[1] < -.4 ? 17 : 16, 1);

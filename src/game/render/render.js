@@ -180,7 +180,7 @@ function render(dt) {
         for (let k = 0; k < 7; k++) { const a = t * .45 + k / 7 * 6.283, y = cy + .4 + Math.sin(t * 1.3 + k) * .5, px = it.x + Math.cos(a) * 3.1, pz = it.z + Math.sin(a) * 1.6; dyn(px, y, pz, .4, 29, .15); dyn(px, y + .13, pz, .3, 29, .1); dyn(px, y + .24, pz, .3, 29, .06); if (it.lit) dyn(px, y + .06, pz, .9, 151, .06); /* estilhaços finos */ }
         if (it.lit && Math.random() < .2) spawn({ x: it.x + rr(-3, 3), y: .1, z: it.z + rr(-2, 2), vy: rr(.4, 1), life: rr(1, 1.8), s0: .07, s1: .02, b0: 1, b1: .1, mat: 151 });
       }
-      if (it.kind === 'portal' && it.lit) { for (let i = 0; i < 3; i++) { const a = rr(0, 6.28), r = rr(0, 1.05); spawn({ x: it.x + Math.cos(a) * r * Math.cos(it.yaw || 0), y: 1.5 + Math.sin(a) * r * 1.3, z: it.z + rr(-.1, .1) - Math.cos(a) * r * Math.sin(it.yaw || 0), vx: -Math.sin(a) * .8 * Math.cos(it.yaw || 0), vz: Math.sin(a) * .8 * Math.sin(it.yaw || 0), vy: Math.cos(a) * .8, life: .5, s0: .12, s1: .03, b0: 1, b1: .2, mat: it.kind === 'riftportal' ? 122 : it.to === 'hub' ? 30 : 31 }); } }
+      if (it.kind === 'portal' && it.lit) { for (let i = 0; i < 3; i++) { const a = rr(0, 6.28), r = rr(0, 1.05); spawn({ x: it.x + Math.cos(a) * r * Math.cos(it.yaw || 0), y: 1.5 + Math.sin(a) * r * 1.3, z: it.z + rr(-.1, .1) - Math.cos(a) * r * Math.sin(it.yaw || 0), vx: -Math.sin(a) * .8 * Math.cos(it.yaw || 0), vz: Math.sin(a) * .8 * Math.sin(it.yaw || 0), vy: Math.cos(a) * .8, life: .5, s0: .12, s1: .03, b0: 1, b1: .2, mat: it.kind === 'riftportal' ? 122 : RG && RG.key === 'hub' && PORTAL_FX[it.to] !== undefined ? PORTAL_FX[it.to] : it.to === 'hub' ? 30 : 31 }); } }
     }
     for (const e of enemies) {
       if (Math.abs(e.x - tgt[0]) > 30 || Math.abs(e.z - tgt[2]) > 26) continue;
@@ -270,7 +270,7 @@ function collectTargets() {
 }
 /* ---------- ícones 3D: modelos de splats desenhados uma vez numa textura pequena e lidos como imagem ---------- */
 const ICON_DEFS = {
-  sword: S => { S.tube([[-.42, -.42, 0, .03, 0], [.38, .38, 0, .005, 0]], 143, { sx: 2.4, sy: .5, sub: 3, noSolid: true }); S.tube([[-.42, -.42, 0, .03, 0], [.3, .3, 0, .004, 0]], 28, { sx: .5, sy: .5, sub: 2, noSolid: true });
+  sword: S => { S.tube([[-.42, -.42, 0, .03, 0], [.38, .38, 0, .005, 0]], 28, { sx: 2.4, sy: .5, sub: 3, noSolid: true }); S.tube([[-.42, -.42, 0, .03, 0], [.3, .3, 0, .004, 0]], 28, { sx: .5, sy: .5, sub: 2, noSolid: true });
     S.tube([[-.5, -.28, 0, .045, 0], [-.28, -.5, 0, .045, 0]], 14, { sub: 2, noSolid: true }); S.tube([[-.45, -.45, 0, .035, 0], [-.62, -.62, 0, .035, 0]], 12, { sub: 1, noSolid: true }); S.ell([-.66, -.66, 0], .06, 14, 0, { noSolid: true }); },
   staff: S => { S.tube([[-.6, -.62, 0, .035, 0], [.3, .32, 0, .03, 0]], 12, { sub: 2, noSolid: true }); S.cone([.38, .4, 0], [.62, .64, 0], .13, 151, 0); S.cone([.38, .4, 0], [.24, .26, 0], .13, 151, 0);
     for (const s of [1, -1]) S.cone([.28, .3, 0], [.34 + s * .12, .44 - s * .12, 0], .03, 14, 0); S.ell([.4, .42, 0], .2, 151, 0, { noSolid: true, dm: .25, size: .7 }); },
@@ -280,7 +280,7 @@ const ICON_DEFS = {
   fire: S => { for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283, r = .2 + i * .028; S.ell([Math.cos(a) * r, Math.sin(a) * r * .9, 0], .1 + i * .006, i % 3 ? 27 : 21, 0, { noSolid: true, noCheck: true }); } S.ell([0, 0, 0], .16, 21, 0, { noSolid: true }); },
   nova: S => { S.ell([0, 0, 0], .2, 151, 0, { noSolid: true }); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283, l = i % 2 ? .45 : .68; S.cone([Math.cos(a) * .15, Math.sin(a) * .15, 0], [Math.cos(a) * l, Math.sin(a) * l, 0], .08, i % 2 ? 151 : 30, 0); } },
   rain: S => { for (const [x, y] of [[-.35, .3], [.05, .45], [.35, .05], [-.1, -.2]]) { S.tube([[x - .18, y + .28, 0, .018, 0], [x + .1, y - .2, 0, .018, 0]], 28, { sub: 1, noSolid: true }); S.cone([x + .08, y - .16, 0], [x + .16, y - .3, 0], .05, 150, 0); } },
-  potion: S => { S.ell([0, -.18, 0], [.38, .38, .38], (p) => p[1] < -.12 ? 16 : 143, 0); S.tube([[0, .15, 0, .12, 0], [0, .38, 0, .11, 0]], 143, { sub: 1 }); S.tube([[0, .38, 0, .13, 0], [0, .5, 0, .13, 0]], 12, { sub: 1 }); S.ell([-.14, -.06, .3], [.06, .1, .03], 28, 0, { noSolid: true, noCheck: true }); },
+  potion: S => { S.ell([0, -.18, 0], [.38, .38, .38], (p) => p[1] < -.12 ? 16 : 28, 0); S.tube([[0, .15, 0, .12, 0], [0, .38, 0, .11, 0]], 28, { sub: 1 }); S.tube([[0, .38, 0, .13, 0], [0, .5, 0, .13, 0]], 12, { sub: 1 }); S.ell([-.14, -.06, .3], [.06, .1, .03], 28, 0, { noSolid: true, noCheck: true }); },
   bag: S => { S.ell([0, -.12, 0], [.46, .4, .34], 12, 0); S.ell([0, .2, .05], [.4, .14, .3], 19, 0); S.tube([[-.18, .3, .18, .03, 0], [0, .48, .1, .03, 0], [.18, .3, .18, .03, 0]], 19, { sub: 2, noSolid: true }); S.box([0, .02, .33], [.08, .07, .03], 14, 0, { faces: 's' }); },
   heart: S => { for (const s of [1, -1]) S.ell([s * .2, .15, 0], .28, 16, 0); S.cone([0, .05, 0], [0, -.55, 0], .38, 16, 0, { sx: 1.25, sy: .5, sub: 2 }); S.ell([-.22, .26, .2], [.07, .05, .03], 28, 0, { noSolid: true, noCheck: true }); },
   gold: S => { for (let i = 0; i < 4; i++) { const a = i / 4 * 6.283 + .785; S.cone([0, 0, 0], [Math.cos(a) * .6, Math.sin(a) * .6, 0], .2, 14, 0, { sx: 1, sy: .4 }); } S.ell([0, 0, 0], .2, 14, 0, { noSolid: true }); },

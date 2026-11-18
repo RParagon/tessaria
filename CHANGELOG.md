@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 0.25.0 · Portais com estilo
+- **Cada portal da vila tem a cara do destino:** Bosque Sussurrante (arco de galhos e raízes, copa de folhas e flores, faíscas verdes), Ossuário Real (pedra e ossos com caveiras e velas), Picos de Cinza (basalto pontiagudo com rachaduras de lava e brasas), Pântano (madeira afogada com musgo pendurado e juncos), Ermos (arco de pedra em blocos com bandeira e lampião) e Cidadela de Vidro (prismas de cristal)
+
 ## 0.24.2 · Sem morros decorativos
 - Os morros decorativos da 0.24.0 saíram da vila: eram só montes de grama sem subida. Lagos orgânicos e bordas irregulares continuam
 
