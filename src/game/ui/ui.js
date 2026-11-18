@@ -20,7 +20,7 @@ function setTxt(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textC
 function updateHud() {
   if (!P) return;
   const s = G.save, st = stats();
-  setTxt('#hName', G.char.name); setTxt('#hLv', eloLvl(s) !== s.lvl ? s.lvl + ' → ' + eloLvl(s) + ' ELO' : eloMentor() ? s.lvl + ' MENTOR' : s.lvl);
+  setTxt('#hName', G.char.name); setTxt('#hLv', eloLvl(s) !== s.lvl ? s.lvl + '→' + eloLvl(s) : eloMentor() ? s.lvl + '★' : s.lvl);
   $('#hHp').style.width = clamp(P.hp / P.maxHp, 0, 1) * 100 + '%'; setTxt('#hHpT', `${Math.ceil(P.hp)} / ${P.maxHp}`);
   $('#hXp').style.width = clamp(s.xp / xpNeed(s.lvl), 0, 1) * 100 + '%';
   setTxt('#hGold', s.gold); setTxt('#hPot', s.potions + '/' + st.maxPot); setTxt('#hFrag', s.frags.length + '/9');
@@ -57,7 +57,7 @@ function refreshHudVis() {
   $('#keys').hidden = G.touch; $('#abar').hidden = G.touch;
   { const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); $('#poseBar').hidden = !pv; if (!pv) { G.pvPose = null; G.pvZoom = 1; document.querySelectorAll('#poseBar button').forEach(x => x.classList.remove('on')); } }
 }
-function showOnly(id) { for (const s of ['#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap']) $(s).hidden = s !== id; }
+function showOnly(id) { for (const s of ['#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap']) $(s).hidden = s !== id; }
 function openMenu(which) {
   if (G.mode !== 'play' && !(G.mode === 'dialog' && (which === 'forge' || which === 'shop'))) return;
   $('#dialog').hidden = true; DLG.q = []; DLG.cur = null;
@@ -66,6 +66,7 @@ function openMenu(which) {
   if (which === 'skills') renderSkills(); if (which === 'board') renderBoard(); if (which === 'riftm') renderRiftMenu();
   if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; renderShop(); }
   if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; resetMailOnline(); renderMail(); }
+  if (which === 'profile') renderProfile();
   if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap();
   if (which === 'forge') renderForge(); if (which === 'journal') renderJournal(); if (which === 'pause') renderPause();
   showOnly('#' + which); refreshHudVis();
@@ -352,6 +353,21 @@ function gamble(slot) {
   const st2 = s.st = s.st || {}; st2.gambles = (st2.gambles || 0) + 1; if (rar === 4) st2.legs = (st2.legs || 0) + 1;
   s.inv.push(it); writeSave(); toast(it.name, rar >= 3, 'DO EMBRULHO · ' + RAR[rar].n.toUpperCase(), RAR[rar].c); sfx(rar === 4 ? 'legend' : rar === 3 ? 'epic' : 'open'); if (rar === 4) hitStop(.08);
 }
+/** Perfil do herói (clicar no retrato do HUD): retrato grande, atributos, equipamento e jornada. */
+function renderProfile() {
+  const s = G.save, st = stats(), m = Math.floor((s.time || 0) / 60);
+  try { const A = newAnim(playerModel); $('#pfImg').src = bakeModel(playerModel, A, 96, [.9, 1.6, 4.4], [0, 1.05, 0], .35, 30); } catch (e) { }
+  $('#pfName').textContent = G.char.name;
+  $('#pfSub').textContent = `${CLS[G.char.cls].label} · Nível ${s.lvl} · ${curDiff().n}` + (eloLvl(s) !== s.lvl ? ` · conta como ${eloLvl(s)} (Fio de Elo)` : '');
+  const need = xpNeed(s.lvl), pct = Math.min(100, Math.round((s.xp / need) * 100)); $('#pfXp').style.width = pct + '%'; $('#pfXpT').textContent = `XP ${Math.floor(s.xp)} / ${need} (${pct}%)`;
+  $('#pfStats').innerHTML = [['Vida', P ? P.maxHp : st.maxHp], ['Dano', Math.round(st.dmg)], ['Crítico', Math.round((st.crit || 0) * 100) + '%'], ['Defesa', Math.round((st.def || 0) * 100) + '%'], ['Vampirismo', Math.round((st.leech || 0) * 100) + '%'], ['Poções', s.potions + '/' + st.maxPot]].map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('');
+  $('#pfEq').innerHTML = ['weapon', 'armor', 'charm'].map(k => { const it = s.eq[k]; return `<div class="row"><img src="${icon(k === 'weapon' ? CLSICON[G.char.cls] : k)}" alt="" style="width:24px;height:24px;image-rendering:pixelated"><span style="color:${it ? RAR[it.rar].c : 'var(--dim)'}">${it ? it.name : 'Vazio'}</span><small>${it ? RAR[it.rar].n + ' · Poder ' + itemScore(it) : SLOTN[k]}</small></div>`; }).join('');
+  $('#pfJourney').innerHTML = [['Tempo de jogo', m + ' min'], ['Monstros', s.kills || 0], ['Quedas', s.deaths || 0], ['Centelhas', s.gold], ['Feitos', (s.feats || []).length + '/' + FEITOS.length], ['Fenda máx.', s.riftMax || 0], ['Peixes', (s.st && s.st.fish) || 0], ['Mapa', hasMap() ? 'Sim' : 'Não']].map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('');
+  $('#pfWard').hidden = !(G.save.house && G.save.house.owned && G.save.house.f.guarda);
+}
+$('#hPortraitB').onclick = () => openMenu('profile');
+$('#pfClose').onclick = () => closeMenus();
+$('#pfWard').onclick = () => { closeMenus(); if (RG && RG.key === 'home') openWardrobe(); else toast('O Guarda-Roupa fica na sua casa', false, 'A LESTE DA FORJA'); };
 function renderJournal() {
   const s = G.save; $('#jQuests').innerHTML = questListHTML();
   const fd = s.feats || []; $('#jFeatN').textContent = `${fd.length}/${FEITOS.length}`;

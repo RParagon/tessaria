@@ -287,7 +287,7 @@ for (const kind of STORES) {
     });
 
     test('dificuldade do grupo: a do líder, limitada à que todos desbloquearam; o Pronto? leva a dificuldade e o nível do líder', async () => {
-      const A = await account(baseSave({ lvl: 20, diff: 3 })), B = await account(baseSave({ lvl: 5 }));
+      const A = await account(baseSave({ lvl: 15, diff: 3 })), B = await account(baseSave({ lvl: 5 }));   // 10 níveis: o limite
       const a = await connect(A), b = await connect(B);
       a.c.send({ t: 'pinvite', name: B.account.name });
       await b.c.waitFor(m => m.t === 'pinvite'); b.c.send({ t: 'paccept', from: A.account.name });
@@ -296,8 +296,24 @@ for (const kind of STORES) {
       const sys = await a.c.waitFor(m => m.t === 'sys' && /Dificuldade do grupo/.test(m.text));
       assert.match(sys.text, /Difícil/); assert.match(sys.text, new RegExp(B.account.name)); assert.match(sys.text, /Mestre/);
       const ea = await a.c.waitFor(m => m.t === 'ienter');
-      assert.equal(ea.diff, 1); assert.equal(ea.lvl, 20);
+      assert.equal(ea.diff, 1); assert.equal(ea.lvl, 15);
       assert.equal((await b.c.waitFor(m => m.t === 'iready')).diff, 1);
+      a.c.close(); b.c.close();
+    });
+
+    test('faixa de nível: mais de 10 níveis do líder não recebe o Pronto? nem entra', async () => {
+      const A = await account(baseSave({ lvl: 25 })), B = await account(baseSave({ lvl: 3 }));
+      const a = await connect(A), b = await connect(B);
+      a.c.send({ t: 'pinvite', name: B.account.name });
+      await b.c.waitFor(m => m.t === 'pinvite'); b.c.send({ t: 'paccept', from: A.account.name });
+      await a.c.waitFor(m => m.t === 'party' && m.party?.members.length === 2);
+      a.c.send({ t: 'iopen', kind: 'rift', L: 2, base: 'forest', aff: [], boss: 'spider' });
+      await b.c.waitFor(m => m.t === 'sys' && /Diferença de nível/.test(m.text));
+      await a.c.waitFor(m => m.t === 'sys' && /Fora da faixa/.test(m.text));
+      const ea = await a.c.waitFor(m => m.t === 'ienter');
+      b.c.send({ t: 'ijoin', inst: ea.inst });
+      await b.c.waitFor(m => m.t === 'sys' && /Diferença de nível|já fechou/.test(m.text));
+      assert.ok(!b.c.msgs.some((m: any) => m.t === 'iready' || m.t === 'ienter'));
       a.c.close(); b.c.close();
     });
 

@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
 import type { Account, Store } from './store/types';
@@ -359,7 +359,14 @@ export class Hub {
     const inst: Instance = { diff, lvl: p.lvl, kills: new Set(), killTokens: KILL_BURST, killRefill: Date.now(), host: 0, id, party: pt, kind, L, base: kind === 'wilds' ? 'wilds' : m.base, aff: aff!.slice(), boss: kind === 'wilds' ? '' : m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
     room.bounds = INST_BOUNDS; room.inst = inst; pt.inst = inst; this.instances.set(id, inst);
     send(p, this.enterMsg(inst));
-    for (const mid of pt.members) if (mid !== p.account.id) this.notify(mid, { t: 'iready', inst: id, kind, L, by: p.account.name, ms: INST_READY_MS, diff });
+    const far: string[] = [];
+    for (const mid of pt.members) {
+      if (mid === p.account.id) continue;
+      const q = this.byAccount.get(mid);
+      if (q && Math.abs(q.lvl - p.lvl) > PARTY_LVL_GAP) { far.push(q.account.name); send(q, { t: 'sys', text: `Diferença de nível grande demais para entrar com ${p.account.name} (máx. ${PARTY_LVL_GAP} níveis). Suba de nível ou jogue com alguém mais perto do seu.` }); continue; }
+      this.notify(mid, { t: 'iready', inst: id, kind, L, by: p.account.name, ms: INST_READY_MS, diff });
+    }
+    if (far.length) send(p, { t: 'sys', text: `Fora da faixa de nível (máx. ${PARTY_LVL_GAP}): ${far.join(', ')} não entra.` });
     this.scheduleClose(inst);   // se ninguém entrar, fecha sozinha
     this.sendParty(pt);
     inc('hub_inst_open');
@@ -368,6 +375,7 @@ export class Hub {
     const inst = this.partyOf.get(p.account.id)?.inst;
     if (!inst || inst.id !== id) return send(p, { t: 'sys', text: 'Essa Fenda já fechou.' });
     if (inst.room.players.size >= INST_CAP && !inst.room.players.has(p.id)) return send(p, { t: 'sys', text: 'A Fenda do grupo está cheia.' });
+    if (Math.abs(p.lvl - inst.lvl) > PARTY_LVL_GAP) return send(p, { t: 'sys', text: `Diferença de nível grande demais (máx. ${PARTY_LVL_GAP} níveis do líder).` });
     send(p, this.enterMsg(inst));
   }
   /** Anfitrião da instância: o líder do grupo, se estiver dentro; senão quem está há mais tempo. */

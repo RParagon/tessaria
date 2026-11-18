@@ -273,8 +273,12 @@ function collectTargets() {
 const ICON_DEFS = {
   sword: S => { S.tube([[-.42, -.42, 0, .03, 0], [.38, .38, 0, .005, 0]], 28, { sx: 2.4, sy: .5, sub: 3, noSolid: true }); S.tube([[-.42, -.42, 0, .03, 0], [.3, .3, 0, .004, 0]], 28, { sx: .5, sy: .5, sub: 2, noSolid: true });
     S.tube([[-.5, -.28, 0, .045, 0], [-.28, -.5, 0, .045, 0]], 14, { sub: 2, noSolid: true }); S.tube([[-.45, -.45, 0, .035, 0], [-.62, -.62, 0, .035, 0]], 12, { sub: 1, noSolid: true }); S.ell([-.66, -.66, 0], .06, 14, 0, { noSolid: true }); },
-  staff: S => { S.tube([[-.6, -.62, 0, .035, 0], [.3, .32, 0, .03, 0]], 12, { sub: 2, noSolid: true }); S.cone([.38, .4, 0], [.62, .64, 0], .13, 151, 0); S.cone([.38, .4, 0], [.24, .26, 0], .13, 151, 0);
-    for (const s of [1, -1]) S.cone([.28, .3, 0], [.34 + s * .12, .44 - s * .12, 0], .03, 14, 0); S.ell([.4, .42, 0], .2, 151, 0, { noSolid: true, dm: .25, size: .7 }); },
+  staff: S => {   // cajado: madeira com anéis dourados, cabeça em meia-lua segurando uma esfera brilhante
+    S.tube([[-.62, -.66, 0, .04, 0], [-.1, -.12, 0, .036, 0], [.22, .22, 0, .034, 0]], 12, { sub: 3, noSolid: true });
+    for (const u of [-.45, -.05]) S.tube([[u - .03, u - .03, 0, .052, 0], [u + .03, u + .03, 0, .052, 0]], 14, { sub: 1, noSolid: true });
+    const hk = []; for (let i = 0; i <= 10; i++) { const a = -.6 + i / 10 * 3.6; hk.push([.42 + Math.cos(a) * .24, .42 + Math.sin(a) * .24, 0, .03 - Math.abs(i - 5) * .002, 0]); } S.tube(hk, 14, { sub: 2, noSolid: true });
+    S.ell([.42, .42, .02], .14, 151, 0, { noSolid: true }); S.ell([.38, .47, .14], [.04, .04, .02], 28, 0, { noSolid: true, noCheck: true });
+    for (const [x, y] of [[.72, .2], [.15, .72], [.7, .7]]) S.ell([x, y, 0], .035, 30, 0, { noSolid: true, noCheck: true, min: 6 }); },
   bow: S => { const p = []; for (let i = 0; i <= 8; i++) { const u = i / 8, a = -1.1 + u * 2.2; p.push([-.15 + Math.cos(a) * .55 - .4, Math.sin(a) * .62, 0, .045 - Math.abs(u - .5) * .04, 0]); } S.tube(p, 12, { sub: 2, noSolid: true });
     S.tube([[-.45, -.55, 0, .01, 0], [-.45, .55, 0, .01, 0]], 28, { sub: 1, noSolid: true }); S.tube([[-.45, 0, 0, .02, 0], [.55, 0, 0, .02, 0]], 28, { sub: 1, noSolid: true }); S.cone([.5, 0, 0], [.7, 0, 0], .07, 11, 0); },
   dash: S => { for (const k of [0, 1]) { const x = -.35 + k * .45; S.tube([[x - .25, .45, 0, .07, 0], [x + .15, 0, 0, .09, 0], [x - .25, -.45, 0, .07, 0]], 150, { sub: 2, noSolid: true }); } },

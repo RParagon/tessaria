@@ -342,8 +342,8 @@ test('Ermos do grupo: o líder abre, os dois chegam ao mesmo mapa e o golpe do a
 test('Fio de Elo: o amigo de nível baixo sobe para perto do líder e o grupo joga na dificuldade que os dois têm', async ({ browser }) => {
   const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
   const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
-  // líder nível 12 no Expert; o amigo fica no nível 1 (só tem o Difícil)
-  await ev(A.page, 'G.save.lvl = 12; G.save.diff = 2; writeSave()');
+  // líder nível 11 no Expert (no limite de 10 níveis de diferença); o amigo fica no nível 1 (só tem o Difícil)
+  await ev(A.page, 'G.save.lvl = 11; G.save.diff = 2; writeSave()');
   await waitSync(A.page); await waitSync(B.page);
   const hpAntes = await ev(B.page, 'stats().maxHp');
   await A.page.evaluate(n => (window as any).TessNet.invite(n), B.name);
@@ -354,9 +354,11 @@ test('Fio de Elo: o amigo de nível baixo sobe para perto do líder e o grupo jo
   for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.RG?.key === 'rift' && (window as any).TessNet.room, null, { timeout: 20_000 });
   expect(await ev(A.page, 'curDiff().n')).toBe('Difícil');
   expect(await ev(B.page, 'curDiff().n')).toBe('Difícil');
-  expect(await ev(B.page, 'eloLvl(G.save)')).toBe(9);
-  expect(await ev(B.page, 'stats().maxHp')).toBe(hpAntes + 80);   // +10 de vida por nível
-  await expect(B.page.locator('#hLv')).toHaveText('1 → 9 ELO');
+  expect(await ev(B.page, 'eloLvl(G.save)')).toBe(8);
+  expect(await ev(B.page, 'stats().maxHp')).toBe(hpAntes + 70);   // +10 de vida por nível
+  await expect(B.page.locator('#hLv')).toHaveText('1→8');
+  // carregado pelo líder: o XP por abate fica limitado (3% do nível, menos com a diferença)
+  expect(await ev(B.page, '(() => { const x0 = G.save.xp; gainXp(5000); return G.save.lvl === 1 && G.save.xp - x0 <= 2; })()')).toBe(true);   // selo do retrato: nível real → nível do Fio de Elo
   // de volta à vila, cada um com a própria dificuldade
   await ev(A.page, "travel('hub')");
   await A.page.waitForFunction(() => (window as any).__T.RG?.key === 'hub', null, { timeout: 20_000 });

@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.28.0 · Perfil do herói e grupo equilibrado
+- **HUD:** o nível agora fica num selo no canto do retrato e o nome tem a linha toda (nomes longos e a dificuldade não se sobrepõem mais)
+- **Perfil:** clique no retrato do HUD para ver o seu herói em tamanho grande, atributos, XP, equipamento e a jornada (tempo de jogo, monstros, quedas, feitos, Fenda máxima, peixes)
+- **Ícone do cajado** redesenhado: madeira com anéis dourados e uma meia-lua segurando a esfera brilhante
+- **Faixa de nível do grupo:** só entra na Fenda e nos Ermos do grupo quem está a até **10 níveis** do líder; quem está fora recebe o aviso, e o líder também (regra no servidor)
+- **XP de quem é carregado:** quando os monstros estão mais de 5 níveis acima do seu, o XP por abate fica limitado a uma fatia pequena do nível (menor quanto maior a diferença). Acabou o "nível 1 ao 14 numa Fenda"
+
 ## 0.27.0 · Mapa do Cartógrafo
 - **O mapa agora é um item:** o **Mapa do Cartógrafo** é vendido pelo Mercador Otto (250 ✦) e, mais caro, pelo Mercador Suspeito dos Ermos (400 ✦). Sem ele não há minimapa; quem já explorava os Ermos ganhou o mapa
 - **Com o mapa:** minimapa em todos os lugares (agora também na vila) e a **tecla M abre o mapa grande** de onde você estiver, com os portais que você já viu
