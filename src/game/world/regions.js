@@ -40,7 +40,7 @@ const REG = {
       { x: 47, y: 10, r: 2.8, frag: 8 }, { x: 28, y: 9, r: 7, kind: 'boss' }],
     links: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [3, 6], [6, 8], [8, 9], [6, 7], [6, 10]] },
   home: { name: 'Casa do Tecelão', sub: 'Seu canto em Tessária', style: 'home', W: 16, H: 13, seed: 77, torch: 14, rooms: [{ x: 8, y: 6.5, w: 5, h: 3.5, shape: 'rect', kind: 'start' }], links: [] },
-  wilds: { name: 'Ermos de Tessária', sub: 'As terras selvagens ao redor da vila', style: 'wilds', W: 300, H: 260, seed: 61, torch: 21, rooms: [], links: [] },
+  wilds: { name: 'Ermos de Tessária', sub: 'As terras selvagens ao redor da vila', style: 'wilds', W: 400, H: 350, seed: 61, torch: 21, rooms: [], links: [] },
   swamp: { name: 'Pântano Afogado', sub: 'Onde as vozes afundam', style: 'swamp', W: 52, H: 42, seed: 41, torch: 21, boss: 'hydra', fio: 'FIO DE ÁGUA',
     rooms: [
       { x: 46, y: 36, r: 3, kind: 'start' }, { x: 36, y: 33, r: 4.5, en: { sapo: 3, afogado: 1 }, pool: true }, { x: 45, y: 24, r: 3.4, en: { afogado: 2, sapo: 1 } },
@@ -148,10 +148,10 @@ function genWilds(key, spec) {
   const set = (x, y, ch) => { if (x < 2 || y < 2 || x >= W - 2 || y >= H - 2) return; grid[y][x] = ch; };
   const road = (x1, y1) => { const dx = x1 - WC.x, dy = y1 - WC.y, L = Math.hypot(dx, dy), ph = R() * 6.28, px = -dy / L, py = dx / L; for (let i = 0; i <= L * 2; i++) { const u = i / (L * 2), w = Math.sin(u * L * .2 + ph) * 2.2 * Math.sin(u * Math.PI), cx = WC.x + dx * u + px * w, cy = WC.y + dy * u + py * w; for (let yy = Math.floor(cy - 2); yy <= cy + 2; yy++) for (let xx = Math.floor(cx - 2); xx <= cx + 2; xx++) { const d = Math.hypot(xx + .5 - cx, yy + .5 - cy); if (d < 1.4) set(xx, yy, ','); else if (d < 2.6 && grid[yy] && grid[yy][xx] !== ',') set(xx, yy, '.'); } } };
   // estradas saindo da vila para todos os lados (ligam os biomas e os obeliscos)
-  road(WC.x, H - 4); road(4, WC.y + 2); road(W - 4, WC.y - 2); road(WC.x + 4, 4); road(22, 18); road(W - 20, H - 18); road(W - 24, 20); road(20, H - 22);
+  road(WC.x, H - 4); road(4, WC.y + 2); road(W - 4, WC.y - 2); road(WC.x + 4, 4); road(30, 24); road(W - 27, H - 24); road(W - 32, 27); road(27, H - 30);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x + .5 - WC.x, y + .5 - WC.y); if (d < 7.2) grid[y][x] = 'V'; else if (d < 10.5 && grid[y][x] !== ',') grid[y][x] = '.'; }
   const rooms = [{ x: WC.x, y: WC.y + 10.2, r: 2.4, kind: 'start' }], ok = (x, y) => { for (let yy = Math.floor(y - 1); yy <= y + 1; yy++) for (let xx = Math.floor(x - 1); xx <= x + 1; xx++) { const c = grid[yy] && grid[yy][xx]; if (c !== '.' && c !== ',') return false; } return true; };
-  for (let t = 0; t < 9000 && rooms.length < 420; t++) {
+  for (let t = 0; t < 16000 && rooms.length < 760; t++) {
     const x = 4 + R() * (W - 8), y = 4 + R() * (H - 8), z = wZone(x, y), ring = wRing(x, y);
     if (Math.hypot(x - WC.x, y - WC.y) < 12 || rooms.some(r => Math.hypot(r.x - x, r.y - y) < 7.5) || !ok(x, y)) continue;
     const pool = WPOOL[z], n = 2 + ring + (z === 7 ? 1 : 0) + Math.floor(R() * 2), en = {}; for (let i = 0; i < n; i++) { const ty = pool[Math.floor(R() * pool.length)]; en[ty] = (en[ty] || 0) + 1; }
@@ -162,7 +162,14 @@ function genWilds(key, spec) {
     const zs = rooms.filter(r => r.zone === z && !r.kind); zs.sort(() => R() - .5);
     const take = n => zs.splice(0, Math.min(n, zs.length));
     take(z === 0 ? 1 : z === 7 ? 0 : 2).forEach(r => { delete r.en; r.kind = 'shrine'; });   // no Ermo Profundo não há santuário nem acampamento
-    if (z !== 7) take(z === 0 ? 1 : 2).forEach((r, k) => { delete r.en; r.kind = 'obelisk'; r.ob = z; r.obId = z * 10 + k; });   // até 2 acampamentos com obelisco por bioma
+    if (z !== 7 && zs.length) {   // até 2 acampamentos com obelisco por bioma, longe um do outro
+      const mid = [22, 65, 120, 0][wRing(zs[0].x, zs[0].y)], band = r => Math.abs(wDist(r.x, r.y) - mid);   // no meio da faixa do bioma, não colado na vila
+      const okB = zs.map((r, i) => [r, i]).filter(([r]) => band(r) < 18), pool = okB.length ? okB : zs.map((r, i) => [r, i]);
+      const ai = pool[0][1], a = zs.splice(ai, 1)[0];
+      const far = zs.map((r, i) => [Math.hypot(r.x - a.x, r.y - a.y) - band(r) * .6, i]).sort((p, q) => q[0] - p[0])[0];
+      const picks = [a]; if (z !== 0 && far && far[0] > 30) picks.push(zs.splice(far[1], 1)[0]);
+      picks.forEach((r, k) => { delete r.en; r.kind = 'obelisk'; r.ob = z; r.obId = z * 10 + k; });
+    }
     if (WZ[z].cave) take(1).forEach(r => { delete r.en; r.kind = 'cave'; });
     take(z === 0 ? 1 : z === 7 ? 5 : 2).forEach(r => { r.alpha = true; r.en[WPOOL[z][0]] = (r.en[WPOOL[z][0]] || 0) + 1; });
     take(1).forEach(r => { r.alpha = true; r.lair = WZ[z].lair; r.en[WZ[z].lair[0]] = (r.en[WZ[z].lair[0]] || 0) + 3; });

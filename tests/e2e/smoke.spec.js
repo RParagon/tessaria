@@ -45,7 +45,7 @@ test('Ermos 2.0: mapa grande com 8 biomas, obelisco, covil com volta na boca e e
   await page.evaluate(() => window.__T.travel('wilds'));
   await page.waitForFunction(() => window.__T.RG.key === 'wilds' && window.__T.ev("G.mode === 'play'"), null, { timeout: 60_000 });
   const info = await ev("({ W: RG.W, H: RG.H, biomas: [...new Set(RG.rooms.filter(r => r.zone !== undefined).map(r => r.zone))].length, obel: RG.rooms.filter(r => r.kind === 'obelisk').length, cav: RG.rooms.filter(r => r.kind === 'cave').length, covis: RG.rooms.filter(r => r.lair).length })");
-  expect(info).toEqual({ W: 300, H: 260, biomas: 8, obel: 13, cav: 7, covis: 8 });   // 1 na Campina, 2 em cada bioma do meio, nenhum no Ermo Profundo
+  expect(info).toEqual({ W: 400, H: 350, biomas: 8, obel: 13, cav: 7, covis: 8 });   // 1 na Campina, 2 em cada bioma do meio, nenhum no Ermo Profundo
   await ev('P.hp = P.maxHp = 1e9');
 
   // o Brejo (bioma 3) não pode dar o feito do Ermo Profundo

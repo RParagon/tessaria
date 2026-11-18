@@ -111,11 +111,11 @@ const WZ = [
   { n: 'Ermo Profundo', lv: 28, c: '#ff5a7a', style: 3, pool: ['urso', 'beetle', 'imp', 'skel', 'aranha', 'fantasma'], lair: ['urso', 'Urso Antigo'], cave: 'glass' },
 ];
 const WPOOL = WZ.map(b => b.pool);
-const WC = { x: 150, y: 130 };
+const WC = { x: 200, y: 175 };   // centro dos Ermos (a vila) no mapa de 400x350
 const TYPELV = { gosmo: 1, wisp: 1, javali: 1, lobo: 2, aranha: 1, thief: 1, skel: 4, bat: 4, urso: 5, imp: 8, beetle: 8, sapo: 13, afogado: 13, sentinela: 16, fantasma: 16 };
-const wDist = (tx, ty) => Math.hypot(tx - WC.x, (ty - WC.y) * 1.15) + (vnoise(tx * .035 + 3, ty * .035 + 7) - .5) * 16;
+const wDist = (tx, ty) => Math.hypot(tx - WC.x, (ty - WC.y) * 1.15) + (vnoise(tx * .03 + 3, ty * .03 + 7) - .5) * 22;
 /** Anel: 0 em volta da vila, 3 na borda. Decide densidade de paredes e quantos monstros por acampamento. */
-const wRing = (tx, ty) => { const d = wDist(tx, ty); return d < 26 ? 0 : d < 60 ? 1 : d < 96 ? 2 : 3; };
+const wRing = (tx, ty) => { const d = wDist(tx, ty); return d < 38 ? 0 : d < 92 ? 1 : d < 148 ? 2 : 3; };   // anéis maiores (Ermos ampliados): biomas do meio mais largos
 /** Bioma (índice em WZ) de um ponto em ladrilhos. */
 const wZone = (tx, ty) => {
   const r = wRing(tx, ty); if (r === 0) return 0; if (r === 3) return 7;
@@ -132,7 +132,7 @@ const WREMAP = [null, null,
   { 8: 155, 9: 155, 10: 156, 11: 156, 23: 155, 25: 156, 21: 158 },// Planalto: cinza, rocha queimada, brasas
   null];
 /** Nível dos monstros num ponto. No Ermo Profundo (bioma 7), sobe com a distância da vila: até +30. */
-const wildLv = (x, z) => { const b = wZone(x / T, z / T), lv = WZ[b].lv; return b === 7 ? lv + Math.min(30, Math.floor(Math.max(0, wDist(x / T, z / T) - 96) * .4)) : lv; };
+const wildLv = (x, z) => { const b = wZone(x / T, z / T), lv = WZ[b].lv; return b === 7 ? lv + Math.min(30, Math.floor(Math.max(0, wDist(x / T, z / T) - 148) * .45)) : lv; };
 /** Acampamentos (zona segura em volta de cada obelisco dos Ermos). */
 const CAMP_R = 10;
 /** Obeliscos despertos (ids z*10+k). Saves antigos guardavam o bioma: viram o primeiro obelisco dele. */

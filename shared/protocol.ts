@@ -22,7 +22,7 @@ export const RIFT_BASES = ['forest', 'crypt', 'peaks', 'swamp', 'glass'] as cons
 export const INST_CAP = 4;                 // jogadores por instância
 export const INST_READY_MS = 20_000;       // tempo do aviso "Pronto?"
 export const INST_EMPTY_MS = 60_000;       // instância vazia fecha depois disso
-export const INST_BOUNDS = { x0: 0, x1: 700, z0: 0, z1: 700 };   // cabe a Fenda e os Ermos (600x520 unidades)
+export const INST_BOUNDS = { x0: 0, x1: 900, z0: 0, z1: 900 };   // cabe a Fenda e os Ermos (800x700 unidades)
 /** Tudo o que define uma Fenda: com os mesmos dados (e a mesma semente), todo jogo gera o mesmo mapa. */
 export const RELAY_PER_SEC = 60;          // mensagens de combate por segundo por jogador (snapshots 10/s + eventos)
 export const RELAY_MAX_BYTES = 24_000;

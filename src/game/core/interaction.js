@@ -286,7 +286,7 @@ function loadRegion(key, atCp) {
   let sx, sz;
   const cp = G.save.cp, arr = G.arrive; if (key !== 'rift') G.arrive = null;   // arrive: voltar na boca da caverna
   if (arr && arr.region === key) { sx = arr.x; sz = arr.z; G.save.cp = { region: key, x: sx, z: sz }; }
-  else if (atCp && cp && cp.region === key) { sx = cp.x; sz = cp.z; }
+  else if (atCp && cp && cp.region === key && !blocked(Math.floor(cp.x / T), Math.floor(cp.z / T)) && cp.x < RG.W * T && cp.z < RG.H * T) { sx = cp.x; sz = cp.z; }   // checkpoint que caiu em parede (mapa mudou): volta ao início
   else if (key === 'hub') { [sx, sz] = HUB.spawn; }
   else if (key === 'home') { sx = 16; sz = 17.6; }
   else { sx = RG.start.wx; sz = RG.start.wz + 1.5; G.save.cp = { region: key, x: sx, z: sz }; }
@@ -327,7 +327,7 @@ const MMW = 96, MMH = 80;   // tamanho da janela do minimapa nos Ermos (em ladri
 function setupMinimap() {
   const cv = $('#mmap'), show = RG && RG.key !== 'home' && hasMap(); cv.hidden = !show; $('#mmapZ').hidden = !show; if (!show) { MM.key = null; return; }
   const W = RG.W, H = RG.H; cv.width = RG.wild ? MMW : W; cv.height = RG.wild ? MMH : H; MM.key = RG; MM.seen = new Uint8Array(W * H); MM.base = new Uint8ClampedArray(W * H * 4);
-  { const st = mapStore(); if (mapKeep(RG.key) && st.mseen[RG.key]) seenDecode(st.mseen[RG.key], MM.seen); }   // o que você já explorou fica no mapa   // Ermos: o canvas é uma janela em volta do herói
+  { const st = mapStore(); st.mseenN = st.mseenN || {}; if (mapKeep(RG.key) && st.mseen[RG.key] && (st.mseenN[RG.key] || (RG.key === 'wilds' ? 78000 : W * H)) === W * H) seenDecode(st.mseen[RG.key], MM.seen); st.mseenN[RG.key] = W * H; }   // o que você já explorou fica no mapa (se o mapa mudou de tamanho, recomeça)   // Ermos: o canvas é uma janela em volta do herói
   const pal = curPal || REGPAL.hub, row = (m, i) => { const r = pal.rows[m]; return r ? r[i] : [90, 90, 90]; };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = RG.grid[y][x], o = (y * W + x) * 4; let col;
