@@ -85,7 +85,8 @@ test('guarda-roupa: móvel da casa troca o visual e vende estilos raros uma vez 
   await page.locator('#cAcc button', { hasText: 'Nenhum' }).click();
   await page.locator('#cAcc button', { hasText: 'Cartola' }).click();   // já comprada: não cobra de novo
   expect(await T(page, () => __T.G.save.spent)).toBe(spent0 + 2000);
+  await page.locator('#cArmor button', { hasText: 'Couro' }).click();   // estilo de armadura grátis
   await page.click('#cGo');
-  expect(await T(page, () => [__T.G.mode, __T.G.save.char.acc, __T.G.save.cos])).toEqual(['play', 'cartola', ['cartola']]);
+  expect(await T(page, () => [__T.G.mode, __T.G.save.char.acc, __T.G.save.cos, __T.G.save.char.armorStyle])).toEqual(['play', 'cartola', ['cartola'], 'couro']);
   expect(errors).toEqual([]);
 });

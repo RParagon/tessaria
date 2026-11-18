@@ -21,6 +21,43 @@ function humBones(bw, full) {
   return B;
 }
 const FA = s => s > 0 ? 10 : 11, SH = s => s > 0 ? 12 : 13;   // antebraço e canela de cada lado
+/** Estilos de armadura (Guarda-Roupa). A raridade continua mandando nas cores (125 metal, 126 brilho) e nos enfeites a mais. */
+function armorStyled(S, sty, ar, bw) {
+  const AM = 125, RN = 126, ring = (y, rx, rz, r, m, b = 2) => { const p = []; for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283; p.push([Math.cos(a) * rx, y, Math.sin(a) * rz, r, b]); } S.tube(p, m, { closed: true, sub: 2, noSolid: true }); };
+  if (sty === 'couro') {   // gibão de couro: tiras cruzadas, fivelas, gola de pele e ombreiras leves
+    S.ell([0, 1.22, .005], [.285 * bw, .31, .21], (p, n) => Math.abs(Math.abs(p[0]) - (1.4 - p[1]) * .55) < .03 && n[2] > .2 ? 3 : 5, 2, { keep: d => d[1] > -.36 });
+    ring(1.47, .16, .15, .06, 5); for (const sx of [1, -1]) { S.ell([sx * .3 * bw, 1.45, 0], [.15, .08, .14], 5, 2, { noCheck: true }); S.ell([sx * .3 * bw, 1.44, .12], .025, 3, 2, { noSolid: true, noCheck: true, min: 6 }); }
+    S.ell([0, 1.2, .215], [.035, .035, .015], 3, 2, { noSolid: true, noCheck: true, min: 8 });
+    if (ar >= 2) for (const sx of [1, -1]) S.tube([[sx * .355 * bw, 1.07, .03, .085, FA(sx)], [sx * .37 * bw, .94, .05, .078, FA(sx)]], 5, { sub: 1, noSolid: true });   // braçadeiras
+    if (ar >= 3) { ring(1.0, .245 * bw, .185, .03, RN, 1); for (const sx of [1, -1]) S.ell([sx * .3 * bw, 1.52, .02], [.12, .02, .1], RN, 2, { noCheck: true, noSolid: true, min: 10 }); }
+    if (ar >= 4) for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; S.cone([Math.cos(a) * .15, 1.5, Math.sin(a) * .14], [Math.cos(a) * .22, 1.62, Math.sin(a) * .2], .04, 5, 2); }   // pelo eriçado
+  } else if (sty === 'placas') {   // placas pesadas: peito com nervuras, ombreiras em camadas, gorjal e saiote de placas
+    S.ell([0, 1.22, .005], [.3 * bw, .32, .225], (p, n) => (Math.abs(p[1] - 1.08) < .025 || Math.abs(p[1] - 1.18) < .02) && n[2] > -.2 ? RN : AM, 2, { keep: d => d[1] > -.36 });
+    S.ell([0, 1.28, .2], [.17 * bw, .14, .05], AM, 2, { noSolid: true });   // peitoral saliente
+    ring(1.49, .155, .145, .05, AM);
+    for (const sx of [1, -1]) {
+      for (let k = 0; k < 3; k++) S.ell([sx * (.31 + k * .02) * bw, 1.47 - k * .07, 0], [.18 - k * .02, .085, .17 - k * .015], k === 0 ? AM : (k === 1 && ar >= 2 ? RN : AM), 2, { noCheck: true });
+      S.box([sx * .15 * bw, .86, .15], [.08, .12, .025], AM, 1, { faces: 'snew' }); S.box([sx * .2 * bw, .86, -.1], [.07, .12, .025], AM, 1, { faces: 'nsew' });   // saiote
+      if (ar >= 2) S.tube([[sx * .355 * bw, 1.08, .03, .092, FA(sx)], [sx * .37 * bw, .93, .05, .085, FA(sx)]], AM, { sub: 1, noSolid: true });
+      if (ar >= 3) S.tube([[sx * .14, .48, .03, .12, SH(sx)], [sx * .14, .22, .02, .108, SH(sx)]], AM, { sub: 1, noSolid: true });
+      if (ar >= 4) S.cone([sx * .34 * bw, 1.54, 0], [sx * .5 * bw, 1.78, -.02], .07, AM, 2);
+    }
+  } else if (sty === 'escamas') {   // cota de escamas: fileiras desencontradas com sulcos escuros, ombreiras de escama
+    const sc = (p, n) => { const a = Math.atan2(p[0], p[2]), row = Math.floor(p[1] * 16); return ((p[1] * 16 - row) < .22 || Math.abs(Math.sin((a * 7 + (row % 2) * 1.57))) < .12) ? 5 : AM; };
+    S.ell([0, 1.2, .005], [.292 * bw, .33, .218], sc, 2, { keep: d => d[1] > -.5 });
+    for (const sx of [1, -1]) S.ell([sx * .31 * bw, 1.44, 0], [.17, .1, .16], sc, 2, { noCheck: true });
+    ring(1.0, .25 * bw, .19, .035, ar >= 3 ? RN : 5, 1);
+    if (ar >= 2) for (const sx of [1, -1]) S.tube([[sx * .355 * bw, 1.07, .03, .088, FA(sx)], [sx * .37 * bw, .93, .05, .08, FA(sx)]], sc, { sub: 1, noSolid: true });
+    if (ar >= 4) for (let i = 0; i < 7; i++) S.cone([0, 1.42 - i * .09, -.21], [0, 1.47 - i * .09, -.3], .04, AM, 2);   // crista nas costas
+  } else if (sty === 'tabardo') {   // tabardo real: armadura por baixo e uma túnica com barra e brasão por cima
+    S.ell([0, 1.22, .005], [.288 * bw, .315, .215], AM, 2, { keep: d => d[1] > -.36 });
+    for (const sz of [1, -1]) S.box([0, 1.02, sz * .228], [.17 * bw, .42, .012], p => Math.abs(Math.abs(p[0]) - .17 * bw) < .03 || p[1] < .66 ? 3 : 2, sz > 0 ? 2 : 2, { faces: sz > 0 ? 's' : 'n', dm: 1.6 });
+    S.box([0, 1.2, .245], [.06, .08, .01], RN, 2, { faces: 's' }); S.box([0, 1.2, .246], [.03, .04, .01], 3, 2, { faces: 's' });   // brasão
+    for (const sx of [1, -1]) { S.ell([sx * .3 * bw, 1.46, 0], [.16, .09, .15], AM, 2, { noCheck: true }); S.mem([[[sx * .2 * bw, 1.52, .1], [sx * .44 * bw, 1.46, .05], [sx * .42 * bw, 1.2, .02]]], 2, () => 2); }   // ombros com pano
+    if (ar >= 2) for (const sx of [1, -1]) S.tube([[sx * .355 * bw, 1.07, .03, .088, FA(sx)], [sx * .37 * bw, .93, .05, .08, FA(sx)]], AM, { sub: 1, noSolid: true });
+    if (ar >= 3) ring(1.86, .262, .25, .02, RN, 3);
+  }
+}
 function buildHumanoid(c, base, hd) {
   let rm = null; if (base) { rm = {}; for (let i = 0; i < 8; i++) rm[i] = base + i; rm[125] = base + 4; rm[126] = base + 6; rm[127] = base + 7; }
   // hd (o seu herói e os outros jogadores): splats menores e mais densos, superfície lisa em vez de "bolinhas"
@@ -118,8 +155,9 @@ function buildHumanoid(c, base, hd) {
   if (c.cape) { S.mem([[[.27 * bw, 1.46, -.17], [-.27 * bw, 1.46, -.17], [.36 * bw, .42, -.38]], [[-.27 * bw, 1.46, -.17], [.36 * bw, .42, -.38], [-.36 * bw, .42, -.38], .08]], 3, p => p[1] > 1.3 ? 2 : p[1] > .86 ? 14 : 15, { dm: 1.3 });
     S.tube([[-.27 * bw, 1.47, -.15, .035, 2], [0, 1.5, -.19, .035, 2], [.27 * bw, 1.47, -.15, .035, 2]], 3, { sub: 3, noSolid: true });   // presilha da capa nos ombros
     for (const sx of [1, -1]) S.ell([sx * .2 * bw, 1.49, -.08], .035, 4, 2, { noSolid: true, noCheck: true, min: 8 }); }
-  const ar = c.armor;
-  if (ar !== undefined && ar !== null && ar >= 0) {
+  const ar = c.armor, sty = c.armorStyle || 'classica';
+  if (ar !== undefined && ar !== null && ar >= 0 && sty !== 'classica') armorStyled(S, sty, ar, bw);
+  else if (ar !== undefined && ar !== null && ar >= 0) {
     const AM = ar >= 2 ? 125 : 5, RN = 126;
     S.ell([0, 1.22, .005], [.29 * bw, .315, .215], (p, n) => (ar >= 3 && Math.abs(p[0]) < .025 && n[2] > .3) ? RN : (ar < 2 && Math.abs(p[0]) < .02 && n[2] > .5 ? 3 : AM), 2, { keep: d => d[1] > -.36 });
     if (ar >= 1) for (const sx of [1, -1]) { S.ell([sx * .3 * bw, 1.46, 0], [.16, .1, .15], AM, 2, { noCheck: true }); if (ar < 2) S.box([sx * .16 * bw, .98, .17], [.06, .07, .04], 5, 1); }

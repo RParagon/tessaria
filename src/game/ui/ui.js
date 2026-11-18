@@ -364,6 +364,7 @@ function renderCreator() {
   optRow('#cGlow', GLOWS.map((g2, i) => ({ color: css(g2[1][2]), label: g2[0], value: i })), 'glow', true);
   optRow('#cAcc', ACCS.map(a => ({ label: a[1], value: a[0] })).concat(W ? RARE_ACCS.map(a => ({ label: a[1], value: a[0], cost: a[2] })) : []), 'acc');
   optRow('#cBeard', BEARDS.map(b => ({ label: b[1], value: b[0] })), 'beard');
+  $('#cArmorF').hidden = !W; if (W) { if (!G.char.armorStyle) G.char.armorStyle = 'classica'; optRow('#cArmor', ARMOR_STYLES.map(a => ({ label: a[1], value: a[0], cost: a[2] })), 'armorStyle'); $('#cArmorHint').hidden = !!(G.save.eq && G.save.eq.armor); }
   $('#cCape').checked = G.char.cape;
 }
 let rebuildTimer = 0;

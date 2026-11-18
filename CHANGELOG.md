@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.22.0 · Estilos de armadura
+- **Estilo da armadura no Guarda-Roupa:** Clássica e Couro (grátis), Placas (1200 ✦), Escamas (1500 ✦) e Tabardo real (1800 ✦), comprados uma vez. A raridade da peça continua dando a cor do metal e do brilho e os enfeites a mais (braçadeiras, grevas, gorjal, espinhos, diadema):
+  - **Couro:** gibão com tiras cruzadas e fivelas, gola de pele e ombreiras leves;
+  - **Placas:** peito com nervuras e placa saliente, ombreiras em três camadas, gorjal e saiote de placas;
+  - **Escamas:** cota de escamas desencontradas com sulcos escuros, ombreiras de escama e crista nas costas nas lendárias;
+  - **Tabardo real:** túnica por cima da armadura, com barra, brasão no peito e pano nos ombros
+- Os outros jogadores veem o seu estilo (o servidor repassa o estilo no visual)
+
 ## 0.21.0 · Santuário da Fenda, pesca do Ivo e sentar de verdade
 - **Santuário da Fenda:** a Fenda do Tear ganhou uma praça própria ao sul do Bairro Leste, com entrada pelo oeste sob um arco de obsidiana, piso de pedra, dois círculos de runas violeta, pilares com garras e chama violeta e um estrado. O **portal novo é sombrio**: anel de pedra escura e irregular, garras, um redemoinho violeta com braços pretos girando, estilhaços em órbita e centelhas subindo. Ao voltar da Fenda, você chega no santuário
 - **Missão "A Vara do Ivo":** o Pescador Ivo se mudou para o lago do Bairro Leste. Ache 4 minhocas-de-brasa (brilham no chão perto das casas, do lago e da arena) e ele te dá a vara. Sem a vara não dá para pescar; quem já tinha pescado antes fica com ela

@@ -11,7 +11,7 @@ const rslots = Array.from({ length: RSLOTS }, () => ({ id: 0, key: '', model: nu
 /** Aparência pública do próprio herói (o que os outros veem). */
 function lookOfPlayer() {
   const eq = (G.save && G.save.eq) || {};
-  return { cls: G.char.cls, body: G.char.body, skin: G.char.skin, hair: G.char.hair, hairCol: G.char.hairCol, outfit: G.char.outfit, trim: G.char.trim, glow: G.char.glow, acc: G.char.acc, cape: !!G.char.cape, beard: G.char.beard || 'nenhuma', armor: eq.armor ? eq.armor.rar : null, charm: eq.charm ? eq.charm.rar : null, wr: eq.weapon ? eq.weapon.rar : 0 };
+  return { cls: G.char.cls, body: G.char.body, skin: G.char.skin, hair: G.char.hair, hairCol: G.char.hairCol, outfit: G.char.outfit, trim: G.char.trim, glow: G.char.glow, acc: G.char.acc, cape: !!G.char.cape, beard: G.char.beard || 'nenhuma', armorStyle: G.char.armorStyle || 'classica', armor: eq.armor ? eq.armor.rar : null, charm: eq.charm ? eq.charm.rar : null, wr: eq.weapon ? eq.weapon.rar : 0 };
 }
 
 // ---------- ganchos chamados pelo jogo ----------
@@ -79,7 +79,7 @@ function netTick(dt) {
 }
 
 // ---------- jogadores remotos ----------
-function lookKey(l) { return [l.cls, l.body, l.skin, l.hair, l.hairCol, l.outfit, l.trim, l.glow, l.acc, l.cape ? 1 : 0, l.beard, l.armor, l.charm, l.wr].join('|'); }
+function lookKey(l) { return [l.cls, l.body, l.skin, l.hair, l.hairCol, l.outfit, l.trim, l.glow, l.acc, l.cape ? 1 : 0, l.beard, l.armor, l.charm, l.wr, l.armorStyle].join('|'); }
 function buildRemoteModel(slot, look) {
   const cfg = { ...look, seed: 11 + slot, armor: look.armor ?? undefined, charm: look.charm ?? undefined };
   const rows = charRows(cfg); for (let i = 0; i < 8; i++) REMOTE_ROWS[RBASE + slot * 8 + i] = rows[i];

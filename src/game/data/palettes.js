@@ -41,6 +41,8 @@ const ACCS = [['nenhum', 'Nenhum'], ['capuz', 'Capuz'], ['chapeu', 'Chapéu'], [
 // estilos raros: só no Guarda-Roupa da casa, comprados uma vez com Centelhas (ficam em save.cos)
 const RARE_ACCS = [['flor', 'Flor no cabelo', 500], ['oculos', 'Óculos redondos', 600], ['orelhas', 'Orelhas de elfo', 800], ['aureola', 'Auréola', 1500], ['cartola', 'Cartola', 2000]];
 const RARE_HAIR = [['trancas', 'Tranças', 1000]];
+// estilos de armadura (só aparecem com uma armadura equipada): os dois primeiros grátis, os outros comprados uma vez
+const ARMOR_STYLES = [['classica', 'Clássica'], ['couro', 'Couro'], ['placas', 'Placas', 1200], ['escamas', 'Escamas', 1500], ['tabardo', 'Tabardo real', 1800]];
 const BEARDS = [['nenhuma', 'Liso'], ['barba', 'Barba'], ['bigode', 'Bigode'], ['cavanhaque', 'Cavanhaque']];
 const BODIES = [['Esguio'], ['Médio'], ['Robusto']];
 function charRows(c) {
