@@ -6,7 +6,7 @@
 // Convidados: os inimigos e o chefe são cópias desenhadas a partir do estado; os acertos vão para o
 // anfitrião (gx), que aplica o dano. Cada jogo dá o próprio XP e o próprio loot quando um inimigo cai.
 
-const COOP = { nseq: 0, acc: 0, proxies: new Map(), byNid: new Map(), remoteHit: false, sew: null, wipeT: 0 };
+const COOP = { nseq: 0, acc: 0, proxies: new Map(), byNid: new Map(), remoteHit: false, sew: null, wipeT: 0, noItems: false };
 // Mesmos valores de shared/protocol.ts (o jogo ainda não importa módulos).
 const CO_HP = [1, 1, 1.75, 2.5, 3.25], CO_DMG = [1, 1, 1.1, 1.15, 1.2], CO_DOWN = 15, CO_SEW = 3, CO_SEW_HP = .3, CO_SHARE = 30;
 /** Jogadores na instância (este e os da sala), de 1 a 4. */
@@ -111,7 +111,7 @@ function coopTick(dt) {
     b: boss ? [boss.type, coopPack(boss)] : null,
   });
 }
-function coopKilled(e) { const n = coopNet(); if (n && n.isHost && e.nid) n.hx({ k: 'k', nid: e.nid }); }
+function coopKilled(e) { const n = coopNet(); if (n && n.isHost && e.nid) { n.hx({ k: 'k', nid: e.nid }); n.ikill(e.nid, !!e.elite, !!e.thief, e.x, e.z); } }
 function coopBossStart(rm) {
   const n = coopNet(); if (!n || !n.isHost) return;
   const m = CO_HP[coopCount()] || 1; if (boss && m > 1) { boss.hp = Math.round(boss.hp * m); boss.maxHp = Math.round(boss.maxHp * m); updateBossBar(); }
@@ -179,8 +179,7 @@ function coopReward(e) {
   G.save.kills++;
   dropGold(e.x, e.z, e.def.gold + Math.floor(rr(0, 3)));
   if (Math.random() < .07) pickups.push({ kind: 'heart', x: e.x, y: .5, z: e.z, vx: 0, vy: 3, vz: 0, t: 0 });
-  if (Math.random() < .08 * stats().itemFind) dropItem(e.x, e.z, rollRar(G.rift && G.rift.L >= 4 ? 1 : 0));
-  const n0 = tels.length; onEnemyKilled(e); tels.length = n0;   // explosões chegam do anfitrião, não duplica
+  const n0 = tels.length; COOP.noItems = true; try { onEnemyKilled(e); } finally { COOP.noItems = false; } tels.length = n0;   // explosões chegam do anfitrião; itens, do servidor
 }
 
 // ---------- mensagens ----------
@@ -217,7 +216,16 @@ function coopHost(isHost) {
   for (const e of enemies) { if (isHost) { if (e.proxy) { e.proxy = false; if (e.tx !== undefined) { e.x = e.tx; e.z = e.tz; } } } else if (!e.proxy) { e.proxy = true; if (e.nid) COOP.byNid.set(e.nid, e); } }
   if (boss) boss.proxy = !isHost;
 }
-if (window.TessGame) Object.assign(window.TessGame, { coopMsg, coopHost });
+/** Itens sorteados pelo servidor para este jogador (Fenda do grupo): caem no chão como qualquer drop. */
+function coopLoot(m) {
+  if (!P || !Array.isArray(m.items)) return;
+  for (const it of m.items) {
+    if (!it || !it.id || !['weapon', 'armor', 'charm'].includes(it.slot)) continue;
+    if (it.rar === 4) { sfx('legend'); toast('ITEM LENDÁRIO!', true, 'um brilho dourado no chão'); } else if (it.rar === 3) sfx('epic');
+    pickups.push({ kind: 'item', item: it, x: m.x + rr(-1, 1), y: .8, z: m.z + rr(-1, 1), vx: rr(-1.5, 1.5), vy: 4.5, vz: rr(-1.5, 1.5), t: 0 });
+  }
+}
+if (window.TessGame) Object.assign(window.TessGame, { coopMsg, coopHost, coopLoot });
 
 // ---------- Caído e Costurar ----------
 /** A vida zerou: com algum companheiro de pé na Fenda, fica Caído em vez de morrer. */

@@ -1,8 +1,6 @@
-// Regras de itens compartilhadas com o servidor.
-// ESPELHAM o gerador do jogo (src/game/data/items.js: RAR, AFF_BASE, affPool,
-// makeItem, reforge e o aprimoramento). Se mudar lá, mude aqui. O teste
-// tests/e2e/online.spec.js gera centenas de itens no jogo e confere que todos
-// passam por estas regras, para pegar qualquer divergência.
+// Itens: o gerador e as regras, num lugar só, usados pelo jogo (via window.TessItems,
+// ver src/items-bridge.ts) e pelo servidor (validação do save e loot da Fenda do grupo).
+// O teste "itens gerados pelo jogo passam pelas regras do servidor" confere os dois lados.
 
 export type Slot = 'weapon' | 'armor' | 'charm';
 export type Stat = 'dmg' | 'hp' | 'crit' | 'spd' | 'cdr' | 'ls' | 'dr' | 'gold';
@@ -63,4 +61,66 @@ export function itemProblems(it: unknown, maxTier = 40): string[] {
     if (v > cap) p.push(`${k}=${v} acima do máximo ${cap.toFixed(1)}`);
   }
   return p;
+}
+
+// ---------- gerador ----------
+export type Rng = () => number;
+export const SLOTS: Slot[] = ['weapon', 'armor', 'charm'];
+export const RAR_AFF = [0, 1, 1.5, 2, 3];               // afixos por raridade (parte fracionária = chance de mais um)
+export const WNAMES: Record<string, string[]> = { lamina: ['Espada', 'Gládio', 'Montante', 'Sabre'], arcano: ['Cajado', 'Varinha', 'Cetro', 'Bastão'], arco: ['Arco curto', 'Arco longo', 'Arco recurvo', 'Arco de caça'] };
+export const ANAMES = ['Túnica', 'Cota', 'Manto', 'Couraça', 'Gibão'];
+export const CNAMES = ['Amuleto', 'Anel', 'Relíquia', 'Talismã', 'Broche'];
+export const SUFX: Record<number, string[]> = { 1: ['de Musgo', 'Sussurrante', 'de Raiz', 'do Bosque'], 2: ['de Osso', 'Real', 'Fúnebre', 'do Ossuário'], 3: ['de Brasa', 'Cinzento', 'Escaldante', 'dos Picos'], 4: ['do Lodo', 'Afogado', 'de Junco', 'do Pântano'], 5: ['de Vidro', 'Espelhado', 'Prismático', 'da Cidadela'] };
+export const LEGS: { weapon: Record<string, [string, string]>; armor: Array<[string, string]>; charm: Array<[string, string]> } = {
+  weapon: { lamina: ['Lâmina do Sol Partido', 'sol'], arcano: ['Cajado da Última Brasa', 'ultbrasa'], arco: ['Arco das Mil Agulhas', 'agulhas'] },
+  armor: [['Couraça do Guardião', 'guardiao'], ['Manto do Desfiado', 'desfiado']],
+  charm: [['Maçã de Âmbar', 'maca'], ['Coroa de Morgrave', 'coroa']],
+};
+export const STARTER_NAME: Record<string, string> = { lamina: 'Espada de treino', arcano: 'Cajado de treino', arco: 'Arco de treino' };
+export const affPool = (slot: Slot) => AFF_POOL[slot];
+const pickR = <T>(rng: Rng, a: T[]): T => a[Math.floor(rng() * a.length)];
+const clampN = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+const newId = (rng: Rng) => rng().toString(36).slice(2, 9).padEnd(7, '0');
+
+/** Gera um item. O mesmo código no jogo e no servidor. */
+export function makeItem(slot: Slot, tier: number, rar: number, cls: string, rng: Rng = Math.random, starter = false, id?: string): Item {
+  const m = RAR_M[rar] ?? 1, k = m * (.7 + tier * .35);
+  const it: Item = { id: id ?? newId(rng), slot, rar, tier, st: {}, cls, name: '' };
+  if (slot === 'weapon') it.st.dmg = Math.round(7 * k + rng() * 3);
+  if (slot === 'armor') it.st.hp = Math.round(12 * k + rng() * 5);
+  const pool = AFF_POOL[slot], af = RAR_AFF[rar] ?? 0;
+  let n = Math.floor(af) + (rng() < af % 1 ? 1 : 0); if (slot === 'charm') n = Math.max(1, n + 1);
+  if (starter) n = 0;
+  const pl = pool.slice().sort(() => rng() - .5).slice(0, Math.min(n, pool.length));
+  for (const a of pl) it.st[a] = (it.st[a] || 0) + Math.max(1, Math.round(AFF_BASE[a] * (.6 + .4 * m) * (.8 + .25 * tier) * (.8 + rng() * .4)));
+  if (starter) it.name = STARTER_NAME[cls] ?? 'Arma de treino';
+  else if (rar === 4) { const L2 = slot === 'weapon' ? LEGS.weapon[cls] ?? LEGS.weapon.lamina : pickR(rng, LEGS[slot]); it.name = L2[0]; it.power = L2[1]; }
+  else it.name = pickR(rng, slot === 'weapon' ? WNAMES[cls] ?? WNAMES.lamina : slot === 'armor' ? ANAMES : CNAMES) + ' ' + pickR(rng, SUFX[clampN(Math.round(tier), 1, 5)]);
+  return it;
+}
+/** Raridade sorteada; `find` é a sorte (dificuldade, talentos). */
+export function rollRar(rng: Rng = Math.random, find = 1, min = 0): number {
+  const r = Math.pow(rng(), 1 / find), v = r < .55 ? 0 : r < .82 ? 1 : r < .95 ? 2 : r < .99 ? 3 : 4;
+  return Math.max(min, v);
+}
+
+// ---------- loot de um monstro na Fenda (servidor, Fenda do grupo) ----------
+// Mesmas contas do jogo: regionTier (core/projectiles.js), DIFFS (core/state.js), hurtEnemy e onEnemyKilled.
+export const REGION_TIER: Record<string, number> = { hub: 1, forest: 1, crypt: 2, peaks: 3, swamp: 4, glass: 5 };
+export const REGBASE: Record<string, number> = { hub: 1, forest: 1, crypt: 4, peaks: 8, swamp: 13, glass: 16 };
+export const DIFF_TIER = [0, .3, .65, 1, 1.5, 2, 2.5];
+export const DIFF_FIND = [1, 1.12, 1.28, 1.45, 1.65, 1.85, 2.1];
+/** Nível de item de um drop na Fenda, para este jogador. */
+export function riftTier(base: string, L: number, diff: number, lvl: number): number {
+  return (REGION_TIER[base] ?? 1) + L * .5 + (DIFF_TIER[diff] ?? 0) + Math.max(0, lvl - (REGBASE[base] ?? 1) - 2) * .05;
+}
+export interface DropContext { base: string; L: number; diff: number; lvl: number; cls: string; sorte: boolean }
+/** Itens que um monstro derrotado deixa para um jogador (sem as Centelhas, que seguem no jogo). */
+export function monsterDrops(ctx: DropContext, kind: { elite: boolean; thief: boolean }, rng: Rng, id: () => string): Item[] {
+  const find = DIFF_FIND[ctx.diff] ?? 1, tier = riftTier(ctx.base, ctx.L, ctx.diff, ctx.lvl), itemFind = ctx.sorte ? 1.3 : 1, out: Item[] = [];
+  const add = (rar: number) => out.push(makeItem(pickR(rng, SLOTS), tier, rar, ctx.cls, rng, false, id()));
+  if (rng() < .08 * itemFind) add(rollRar(rng, find, ctx.L >= 4 ? 1 : 0));
+  if (kind.thief) for (let i = 0; i < 3; i++) add(rollRar(rng, find, 2));
+  else if (kind.elite) add(rollRar(rng, find, 2));
+  return out;
 }

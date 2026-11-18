@@ -180,6 +180,9 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const ids = allItems(b.data).map(x => x.it?.id).filter((x): x is string => typeof x === 'string');
     const dead = await store.tombstoned(a.id, ids);
     if (dead.length) check.errors.push(`itens que já saíram pelo correio: ${dead.slice(0, 3).join(', ')}`);
+    // Itens marcados como sorteados pelo servidor (g=1) precisam estar no registro.
+    const claimed = allItems(b.data).filter(x => x.it && (x.it as any).g === 1).map(x => x.it.id).filter((x): x is string => typeof x === 'string');
+    if (claimed.length) { const ok = new Set(await store.granted(claimed)); const fake = claimed.filter(id => !ok.has(id)); if (fake.length) check.errors.push(`itens do servidor desconhecidos: ${fake.slice(0, 3).join(', ')}`); }
     if (check.errors.length) {
       inc('saves_rejected');
       await store.audit(a.id, 'save_rejeitado', { erros: check.errors.slice(0, 10), rev: b.rev });

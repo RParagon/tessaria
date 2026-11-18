@@ -72,6 +72,7 @@ export type ClientMsg =
   | { t: 'time'; c: number }
   | { t: 'iopen'; kind: 'rift'; L: number; base: string; aff: string[]; boss: string }   // líder abre a Fenda para o grupo
   | { t: 'ijoin'; inst: number }   // entrar na instância do grupo
+  | { t: 'ikill'; n: number; el: 0 | 1; th: 0 | 1; x: number; z: number }   // anfitrião: monstro derrotado (loot pelo servidor)
   | { t: 'hx'; d: unknown }                // anfitrião → todos da instância (estado dos inimigos, mortes, projéteis)
   | { t: 'gx'; d: unknown }                // jogador → anfitrião (acertos)
   | { t: 'hto'; to: number; d: unknown }   // anfitrião → um jogador (dano recebido)
@@ -92,7 +93,8 @@ export type ServerMsg =
   | { t: 'iready'; inst: number; kind: 'rift'; L: number; by: string; ms: number }   // aviso "Pronto?" para o grupo
   | { t: 'ienter'; inst: number; kind: 'rift'; rift: RiftParams }   // pode entrar: dados para gerar o mesmo mapa
   | { t: 'iclosed'; inst: number }
-  | { t: 'ihost'; id: number }   // quem simula o combate na instância
+  | { t: 'ihost'; id: number }
+  | { t: 'loot'; x: number; z: number; items: any[] }   // itens sorteados pelo servidor para este jogador   // quem simula o combate na instância
   | { t: 'hx'; from: number; d: any }
   | { t: 'gx'; from: number; d: any }
   | { t: 'px'; from: number; d: any }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila

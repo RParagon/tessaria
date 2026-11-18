@@ -4,6 +4,8 @@ import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
 import type { Account, Store } from './store/types';
 import { inc, gauge } from './metrics';
+import { randomBytes, randomInt } from 'node:crypto';
+import { monsterDrops, type Item } from '../../shared/items';
 import { requestFriend } from './social';
 
 const CLS_LABEL: Record<string, string> = { lamina: 'Lâmina', arcano: 'Arcano', arco: 'Arco' };
@@ -24,7 +26,7 @@ export function titleFromSave(save: any): string {
 
 interface Player {
   id: number; account: Account; ws: WebSocket; room: Room | null;   // room null: conectado fora da vila (só amigos e grupo)
-  where: string; whereN: number; lvl: number; left: boolean;
+  where: string; whereN: number; lvl: number; left: boolean; diff: number; sorte: boolean;   // diff/sorte: do save (loot da Fenda do grupo)
   friends: Set<string>; blocks: Set<string>; lastInvite: number;   // blocks: contas que ESTE jogador bloqueou
   look: Look; title: string;
   x: number; z: number; yaw: number; m: number; a: string;
@@ -45,13 +47,20 @@ class Room {
 
 interface Party { id: number; leader: string; members: string[]; info: Map<string, { name: string; cls: string; lvl: number }>; gone: Map<string, NodeJS.Timeout>; inst?: Instance | null }
 /** Instância do grupo (Fenda): uma sala própria, com os dados que geram o mesmo mapa para todos. */
-interface Instance { host: number; id: number; party: Party; kind: 'rift'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
+interface Instance { kills: Set<number>; killTokens: number; killRefill: number; host: number; id: number; party: Party; kind: 'rift'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
 export interface HubOptions { inviteMs?: number; graceMs?: number; instEmptyMs?: number }
 const lvlOf = (save: any) => (Number.isInteger(save?.lvl) ? save.lvl : 1);
 
 const pub = (p: Player): PublicPlayer => ({ id: p.id, name: p.account.name, title: p.title, look: p.look, x: p.x, z: p.z, yaw: p.yaw });
 const send = (p: Player, msg: ServerMsg) => { if (p.ws.readyState === 1) p.ws.send(JSON.stringify(msg)); };
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+// Loot da Fenda do grupo: limites de plausibilidade dos abates avisados pelo anfitrião.
+const KILL_MAX = 600, KILL_RATE = 12, KILL_BURST = 30, KILL_SHARE = 34;
+const rng = () => randomInt(0, 2 ** 32) / 2 ** 32;
+const grantId = () => 'g' + randomBytes(6).toString('hex');
+/** Dificuldade e talento Sorte do save: entram no sorteio do loot. */
+const ctxOf = (save: any) => ({ diff: Number.isInteger(save?.diff) ? Math.max(0, Math.min(6, save.diff)) : 0, sorte: Array.isArray(save?.talents) && save.talents.includes('sorte') });
 
 export class Hub {
   private rooms = new Map<string, Room>();
@@ -100,7 +109,7 @@ export class Hub {
     const blocks = await this.store.blockedBy(account.id).catch(() => []);
     if (!WHERE_LABEL[where]) where = 'hub';
     const p: Player = {
-      id: ++this.seq, account, ws, room: null, where, whereN: where === 'rift' ? whereN : 0, lvl: lvlOf(save), left: false,
+      id: ++this.seq, account, ws, room: null, where, whereN: where === 'rift' ? whereN : 0, lvl: lvlOf(save), left: false, ...ctxOf(save),
       friends: new Set(links.filter(l => l.state === 'amigo').map(l => l.otherId)), blocks: new Set(blocks.map(b => b.id)), lastInvite: 0,
       look: lookFromSave(save), title: titleFromSave(save),
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
@@ -168,6 +177,7 @@ export class Hub {
       case 'look': return this.onLook(p, msg.look);
       case 'where': return this.onWhere(p, msg.r, msg.n, msg.i);
       case 'iopen': return this.openInst(p, msg);
+      case 'ikill': return void this.onKill(p, msg);
       case 'hx': case 'gx': case 'hto': case 'px': return this.relay(p, msg, raw.length);
       case 'ijoin': return this.joinInst(p, msg.inst);
       case 'pinvite': return void this.invite(p, msg.name);
@@ -275,6 +285,7 @@ export class Hub {
   refreshTitle(accountId: string, save: any) {
     const p = this.byAccount.get(accountId); if (!p) return;
     const lvl = lvlOf(save), party = this.partyOf.get(accountId), info = party?.info.get(accountId);
+    Object.assign(p, ctxOf(save));
     if (lvl !== p.lvl) { p.lvl = lvl; if (party && info) { info.lvl = lvl; this.sendParty(party); } }
     const t = titleFromSave(save); if (t === p.title) return;
     p.title = t; p.room?.broadcast({ t: 'title', id: p.id, title: t });
@@ -336,7 +347,7 @@ export class Hub {
     if (pt.inst && pt.inst.room.players.size && !(pt.inst.room.players.size === 1 && pt.inst.room.players.has(p.id))) return send(p, { t: 'sys', text: 'O grupo ainda está numa Fenda.' });
     if (pt.inst) this.closeInst(pt.inst);
     const id = ++this.instSeq, room = new Room('inst-' + id, `Fenda ${L}`);
-    const inst: Instance = { host: 0, id, party: pt, kind: 'rift', L, base: m.base, aff: aff.slice(), boss: m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
+    const inst: Instance = { kills: new Set(), killTokens: KILL_BURST, killRefill: Date.now(), host: 0, id, party: pt, kind: 'rift', L, base: m.base, aff: aff.slice(), boss: m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
     room.bounds = INST_BOUNDS; room.inst = inst; pt.inst = inst; this.instances.set(id, inst);
     send(p, this.enterMsg(inst));
     for (const mid of pt.members) if (mid !== p.account.id) this.notify(mid, { t: 'iready', inst: id, kind: 'rift', L, by: p.account.name, ms: INST_READY_MS });
@@ -373,6 +384,30 @@ export class Hub {
       else { const to = inst.room.players.get(m.to); if (to && to !== p) send(to, { t: 'px', from: p.id, d: m.d }); }
     }
     else if (m.t === 'gx' && !isHost) { const h = inst.room.players.get(inst.host); if (h) send(h, { t: 'gx', from: p.id, d: m.d }); }
+  }
+  /**
+   * Monstro derrotado na Fenda do grupo (o anfitrião avisa). O servidor confere se é plausível
+   * (mesmo monstro uma vez só, ritmo e total por Fenda) e sorteia os itens de cada jogador perto.
+   */
+  private async onKill(p: Player, m: any) {
+    const inst = p.room?.inst; if (!inst || inst.host !== p.id) return;
+    const nid = m.n, x = num(m.x), z = num(m.z);
+    if (!Number.isInteger(nid) || x === null || z === null || inst.kills.has(nid)) return;
+    if (inst.kills.size >= KILL_MAX) { inc('hub_kill_rejects'); return; }
+    const now = Date.now();
+    inst.killTokens = Math.min(KILL_BURST, inst.killTokens + (now - inst.killRefill) / 1000 * KILL_RATE); inst.killRefill = now;
+    if (inst.killTokens < 1) { inc('hub_kill_rejects'); void this.store.audit(p.account.id, 'abates_rapidos', { inst: inst.id }).catch(() => {}); return; }
+    inst.killTokens -= 1; inst.kills.add(nid);
+    const kind = { elite: m.el === 1, thief: m.th === 1 };
+    for (const q of inst.room.players.values()) {
+      if (Math.hypot(q.x - x, q.z - z) > KILL_SHARE) continue;
+      const items: Item[] = monsterDrops({ base: inst.base, L: inst.L, diff: q.diff, lvl: q.lvl, cls: q.look.cls, sorte: q.sorte }, kind, rng, grantId);
+      if (!items.length) continue;
+      for (const it of items) (it as any).g = 1;
+      try { await this.store.grantItems(q.account.id, items.map(i => i.id), 'fenda'); } catch (e) { this.log.warn({ err: String(e) }, 'loot: falha ao registrar'); continue; }
+      send(q, { t: 'loot', x, z, items });
+      inc('hub_loot_items', items.length);
+    }
   }
   private enterMsg(i: Instance): ServerMsg { return { t: 'ienter', inst: i.id, kind: 'rift', rift: { L: i.L, base: i.base, aff: i.aff, boss: i.boss, seed: i.seed } }; }
   private scheduleClose(inst: Instance) {

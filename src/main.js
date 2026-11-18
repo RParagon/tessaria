@@ -5,6 +5,7 @@ import './styles/game.css';
 import './net/net.css';
 import { Net } from './net/online';
 import { mountOnlineUI } from './net/ui';
+import './items-bridge';   // gerador de itens único (shared/items.ts) para o jogo
 import 'virtual:tessaria-game';
 
 const net = new Net();

@@ -7,6 +7,7 @@
 - **WebGL sem GPU nos testes:** o Chromium roda com SwiftShader (ver `playwright.config.js`). Se houver um Chromium já instalado num caminho próprio, use `PW_CHROMIUM_PATH`.
 - **Versão:** `package.json` → aparece no título e no menu. Registre mudanças em `CHANGELOG.md`.
 - **Online:** cliente em `src/net/` (TypeScript), servidor em `server/`, regras comuns em `shared/`. O jogo fala com o online só por `window.TessNet` (classe `Net`) e expõe `window.TessGame` em `src/game/net/remote.js`.
-- **Regras duplicadas:** `shared/items.ts` espelha `makeItem`/aprimoramento do jogo. Se mexer em atributos de itens, ajuste os dois; o teste "itens gerados pelo jogo passam pelas regras do servidor" pega a diferença.
+- **Itens:** o gerador (`makeItem`, `rollRar`, nomes, afixos, lendários) e as regras ficam só em `shared/items.ts`. O jogo usa via `window.TessItems` (ponte em `src/items-bridge.ts`, importada antes do jogo); o servidor usa direto. O aprimoramento e a reforja ainda estão no jogo: se mexer neles, confira `statCap`.
+- **Co-op:** `src/game/net/coop.js` (anfitrião simula; ganchos marcados com `co-op:` em hurtEnemy, hurtBoss, hurtPlayer, updateTelegraphs, projéteis, gatilhos das salas e laço principal). Plano e regras em `docs/ONLINE.md`.
 - **Testes do servidor:** `npm run test:server`; com `TEST_DATABASE_URL=postgres://...` também roda contra PostgreSQL. `npm test` sobe o servidor em memória na porta 2599 (ver `.env.test`). Rode `npm run typecheck` antes de commitar.
 - **Segredos:** nunca no repositório. Variáveis do servidor em `docs/DEPLOY.md`; exemplo em `deploy/.env.example`.

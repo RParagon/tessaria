@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.14.0 · Loot pelo servidor e gerador de itens único
+- **Gerador de itens único:** o jogo e o servidor usam o mesmo código para criar itens (`shared/items.ts`). Acabaram as regras duplicadas que podiam divergir
+- **Loot da Fenda do grupo pelo servidor:** cada monstro derrotado é conferido pelo servidor (o mesmo monstro não paga duas vezes, há limite de ritmo e de total), que sorteia os itens de cada jogador perto, com o nível, a classe, a dificuldade e a Sorte de cada um
+- **Registro de itens:** todo item sorteado pelo servidor fica registrado; um item marcado como "do servidor" que não esteja no registro é recusado no save. É a base para troca e mercado
+
 ## 0.13.0 · Fenda do grupo (co-op, parte 3): escala, Caído e Costurar
 - **Monstros mais fortes com mais gente:** vida 1,75× em dupla, 2,5× com 3 e 3,25× com 4; dano +10%, +15% e +20%. Vale para o chefe também
 - **Caído:** com algum companheiro de pé, quem perde toda a vida fica caído por 15 segundos em vez de morrer (os monstros ignoram quem está caído)

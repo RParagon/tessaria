@@ -104,4 +104,15 @@ CREATE TABLE IF NOT EXISTS blocks (
 );
 CREATE INDEX IF NOT EXISTS blocks_blocked ON blocks (blocked_id);
 ` },
+  { id: '003_itens_concedidos', sql: `
+-- Fase 2.2d · itens sorteados pelo servidor (loot da Fenda do grupo). Um item com g=1 no save
+-- só é aceito se estiver aqui; a conta registrada é a que recebeu (o item pode ir adiante pelo correio).
+CREATE TABLE IF NOT EXISTS item_grants (
+  item_id     text PRIMARY KEY,
+  account_id  uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  source      text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS item_grants_account ON item_grants(account_id);
+` },
 ];

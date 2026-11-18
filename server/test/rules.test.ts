@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { maskText, nameProblem, cleanChat } from '../../shared/text';
+import { makeItem, monsterDrops, rollRar, itemProblems as itemProblemsG, SLOTS } from '../../shared/items';
 import { itemProblems, statCap } from '../../shared/items';
 import { validateSave } from '../../shared/save';
 import { baseSave, item } from './helpers';
@@ -62,4 +63,29 @@ test('save: saltos absurdos desde o último save são recusados; grandes viram a
   const r = validateSave(baseSave({ gold: 20_000 }), { prev, elapsedMs: 60_000 });
   assert.deepEqual(r.errors, []);
   assert.ok(r.flags.length);
+});
+
+test('gerador único: itens de todas as classes, slots, raridades e níveis passam nas regras', () => {
+  let seed = 7; const rng = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  let n = 0;
+  for (const cls of ['lamina', 'arcano', 'arco']) for (const slot of SLOTS) for (let rar = 0; rar <= 4; rar++) for (let tier = 1; tier <= 12; tier += .7) {
+    const it = makeItem(slot, tier, rar, cls, rng);
+    assert.deepEqual(itemProblemsG(it, 40), [], JSON.stringify(it)); n++;
+    if (rar === 4) assert.ok(it.power, 'lendário tem poder');
+  }
+  assert.equal(n, 720);
+  const st = makeItem('weapon', 1, 0, 'arco', rng, true);
+  assert.equal(st.name, 'Arco de treino'); assert.deepEqual(Object.keys(st.st), ['dmg']);
+  for (let i = 0; i < 200; i++) { const r = rollRar(rng, 2.1, 2); assert.ok(r >= 2 && r <= 4); }
+});
+
+test('loot de monstro: elite sempre deixa item; ladrão deixa três; nível segue a Fenda', () => {
+  let seed = 3; const rng = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  let k = 0; const id = () => 'g' + (++k);
+  const ctx = { base: 'crypt', L: 4, diff: 2, lvl: 12, cls: 'arcano', sorte: false };
+  for (let i = 0; i < 50; i++) assert.ok(monsterDrops(ctx, { elite: true, thief: false }, rng, id).length >= 1);
+  assert.ok(monsterDrops(ctx, { elite: false, thief: true }, rng, id).length >= 3);
+  const it = monsterDrops(ctx, { elite: true, thief: false }, rng, id).at(-1)!;
+  assert.ok(it.tier > 4.5 && it.tier < 5.5, `tier ${it.tier}`);   // 2 + 4*0,5 + 0,65 + (12-4-2)*0,05
+  assert.ok(it.rar >= 2);
 });

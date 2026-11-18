@@ -189,6 +189,8 @@ export class Net {
   hx(d: object) { this.send({ t: 'hx', d }); }
   gx(d: object) { this.send({ t: 'gx', d }); }
   hto(to: number, d: object) { this.send({ t: 'hto', to, d }); }
+  /** Anfitrião: monstro derrotado na Fenda do grupo (o servidor sorteia o loot de cada um). */
+  ikill(n: number, el: boolean, th: boolean, x: number, z: number) { this.send({ t: 'ikill', n, el: el ? 1 : 0, th: th ? 1 : 0, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100 }); }
   px(d: object, to?: number) { this.send(to === undefined ? { t: 'px', d } : { t: 'px', to, d }); }
   get groupRift() { return !!this.party && this.party.members.length > 1 && this.isLeader && this.connected; }
   /** Na vila e com a sala conectada. */
@@ -305,6 +307,7 @@ export class Net {
       case 'ienter': this.ready = null; G?.startGroupRift(m.inst, m.rift as RiftParams); break;
       case 'ihost': this.hostId = m.id; G?.coopHost?.(m.id === this.myId); break;
       case 'hx': case 'gx': case 'px': G?.coopMsg?.(m.t, m.from, m.d); break;
+      case 'loot': G?.coopLoot?.(m); break;
       case 'iclosed':
         if (this.ready?.inst === m.inst) { this.ready = null; this.emit('iready', null); }
         if (this.inst === m.inst) { this.inst = null; this.emit('iclosed', m.inst); }

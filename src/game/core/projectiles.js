@@ -79,7 +79,8 @@ function lifeSteal(d) { const ls = stats().ls; if (ls > 0 && P && P.dieT < 0) P.
 function hitStop(v) { if (G.time - (G.hsLast || -9) < .22) return; G.hsLast = G.time; G.hitStop = Math.max(G.hitStop || 0, v); }
 function addGold(v) { G.pickN = (G.pickN || 0) + 1; G.pickT = .6; G.goldFrac = (G.goldFrac || 0) + v * stats().gold; const n = Math.floor(G.goldFrac); G.goldFrac -= n; G.save.gold += n; }
 const regionTier = () => { const TM = { hub: 1, forest: 1, crypt: 2, peaks: 3, swamp: 4, glass: 5 }, k = G.rift ? G.rift.base : RG ? RG.key : 'hub', base = (RG && RG.wild && P ? 1 + wZone(P.x / T, P.z / T) * 1.2 : (TM[k] || 1)) + (G.rift ? G.rift.L * .5 : 0), lv = G.save ? G.save.lvl : 1; return base + curDiff().tier + Math.max(0, lv - (REGBASE[k] || 1) - 2) * .05; };
-function dropItem(x, z, rar, slot) { const it = makeItem(slot || pick(['weapon', 'armor', 'charm']), regionTier(), rar); if (rar === 4) { sfx('legend'); toast('ITEM LENDÁRIO!', true, 'um brilho dourado no chão'); hitStop(.08); } else if (rar === 3) sfx('epic'); pickups.push({ kind: 'item', item: it, x, y: .8, z, vx: rr(-1.5, 1.5), vy: 4.5, vz: rr(-1.5, 1.5), t: 0 }); }
+function dropItem(x, z, rar, slot) { if (COOP.noItems) return;   // co-op: na Fenda do grupo, os itens dos monstros vêm do servidor
+  const it = makeItem(slot || pick(['weapon', 'armor', 'charm']), regionTier(), rar); if (rar === 4) { sfx('legend'); toast('ITEM LENDÁRIO!', true, 'um brilho dourado no chão'); hitStop(.08); } else if (rar === 3) sfx('epic'); pickups.push({ kind: 'item', item: it, x, y: .8, z, vx: rr(-1.5, 1.5), vy: 4.5, vz: rr(-1.5, 1.5), t: 0 }); }
 function takeItem(it) {
   const s = G.save; if (it.rar === 4) { s.st = s.st || {}; s.st.legs = (s.st.legs || 0) + 1; }
   if (!s.eq[it.slot]) { s.eq[it.slot] = it; afterEquip(); toast(it.name, false, 'EQUIPADO · ' + RAR[it.rar].n.toUpperCase(), RAR[it.rar].c); return true; }

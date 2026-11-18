@@ -214,6 +214,25 @@ for (const kind of STORES) {
       await sleep(150);
       assert.ok(!a.c.msgs.some((m: any) => m.t === 'hx' && m.d.k === 'falso'));
       assert.ok(!b.c.msgs.some((m: any) => m.t === 'hx' && m.d === 'texto'));
+      // loot pelo servidor: elite derrotada perto dos dois → item para cada um, registrado
+      a.c.send({ t: 'pos', x: 150, z: 121, yaw: 0, m: 0, a: '' });
+      await sleep(150);
+      a.c.send({ t: 'ikill', n: 77, el: 1, th: 0, x: 150, z: 120 });
+      const la = await a.c.waitFor(m => m.t === 'loot'), lb = await b.c.waitFor(m => m.t === 'loot');
+      for (const L of [la, lb]) { assert.ok(L.items.length >= 1); assert.equal(L.items[0].g, 1); assert.match(L.items[0].id, /^g[0-9a-f]{12}$/); assert.ok(L.items[0].rar >= 2); }
+      assert.notEqual(la.items[0].id, lb.items[0].id);
+      const nLoot = () => b.c.msgs.filter((m: any) => m.t === 'loot').length, before = nLoot();
+      a.c.send({ t: 'ikill', n: 77, el: 1, th: 0, x: 150, z: 120 });   // o mesmo monstro não paga duas vezes
+      b.c.send({ t: 'ikill', n: 78, el: 1, th: 0, x: 150, z: 120 });   // quem não é anfitrião não avisa abates
+      a.c.send({ t: 'ikill', n: 79, el: 1, th: 0, x: 10, z: 10 });     // longe dos dois: ninguém ganha
+      await sleep(250);
+      assert.equal(nLoot(), before);
+      // o item concedido entra no save; um forjado com a marca do servidor é recusado
+      const sv = baseSave(); sv.inv = [lb.items[0]];
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: 1, data: sv }, B.token)).status, 200);
+      const fake = baseSave(); fake.inv = [{ ...lb.items[0], id: 'gdeadbeef0001' }];
+      const r = await api(S.url, 'PUT', '/save', { rev: 2, data: fake }, B.token);
+      assert.equal(r.status, 422); assert.match(r.body.erros.join(' '), /itens do servidor desconhecidos/);
       // quem não é do grupo não entra
       c.c.send({ t: 'where', r: 'rift', n: 3, i: ea.inst });
       await c.c.waitFor(m => m.t === 'iclosed' && m.inst === ea.inst);

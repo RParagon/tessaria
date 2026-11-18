@@ -284,6 +284,32 @@ test('Fenda do grupo: monstros mais fortes em dupla, Caído, Costurar e grupo in
   await A.ctx.close(); await B.ctx.close();
 });
 
+test('Fenda do grupo: o servidor sorteia o loot de cada um e o item pego é aceito na nuvem', async ({ browser }) => {
+  const { A, B, ev } = await groupRift(browser);
+  await waitSync(B.page);
+  // elite perto dos dois; o líder derrota
+  await ev(A.page, "(() => { const r = TessNet.players()[0]; const e = spawnEnemy('gosmo', (P.x + r.x) / 2, (P.z + r.z) / 2); e.spawnT = 0; makeElite(e); e.def = Object.assign({}, e.def, { dmg: 0 }); window.__el = e; })()");
+  await A.page.waitForFunction(() => (window as any).__T.ev('__el.nid > 0'), null, { timeout: 5000 });
+  await A.page.waitForTimeout(300);
+  await ev(A.page, 'hurtEnemy(__el, 99999, 1, 0, false)');
+  const loot = (pg: Page) => pg.waitForFunction(() => (window as any).__T.ev("pickups.filter(p => p.kind === 'item' && p.item.g === 1).map(p => p.item.id)").length > 0, null, { timeout: 8000 });
+  await Promise.all([loot(A.page), loot(B.page)]);
+  const ia = await ev(A.page, "pickups.filter(p => p.kind === 'item').map(p => [p.item.id, p.item.g || 0])");
+  const ib = await ev(B.page, "pickups.filter(p => p.kind === 'item').map(p => [p.item.id, p.item.g || 0])");
+  expect(ia.every((x: any) => x[1] === 1)).toBe(true);    // nenhum item sorteado no aparelho
+  expect(ib.every((x: any) => x[1] === 1)).toBe(true);
+  expect(ia.map((x: any) => x[0])).not.toEqual(ib.map((x: any) => x[0]));   // cada um tem o seu
+  // o convidado pega o item e a nuvem aceita
+  const id = ib[0][0];
+  await B.page.waitForTimeout(1200);   // o item quica e só pode ser pego depois de assentar
+  await B.page.waitForFunction(i => (window as any).__T.ev(`(p => { if (p) { P.x = p.x; P.z = p.z; } return G.save.inv.some(it => it.id === '${i}') || Object.values(G.save.eq).some(it => it && it.id === '${i}'); })(pickups.find(p => p.kind === 'item' && p.item.id === '${i}'))`), id, { timeout: 8000, polling: 200 });
+  await ev(B.page, 'writeSave()');
+  await B.page.waitForFunction(() => (window as any).TessNet.sync === 'salvo', null, { timeout: 15_000 });
+  expect(await B.page.evaluate(() => (window as any).TessNet.sync)).toBe('salvo');
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
 test('o progresso vai para a nuvem e volta em outro aparelho', async ({ browser }) => {
   const A = await onlinePlayer(browser);
   await A.page.evaluate(() => { const s = (window as any).__T.G.save; s.lvl = 4; s.gold = 321; (window as any).__T.ev('writeSave()'); });

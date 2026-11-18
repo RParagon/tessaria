@@ -81,6 +81,16 @@ export class PgStore implements Store {
     return r.map(x => x.item_id as string);
   }
 
+  async grantItems(accountId: string, itemIds: string[], source: string) {
+    if (!itemIds.length) return;
+    await this.sql`INSERT INTO item_grants ${this.sql(itemIds.map(id => ({ item_id: id, account_id: accountId, source })))} ON CONFLICT (item_id) DO NOTHING`;
+  }
+  async granted(itemIds: string[]) {
+    if (!itemIds.length) return [];
+    const r = await this.sql`SELECT item_id FROM item_grants WHERE item_id IN ${this.sql(itemIds)}`;
+    return r.map(x => x.item_id as string);
+  }
+
   async transferItem(fromId: string, fromName: string, toId: string, itemId: string, note: string): Promise<TransferResult> {
     return this.sql.begin(async tx => {
       const [s] = await tx`SELECT rev, data FROM saves WHERE account_id = ${fromId} FOR UPDATE`;
