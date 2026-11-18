@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.31.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.32.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -24,6 +24,7 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 
 - **Três classes com identidade própria:** Lâmina (corpo a corpo, mais dano e mais risco), Arcano (o mais seguro, raios que explodem em área) e Arco (flechas que atravessam, forte contra grupos). O equilíbrio é medido em simulação a cada mudança.
 - **Criação de personagem** com corpo, pele, cabelo, barba, roupa, acessórios e capa. A armadura e a arma equipadas aparecem no visual.
+- **Tear do Destino:** tecer itens com Fios do Tear numa animação de fios em espiral; "Tecer ao acaso" sorteia a raridade.
 - **Golpe do Tear:** um especial por classe que carrega com o dano causado (Fúria do Tear, Estrela Cadente, Flecha do Céu).
 - **HUD com retrato e ícones 3D:** o seu herói aparece no canto do HUD e os ícones são modelos desenhados pelo motor do jogo; itens de missão têm feixe de luz e uma seta no chão aponta para o mais perto.
 - **Herói em destaque:** esqueleto com cotovelos e joelhos (o Arcano segura o cajado com a mão fechada), superfície lisa em alta definição, rosto chibi com olhos escuros, íris colorida e brilho, sobrancelhas e sorriso, cabelo em mechas, roupa com gola, punhos e botas, e capa que esvoaça ao correr. Espelho na bolsa e na criação em alta definição, com poses e zoom; no jogo, zoom da câmera pela roda do mouse (ou + e −) e um anel que marca o seu herói no grupo.
@@ -37,7 +38,7 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 - **Vila Brasa:** o hub, com o Bairro Leste (fogueira com bancos, feira da Dora, a Acendedora Lúcia, patos no lago, o Bardo Tomé e seus rumores, arena com bonecos que mostram o seu dano por segundo e o lago onde o Pescador Ivo ensina a pescar: a missão dele dá a vara) e o **Santuário da Fenda**, uma praça de obsidiana e runas violeta com o portal sombrio da Fenda do Tear.
 - **Banco do Tear:** prédio de mármore na praça; o que fica no cofre não se perde. Nos Ermos, morrer derruba o que você carrega por 5 minutos.
 - **Itens com peso:** a raridade máxima depende da área (Lendário só nas áreas fundas, nos Tormentos e com chefes) e itens fortes pedem nível para equipar.
-- **Casa do Tecelão:** baú permanente, mobília com bônus visíveis, o Correio do Tear para trocar itens com amigos e o **Guarda-Roupa**, para mudar o visual quando quiser, escolher o estilo da armadura (clássica, couro, placas, escamas ou tabardo real) e comprar estilos raros (auréola, cartola, óculos, orelhas de elfo, flor, tranças).
+- **Casa do Tecelão:** baú permanente, mobília com bônus visíveis, o Correio do Tear para trocar itens com amigos e o **Guarda-Roupa**, para mudar o visual quando quiser, escolher o estilo da armadura (clássica, couro, placas, escamas ou tabardo real) e comprar estilos raros (auréola, cartola, óculos, orelhas de elfo, flor, tranças) e auras de partículas (brasas, vaga-lumes, pétalas, gelo, sombra violeta, fios dourados).
 - **Online e co-op:** encontre outros Tecelões na vila, forme grupo com até 4 amigos e jogue junto nas Fendas e nos Ermos, com os mesmos monstros para todos, cada um com o próprio loot.
 - **Feito para celular:** jogado na horizontal, com controles de toque grandes, mira automática e vibração.
 

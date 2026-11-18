@@ -286,10 +286,20 @@ function renderRiftMenu() {
   $('#rAff').innerHTML = aff.map(a => `<div class="qrow"><b style="color:#d7a6ff">${RAFF[a].n}</b><small>${RAFF[a].d}</small></div>`).join('') + (L < 6 ? '<p class="sub" style="margin:0;font-size:11px">Fendas de nível 6 ou mais têm 2 afixos, e de nível 12 ou mais, 3.</p>' : '');
   $('#rFios').textContent = s.fios || 0;
   const shop = $('#rShop'); shop.innerHTML = '';
-  for (const [rar, cost, lbl] of [[3, 15, 'Tecer item Épico'], [4, 45, 'Tecer item Lendário']]) {
-    const b = document.createElement('button'); b.className = 'px' + ((s.fios || 0) >= cost ? ' gold' : ''); b.textContent = `${lbl} (${cost} Fios)`; b.disabled = (s.fios || 0) < cost || s.inv.length >= 20;
-    b.onclick = () => { s.fios -= cost; takeItem(makeItem(pick(['weapon', 'armor', 'charm']), 2 + Math.min(4, (s.riftMax || 0) * .3), rar)); writeSave(); renderRiftMenu(); }; shop.appendChild(b);
+  for (const [rar, cost, lbl] of [[-1, 8, 'Tecer ao acaso'], [3, 15, 'Tecer item Épico'], [4, 45, 'Tecer item Lendário']]) {
+    const b = document.createElement('button'); b.className = 'px' + ((s.fios || 0) >= cost ? ' gold' : ''); b.textContent = `${lbl} (${cost} Fios)`; b.disabled = (s.fios || 0) < cost || s.inv.length >= BAG() || !!G.weave;
+    b.onclick = () => { s.fios -= cost; const tier = 2 + Math.min(4, (s.riftMax || 0) * .3), r2 = rar >= 0 ? rar : Math.min(TI.rarCap(tier, 1), TI.rollRar(Math.random, 1.6 * curDiff().find, 1)); startWeave(makeItem(pick(['weapon', 'armor', 'charm']), tier, r2)); writeSave(); closeMenus(); }; shop.appendChild(b);
   }
+}
+/** Tear do Destino: os fios giram em volta do portal, convergem e o item nasce num clarão da cor da raridade. */
+function startWeave(it) {
+  const pt = inter.find(i => i.kind === 'riftportal'), x = pt ? pt.x : P.x, z = pt ? pt.z + 3.2 : P.z - 2;
+  G.weave = { t: 0, it, x, z }; sfx('skill'); toast('O TEAR ESTÁ TECENDO…', false, '', '#c07bff');
+}
+function updateWeave(dt) {
+  const W = G.weave; if (!W) return; W.t += dt;
+  if (!W.done && W.t >= 2.2) { W.done = true; const r = RAR[W.it.rar]; burst(W.x, 1.6, W.z, 60, r.row, 6, .8, .14); G.shake = Math.max(G.shake, W.it.rar >= 3 ? .3 : .12); sfx(W.it.rar >= 4 ? 'legend' : W.it.rar >= 3 ? 'epic' : 'lvl'); takeItem(W.it); if (W.it.rar >= 3) hitStop(.08); }
+  if (W.t >= 3) G.weave = null;
 }
 $('#rReroll').onclick = () => { sfx('ui'); G.riftRoll = rollRift(); renderRiftMenu(); };
 $('#rLvl').oninput = renderRiftMenu;

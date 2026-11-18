@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.32.0 · Tear do Destino e auras
+- **Tear do Destino:** tecer itens com Fios do Tear (no menu do portal da Fenda, no Santuário) agora é um espetáculo: fios violeta giram em espiral em volta do portal, convergem, ganham a cor da raridade e o item nasce num clarão (com tremor e som nos Épicos e Lendários)
+- **Tecer ao acaso (8 Fios):** a "caixa-surpresa" do Tear: raridade sorteada com sorte aumentada, de Mágico a Lendário (respeitando o teto da sua Fenda máxima). Continua dando para tecer Épico (15) e Lendário (45) direto
+- **Auras (Guarda-Roupa):** efeitos de partículas caros, comprados uma vez: Brasas (3000), Vaga-lumes (3500), Pétalas (4500), Cristais de gelo (6000), Sombra violeta (8000) e Fios dourados (12000). Os outros jogadores veem a sua aura
+
 ## 0.31.0 · Golpe do Tear, banco no lugar certo e ferraria nova
 - **Golpe do Tear (tecla R):** um especial por classe que carrega com o dano que você causa (cerca de 40 golpes; os bonecos de treino não contam). Quando a barra enche, o botão brilha e um aviso aparece:
   - **Lâmina, Fúria do Tear:** 4 s girando em chamas com dano em área contínuo e metade do dano recebido;

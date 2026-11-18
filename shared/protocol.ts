@@ -40,7 +40,7 @@ export const EMOTE_LABEL: Record<Emote, string> = { acenar: 'Acenar', comemorar:
 /** Aparência pública do personagem (o que os outros veem). */
 export interface Look {
   cls: string; body: number; skin: number; hair: string; hairCol: number; outfit: number; trim: number;
-  glow: number; acc: string; cape: boolean; beard: string; armor: number | null; charm: number | null; wr: number; armorStyle?: string;
+  glow: number; acc: string; cape: boolean; beard: string; armor: number | null; charm: number | null; wr: number; armorStyle?: string; aura?: string;
 }
 
 const int = (v: unknown, lo: number, hi: number, d: number) => (Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi ? (v as number) : d);
@@ -58,6 +58,7 @@ export function sanitizeLook(x: any): Look {
     charm: o.charm === null || o.charm === undefined ? null : int(o.charm, 0, 4, 0),
     wr: int(o.wr, 0, 4, 0),
     armorStyle: word(o.armorStyle, 'classica'),
+    aura: word(o.aura, 'nenhuma'),
   };
 }
 

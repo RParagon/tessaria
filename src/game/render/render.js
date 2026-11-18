@@ -4,7 +4,17 @@
    ========================================================= */
 let dpr = 1, pxDev = 4, VP = null;
 const EMOTES_PV = ['acenar', 'comemorar', 'dancar', 'sentar'];   // poses do espelho
-const IVO_BOB = [126.4, 50.2];   // boia do Pescador Ivo no lago do Bairro Leste
+const IVO_BOB = [126.4, 50.2];
+/** Auras cosméticas: partículas em volta do herói (o seu e os dos outros jogadores). */
+function auraFx(x, z, aura, t, dt) {
+  if (!aura || aura === 'nenhuma') return; const A = AURAS.find(a => a[0] === aura); if (!A) return; const m = A[3], r = Math.random;
+  if (aura === 'brasas') { if (r() < dt * 22) spawn({ x: x + rr(-.45, .45), y: rr(.1, .5), z: z + rr(-.45, .45), vx: rr(-.2, .2), vy: rr(.8, 1.6), vz: rr(-.2, .2), life: rr(.6, 1), s0: .08, s1: .02, b0: 1, b1: .2, mat: m }); }
+  else if (aura === 'vagalumes') { for (let k = 0; k < 5; k++) { const a = t * (.8 + k * .13) + k * 1.3, y = 1 + Math.sin(t * 1.7 + k) * .6; dyn(x + Math.cos(a) * .9, y, z + Math.sin(a) * .9, .6 + .4 * Math.sin(t * 6 + k), m, .07); } }
+  else if (aura === 'petalas') { if (r() < dt * 12) spawn({ x: x + rr(-.8, .8), y: rr(1.6, 2.4), z: z + rr(-.8, .8), vx: rr(-.4, .4), vy: rr(-.6, -.3), vz: rr(-.4, .4), life: rr(1.2, 2), s0: .08, s1: .06, b0: .9, b1: .5, mat: m }); }
+  else if (aura === 'gelo') { for (let k = 0; k < 8; k++) { const a = -t * 1.2 + k / 8 * 6.283; dyn(x + Math.cos(a) * .75, .2 + (k % 2) * .25 + Math.sin(t * 3 + k) * .05, z + Math.sin(a) * .75, .85, m, .1); } if (r() < dt * 6) spawn({ x: x + rr(-.5, .5), y: rr(.5, 1.6), z: z + rr(-.5, .5), vy: -.2, life: .8, s0: .06, s1: .01, b0: 1, b1: .2, mat: m }); }
+  else if (aura === 'sombra') { if (r() < dt * 18) spawn({ x: x + rr(-.5, .5), y: rr(0, .3), z: z + rr(-.5, .5), vx: rr(-.15, .15), vy: rr(.3, .8), vz: rr(-.15, .15), life: rr(.8, 1.3), s0: .12, s1: .03, b0: Math.random() < .3 ? .3 : 1, b1: .1, mat: Math.random() < .35 ? 29 : m }); }
+  else if (aura === 'fios') { for (let k = 0; k < 3; k++) for (let s = 0; s < 10; s++) { const u = s / 10, a = t * 1.5 + k * 2.094 + u * 4, rad = .7; dyn(x + Math.cos(a) * rad, .2 + u * 1.9, z + Math.sin(a) * rad, .5 + .5 * u, m, .05); } }
+}   // boia do Pescador Ivo no lago do Bairro Leste
 const FISH_MAT = { 'Lambari': 28, 'Tilápia-de-Brasa': 13, 'Carpa Dourada': 14, 'Peixe-Lua': 26 };
 /** Vara (curva, verga na mordida), linha com barriga até a boia e o peixe saltando até a mão. */
 function drawFishing(t) {
@@ -211,6 +221,7 @@ function render(dt) {
       if (G.settings.halo !== false && P.dieT < 0) for (let k = 0; k < 18; k++) { const a = k / 18 * 6.283 + t * .6; dyn(P.x + Math.cos(a) * .62, .07, P.z + Math.sin(a) * .62, k % 3 ? .45 : .75, 30, .13); }   // anel de destaque do herói
       if (!blink) P.W = drawModel(playerModel, P.anim, P.x, 0, P.z, P.yaw, 1, { dis: P.dieT >= 0 ? clamp(P.dieT / 1.2, 0, 1) : 0, dmat: 7, flash: P.flash > .6 ? 1 : 0 });
       if (P.W && (G.fishing || G.fishCatch)) drawFishing(t);
+      if (P.dieT < 0) auraFx(P.x, P.z, G.char.aura, t, dt);
       if (P.shield > 0) for (let i = 0; i < 16; i++) { const a = t * 2 + i / 16 * 6.283; dyn(P.x + Math.cos(a) * .7, .3 + (i % 4) * .4, P.z + Math.sin(a) * .7, .7, 31, .14); }
       if (G.save && G.save.eq && G.save.eq.weapon && G.save.eq.weapon.rar === 4 && P.W && Math.random() < .5) { const wp = G.char.cls === 'arco' ? handPos('bow') : G.char.cls === 'arcano' ? handPos('staff') : tp(P.W[8], [-.38 * ([.86, 1, 1.18][G.char.body ?? 1]), .6, .6]); spawn({ x: wp[0] + rr(-.1, .1), y: wp[1] + rr(-.1, .1), z: wp[2] + rr(-.1, .1), vy: .5, life: .4, s0: .08, s1: .02, b0: 1, b1: .2, mat: 124 }); }
       if (P.stance > .2 && P.dieT < 0) {
@@ -229,6 +240,11 @@ function render(dt) {
   }
   for (const p of pickups) { if (p.kind === 'item') { const r = RAR[p.item.rar].row; dyn(p.x, p.y + .15 + Math.sin(t * 3 + p.x) * .08, p.z, 1, r, .36); for (let k = 0; k < 8; k++) { const a = t * 2 + k / 8 * 6.283; dyn(p.x + Math.cos(a) * .45, .06, p.z + Math.sin(a) * .45, .55, r, .14); } } else dyn(p.x, p.y, p.z, .8 + .2 * Math.sin(t * 10 + p.x), p.kind === 'gold' ? 30 : p.kind === 'orb' ? 122 : 31, p.kind === 'gold' ? .2 : .34); }
   drawTelegraphs(); drawZones(t);
+  if (G.weave) {   // Tear do Destino: fios em espiral que convergem; perto do fim ganham a cor da raridade
+    const W = G.weave, k = Math.min(1, W.t / 2.2), col = k > .55 ? RAR[W.it.rar].row : 151;
+    if (!W.done) for (let f = 0; f < 10; f++) for (let s = 0; s < 9; s++) { const u = s / 8, a = f / 10 * 6.283 + t * 3 + u * 2.4, r = (1 - u) * 2.8 * (1 - k * .75) + .05; dyn(W.x + Math.cos(a) * r, .3 + u * 1.3 + (1 - u) * Math.sin(t * 4 + f) * .2, W.z + Math.sin(a) * r, .6 + .4 * u, col, .08 + .06 * u); }
+    const g = W.done ? Math.max(0, 1 - (W.t - 2.2) / .8) : k; dyn(W.x, 1.6, W.z, 1, W.done ? RAR[W.it.rar].row : col, .2 + g * .7);
+  }
   // coleta visível: feixe de luz em cada item, minhocas desenhadas e uma seta no chão para o mais perto
   { const tg = collectTargets(); let best = null, bd = 1e9;
     for (const c of tg) {

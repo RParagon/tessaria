@@ -41,6 +41,8 @@ const ACCS = [['nenhum', 'Nenhum'], ['capuz', 'Capuz'], ['chapeu', 'Chapéu'], [
 // estilos raros: só no Guarda-Roupa da casa, comprados uma vez com Centelhas (ficam em save.cos)
 const RARE_ACCS = [['flor', 'Flor no cabelo', 500], ['oculos', 'Óculos redondos', 600], ['orelhas', 'Orelhas de elfo', 800], ['aureola', 'Auréola', 1500], ['cartola', 'Cartola', 2000]];
 const RARE_HAIR = [['trancas', 'Tranças', 1000]];
+// auras de partículas (Guarda-Roupa): caras, compradas uma vez; [id, nome, preço, cor]
+const AURAS = [['nenhuma', 'Nenhuma', 0, 0], ['brasas', 'Brasas', 3000, 21], ['vagalumes', 'Vaga-lumes', 3500, 30], ['petalas', 'Pétalas', 4500, 16], ['gelo', 'Cristais de gelo', 6000, 150], ['sombra', 'Sombra violeta', 8000, 151], ['fios', 'Fios dourados', 12000, 14]];
 // estilos de armadura (só aparecem com uma armadura equipada): os dois primeiros grátis, os outros comprados uma vez
 const ARMOR_STYLES = [['classica', 'Clássica'], ['couro', 'Couro'], ['placas', 'Placas', 1200], ['escamas', 'Escamas', 1500], ['tabardo', 'Tabardo real', 1800]];
 const BEARDS = [['nenhuma', 'Liso'], ['barba', 'Barba'], ['bigode', 'Bigode'], ['cavanhaque', 'Cavanhaque']];

@@ -138,3 +138,17 @@ test('itens: teto de raridade pela área, nível exigido para equipar e vender t
   expect(n).toBeGreaterThan(1);
   expect(errors).toEqual([]);
 });
+
+test('Tear do Destino e aura: tecer ao acaso gasta Fios e entrega o item depois da animação; a aura sai no visual', async ({ page }) => {
+  const errors = await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  await ev("G.save.fios = 20; G.save.bosses.forest = true; openMenu('riftm')");
+  const n0 = await ev('G.save.inv.length + Object.values(G.save.eq).filter(Boolean).length');
+  await page.locator('#rShop button', { hasText: 'Tecer ao acaso' }).click();
+  expect(await ev('[G.save.fios, !!G.weave]')).toEqual([12, true]);
+  await page.waitForFunction(() => window.__T.ev('!G.weave'), null, { timeout: 15_000 });
+  expect(await ev('G.save.inv.length + Object.values(G.save.eq).filter(Boolean).length')).toBe(n0 + 1);
+  await ev("G.char.aura = 'brasas'");
+  expect(await ev('lookOfPlayer().aura')).toBe('brasas');
+  expect(errors).toEqual([]);
+});

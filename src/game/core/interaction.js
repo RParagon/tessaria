@@ -118,7 +118,7 @@ function updateWilds() {
   }
 }
 function updateTriggers(dt) {
-  updateWilds(); updateHubLife(dt); updateCamps(dt);
+  updateWilds(); updateHubLife(dt); updateCamps(dt); updateWeave(dt);
   if (inter.some(i => i.taken)) inter = inter.filter(i => !i.taken);
   nearInter = null; let bd = 99;
   for (const it of inter) {
