@@ -215,7 +215,8 @@ function freeSpot(cx, cz, rad) {
 
 /* ---- construção do mundo em splats ---- */
 function buildWorld(key, G) {
-  const st = REG[key].style, S = new SplatSet(G.seed + 7, st === 'wilds' ? 22 : 34, null, true), R = S.R, emitters = [];
+  const st = REG[key].style, emitters = [];
+  let S = new SplatSet(G.seed + 7, st === 'wilds' ? 22 : 34, null, true), R = S.R;   // let: nos Ermos, cada bloco troca o S (mundo sob demanda)
   const isFloor = (x, y) => { const c = G.grid[y]?.[x]; return c === '.' || c === ',' || c === '~'; };
   const nearFloor = (x, y) => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (isFloor(x + dx, y + dy)) return true; return false; };
   const DF = st === 'wilds' ? 20 : 34;
@@ -226,7 +227,8 @@ function buildWorld(key, G) {
     S.ell([x0 + jx + .25, 3.0 * s, z0 + jz - .2], [.8 * s, .7 * s, .8 * s], 13, 0, { keep: d => d[1] > -.2, flags: 8, dm: .5, size: 1.4 });
     for (let k = 0; k < 3; k++) { const a = R() * 6.28; S.cone([x0, .25, z0], [x0 + Math.cos(a) * .6, 0, z0 + Math.sin(a) * .6], .1, 12, 0, { flags: 8 }); }
   };
-  for (let y = 0; y < G.H; y++) for (let x = 0; x < G.W; x++) {
+  // Um ladrilho do mapa: chão, água ou parede, com a decoração. Só depende da posição (e do sorteio R).
+  const tileAt = (x, y) => {
     const c = G.grid[y][x], wx = (x + .5) * T, wz = (y + .5) * T;
     if (c === '.' || c === ',' || c === 'V') {
       const n = Math.round(T * T * DF), th = hash2(x * 3.1, y * 7.3), th2 = hash2(y * 5.7, x * 1.9);
@@ -336,7 +338,8 @@ function buildWorld(key, G) {
         } else S.ell([wx, 1.3, wz], [1.25, 1.0, 1.25], 11, 0, { keep: d => d[1] > 0, dm: .35, size: 1.5, flags: 8 });
       }
     }
-  }
+  };
+  if (!G.wild) for (let y = 0; y < G.H; y++) for (let x = 0; x < G.W; x++) tileAt(x, y);   // nos Ermos, os ladrilhos são montados por bloco, sob demanda
   function decorate(x, y, wx, wz, c) {
     if (st === 'home') return;
     const r = R(), ox = wx + (R() - .5) * 1.4, oz = wz + (R() - .5) * 1.4;
@@ -524,6 +527,7 @@ function buildWorld(key, G) {
     const ring = []; for (let i = 0; i < 40; i++) { const a = i / 40 * 6.283; ring.push(rm.wx + Math.cos(a) * (rm.r - 1) * T * .5, rm.wz + Math.sin(a) * (rm.r - 1) * T * .5); }
     for (let i = 0; i < 260; i++) { const a = i / 260 * 6.283, rad = (rm.r - 1.2) * T; S.pt([rm.wx + Math.cos(a) * rad, .03, rm.wz + Math.sin(a) * rad], [0, 1, 0], st === 'forest' ? 10 : 9, 0, .2, 4); }
   }
+  if (G.wild) return lazyWorld(G, S, emitters, tileAt, seed => { S = new SplatSet(seed, 22, null, true); R = S.R; return S; });
   const data = S.build();
   const CS = 16, ncx = Math.ceil(G.W * T / CS), ncz = Math.ceil(G.H * T / CS), buckets = [];
   for (let i = 0; i < ncx * ncz; i++) buckets.push([]);
@@ -536,3 +540,48 @@ function buildWorld(key, G) {
   return { chunks, emitters, count: data.length / STRIDE };
 }
 
+
+// ---------- mundo sob demanda (Ermos) ----------
+// O mapa grande não é montado de uma vez: cada bloco de 16x16 unidades é montado quando a câmera chega perto
+// (com semente própria, então sai sempre igual) e descartado quando fica longe. Os elementos fixos (paliçada,
+// casas, acampamentos) são montados uma vez e entram no bloco em que estão.
+const WCS = 16, WBUILD = 44, WFREE = 64;
+function lazyWorld(G, S0, emitters, tileAt, newS) {
+  const ncx = Math.ceil(G.W * T / WCS), ncz = Math.ceil(G.H * T / WCS), data = S0.build(), stat = new Map();
+  for (let i = 0; i < data.length; i += STRIDE) {
+    const cx = clamp(Math.floor(data[i] / WCS), 0, ncx - 1), cz = clamp(Math.floor(data[i + 2] / WCS), 0, ncz - 1), k = cz * ncx + cx;
+    let b = stat.get(k); if (!b) stat.set(k, b = []);
+    for (let j = 0; j < STRIDE; j++) b.push(data[i + j]);
+  }
+  const staticEm = emitters.splice(0);
+  const W = { lazy: true, chunks: [], emitters: staticEm.slice(), staticEm, built: new Map(), ncx, ncz, count: 0 };
+  W.make = i => {
+    const cx = i % ncx, cz = Math.floor(i / ncx), tpc = WCS / T, S = newS((G.seed * 7919 + i * 104729) | 0);
+    for (let y = cz * tpc; y < Math.min(G.H, (cz + 1) * tpc); y++) for (let x = cx * tpc; x < Math.min(G.W, (cx + 1) * tpc); x++) tileAt(x, y);
+    const own = S.build(), extra = stat.get(i), arr = new Float32Array(own.length + (extra ? extra.length : 0));
+    arr.set(own); if (extra) arr.set(extra, own.length);
+    const em = emitters.splice(0);
+    if (!arr.length) return { i, em, cx: (cx + .5) * WCS, cz: (cz + .5) * WCS, empty: true };
+    return { ...makeVAO(arr), i, em, cx: (cx + .5) * WCS, cz: (cz + .5) * WCS };
+  };
+  return W;
+}
+/** Monta os blocos perto de (px, pz) e descarta os longe. `budget`: quantos blocos montar neste quadro. */
+function streamWorld(px, pz, budget = 2) {
+  const W = WD; if (!W || !W.lazy) return;
+  const want = [], r = Math.ceil(WBUILD / WCS), c0x = Math.floor(px / WCS), c0z = Math.floor(pz / WCS);
+  for (let cz = c0z - r; cz <= c0z + r; cz++) for (let cx = c0x - r; cx <= c0x + r; cx++) {
+    if (cx < 0 || cz < 0 || cx >= W.ncx || cz >= W.ncz) continue;
+    const i = cz * W.ncx + cx; if (W.built.has(i)) continue;
+    const d = Math.hypot((cx + .5) * WCS - px, (cz + .5) * WCS - pz); if (d < WBUILD) want.push([d, i]);
+  }
+  let changed = false;
+  want.sort((a, b) => a[0] - b[0]);
+  for (let k = 0; k < Math.min(budget, want.length); k++) { const c = W.make(want[k][1]); W.built.set(c.i, c); changed = true; }
+  for (const [i, c] of W.built) if (Math.hypot(c.cx - px, c.cz - pz) > WFREE) { if (!c.empty) freeVAO(c); W.built.delete(i); changed = true; }
+  if (changed) {
+    W.chunks = [...W.built.values()].filter(c => !c.empty);
+    W.emitters = W.staticEm.concat(...[...W.built.values()].map(c => c.em));
+    W.count = W.chunks.reduce((a, c) => a + c.count, 0);
+  }
+}

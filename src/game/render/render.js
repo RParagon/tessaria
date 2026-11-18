@@ -84,6 +84,7 @@ function render(dt) {
   if (!preview && WD) {
     gl.uniformMatrix4fv(U.u_bones, false, IDB); gl.uniform1f(U.u_sizeMul, 1); gl.uniform1f(U.u_dissolve, 0); gl.uniform1f(U.u_flash, 0); gl.uniform1f(U.u_glow, 1); gl.uniform1f(U.u_xray, xray);
     const vr = G.mode === 'title' ? 60 : 30 + (boss ? 8 : 0);
+    if (WD && WD.lazy) streamWorld(tgt[0], tgt[2], WD.chunks.length ? 2 : 999);   // Ermos: blocos perto da câmera (todos de uma vez ao entrar)
     for (const c of WD.chunks) { if (Math.abs(c.cx - tgt[0]) > vr || Math.abs(c.cz - tgt[2]) > vr * .95) continue; gl.bindVertexArray(c.vao); gl.drawArrays(gl.POINTS, 0, c.count); }
   }
   const t = G.time;
