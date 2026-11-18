@@ -121,6 +121,8 @@ Quem tenta receber um item acima do teto vê: "Nível de item 34. Lume pode rece
 4. Quem ficou pode entrar depois pelo painel do grupo ("Entrar com o grupo"), enquanto a instância estiver aberta. Ele aparece no início da região ou da Fenda.
 5. Só o líder abre portais para o grupo. Os outros, se entrarem num portal sozinhos, saem da instância do grupo e jogam a própria instância (continuam no grupo para o chat).
 
+**Faixa de nível (0.28.0):** só recebe o "Pronto?" e só entra na instância quem está a até **10 níveis** do líder (`PARTY_LVL_GAP`, conferido no servidor). Quem está fora recebe um aviso, e o líder vê quem ficou de fora. Além disso, quem é carregado (monstros mais de 5 níveis acima do próprio nível) ganha XP limitado por abate.
+
 **Nível sugerido** no aviso: o nível base da região (`REGBASE`), ou o nível do líder mais o nível da Fenda. Se alguém estiver mais de 3 níveis abaixo, o aviso mostra em amarelo: "Nível sugerido 12 · Lume é Nv 7". Com o Fio de Elo (abaixo), a pessoa entra mesmo assim.
 
 ## Dificuldade em grupo
