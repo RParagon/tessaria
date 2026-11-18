@@ -14,8 +14,9 @@ const FRAG = [
   { r: 'peaks', t: 'O Tear', x: '"Todo fio arrancado pode ser recosturado. Mas só por mãos que lembrem de tudo: do medo, da culpa e da maçã."' },
 ];
 const REG = {
-  hub: { name: 'Vila Brasa', sub: 'O último lugar aceso', style: 'hub', W: 44, H: 32, seed: 3, torch: 21,
-    rooms: [{ x: 22, y: 16, w: 19, h: 13, shape: 'rect', kind: 'start' }], links: [] },
+  hub: { name: 'Vila Brasa', sub: 'O último lugar aceso', style: 'hub', W: 76, H: 32, seed: 3, torch: 21,
+    // a vila original (sala 0) e o Bairro Leste (sala 1): fogueira, Bardo, arena de treino e lago de pesca
+    rooms: [{ x: 22, y: 16, w: 19, h: 13, shape: 'rect', kind: 'start' }, { x: 59, y: 16, w: 14, h: 12, shape: 'rect' }], links: [[0, 1]] },
   forest: { name: 'Bosque Sussurrante', sub: 'Onde as árvores lembram', style: 'forest', W: 50, H: 40, seed: 11, torch: 27, boss: 'golem', fio: 'FIO VERDE',
     rooms: [
       { x: 6, y: 34, r: 3, kind: 'start' }, { x: 15, y: 30, r: 4.5, en: { gosmo: 3 } }, { x: 6, y: 22, r: 3.5, frag: 0, en: { gosmo: 2 } },
@@ -58,13 +59,19 @@ const HUB = {
   houses: [
     { x: 4, y: 8, w: 3, h: 3, roof: 23 }, { x: 9, y: 8, w: 3, h: 3, roof: 22 }, { x: 14, y: 9, w: 5, h: 3, roof: 22, tavern: true },
     { x: 27, y: 8, w: 3, h: 3, roof: 22 }, { x: 33, y: 8, w: 3, h: 3, roof: 23 },
-    { x: 4, y: 20, w: 3, h: 3, roof: 22 }, { x: 9, y: 22, w: 3, h: 3, roof: 23 }, { x: 26, y: 20, w: 3, h: 2, roof: 22, forge: true }, { x: 33, y: 20, w: 3, h: 3, roof: 22 }],
-  fountain: [44, 32], portals: [{ to: 'forest', x: 24, z: 9 }, { to: 'crypt', x: 44, z: 8 }, { to: 'peaks', x: 64, z: 9 }, { to: 'swamp', x: 9, z: 33, yaw: 1.57 }, { to: 'wilds', x: 44, z: 56, yaw: 3.14 }, { to: 'glass', x: 79, z: 33, yaw: -1.57 }],
-  lamps: [[34, 24], [54, 24], [34, 40], [54, 40], [24, 15], [64, 15], [40, 14], [48, 14], [18, 32], [70, 32]],
-  spawn: [44, 42], stalls: [[26, 12, 16], [29, 12, 18]], trees: [[3, 14], [17, 20], [39, 14], [38, 27], [3, 27], [12, 26], [36, 3]],
-  pond: { x: 30.5, y: 25.5, rx: 2.8, ry: 1.6 }, pen: { x0: 14, y0: 23, x1: 18, y1: 27 },
-  props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board']],
+    { x: 4, y: 20, w: 3, h: 3, roof: 22 }, { x: 9, y: 22, w: 3, h: 3, roof: 23 }, { x: 26, y: 20, w: 3, h: 2, roof: 22, forge: true }, { x: 33, y: 20, w: 3, h: 3, roof: 22 },
+    // Bairro Leste
+    { x: 47, y: 5, w: 4, h: 3, roof: 23 }, { x: 53, y: 5, w: 3, h: 3, roof: 22 }, { x: 47, y: 23, w: 3, h: 3, roof: 22 }, { x: 52, y: 24, w: 3, h: 3, roof: 23 }],
+  fountain: [44, 32], portals: [{ to: 'forest', x: 24, z: 9 }, { to: 'crypt', x: 44, z: 8 }, { to: 'peaks', x: 64, z: 9 }, { to: 'swamp', x: 9, z: 33, yaw: 1.57 }, { to: 'wilds', x: 44, z: 56, yaw: 3.14 }, { to: 'glass', x: 145, z: 33, yaw: -1.57 }],
+  lamps: [[34, 24], [54, 24], [34, 40], [54, 40], [24, 15], [64, 15], [40, 14], [48, 14], [18, 32], [70, 32], [92, 24], [92, 40], [110, 21], [126, 21], [110, 43], [140, 30], [128, 40], [140, 18]],
+  spawn: [44, 42], stalls: [[26, 12, 16], [29, 12, 18]], trees: [[3, 14], [17, 20], [39, 14], [38, 27], [3, 27], [12, 26], [36, 3], [72, 5], [72, 27], [46, 15], [58, 27], [63, 5]],
+  pond: { x: 30.5, y: 25.5, rx: 2.8, ry: 1.6 }, lake: { x: 66, y: 23.6, rx: 4.4, ry: 2.4 },
+  // Bairro Leste (coordenadas do mundo): fogueira com bancos, arena com bonecos, ponto de pesca
+  fire: [118, 31], benches: [[114.2, 31, 1.57], [121.8, 31, -1.57], [118, 27.2, 0], [118, 34.8, 3.14]], arena: { x: 134, z: 13, w: 7, h: 5 }, dummies: [[130, 13], [134, 13], [138, 13]], fish: [122.5, 47], pen: { x0: 14, y0: 23, x1: 18, y1: 27 },
+  props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board'], [102, 16, 'crate'], [102.8, 16.6, 'barrel'], [98, 50, 'barrel'], [112, 52, 'crate']],
 };
+/** Bardo do Bairro Leste: fica fora de NPCS (as linhas de paleta dos moradores estão cheias) e usa as linhas 152-159, livres na vila. */
+const BARD = { id: 'bardo', name: 'Bardo Tomé', x: 121.6, z: 27.6, baseYaw: 2.6, cfg: { seed: 81, body: 1, hair: 'longo', hairCol: 2, skin: 3, outfit: 3, trim: 4, glow: 3, acc: 'pena', cape: true } };
 const WANDER_KIDS = [[36, 27], [52, 27], [52, 38], [36, 38], [44, 24], [40, 44], [50, 44]];
 const NPCS = [
   { id: 'ysolde', name: 'Anciã Ysolde', x: 37, z: 32, baseYaw: 1.57, cfg: { seed: 61, body: 0, hair: 'longo', hairCol: 4, skin: 1, outfit: 7, trim: 0, glow: 1, acc: 'coroa', cape: true, cls: 'arcano' } },
@@ -96,7 +103,7 @@ const DEF = {
   sentinela: { hp: 170, dmg: 22, r: .55, xp: 36, gold: 14, model: 'sentinel', scale: 1 },
   fantasma: { hp: 190, dmg: 30, r: .45, xp: 40, gold: 15, model: 'phantom', scale: 1.05 },
 };
-const MODEL_FN = { gosmo: buildGosmo, wisp: buildWisp, skel: buildSkeleton, bat: buildBat, imp: buildImp, beetle: buildBeetle, golem: buildGolem, skull: buildSkullBoss, dragon: buildDragon, shrine: buildShrine, chest: buildChest, frag: buildFragment, portal: buildPortal, pedestal: buildPedestal, chicken: buildChicken, pylon: buildPylon, spider: buildSpider, spiderling: buildSpiderling, eye: buildEye, knight: () => buildHumanoid(KNIGHT_CFG, 128), toad: buildToad, boar: buildBoar, wolf: buildWolf, bear: buildBear, drowned: buildDrowned, sentinel: buildSentinel, phantom: buildPhantom, hydra: buildHydra, reflexo: () => buildHumanoid(reflexCfg(), 152) };
+const MODEL_FN = { dummy: buildDummy, gosmo: buildGosmo, wisp: buildWisp, skel: buildSkeleton, bat: buildBat, imp: buildImp, beetle: buildBeetle, golem: buildGolem, skull: buildSkullBoss, dragon: buildDragon, shrine: buildShrine, chest: buildChest, frag: buildFragment, portal: buildPortal, pedestal: buildPedestal, chicken: buildChicken, pylon: buildPylon, spider: buildSpider, spiderling: buildSpiderling, eye: buildEye, knight: () => buildHumanoid(KNIGHT_CFG, 128), toad: buildToad, boar: buildBoar, wolf: buildWolf, bear: buildBear, drowned: buildDrowned, sentinel: buildSentinel, phantom: buildPhantom, hydra: buildHydra, reflexo: () => buildHumanoid(reflexCfg(), 152) };
 const getModel = k => k === 'reflexo' ? makeModel('reflexo:' + JSON.stringify(G.char), MODEL_FN.reflexo) : makeModel(k, MODEL_FN[k]);
 const CLS = {
   lamina: { label: 'Lâmina', desc: 'Corte em arco de perto. Hab.: Giro Flamejante.', hp: 130, dmg: 17, spd: 5.2, atkCd: .36, skillCd: 6 },
@@ -192,6 +199,8 @@ function genRegion(key) {
       const cx = x + .5, cy = y + .5, pd = HUB.pond;
       if (Math.abs(cx - 22) < 1.3 || Math.abs(cy - 16.5) < 1.1 || (y < 7 && y > 2 && cx > 8 && cx < 37) || Math.hypot(cx - 22, cy - 16) < 4.6) grid[y][x] = ',';
       if (((cx - pd.x) / pd.rx) ** 2 + ((cy - pd.y) / pd.ry) ** 2 < 1) grid[y][x] = '~';
+      const lk = HUB.lake; if (((cx - lk.x) / lk.rx) ** 2 + ((cy - lk.y) / lk.ry) ** 2 < 1) grid[y][x] = '~';
+      if (cx > 43 && (Math.abs(cy - 16.5) < 1.1 || Math.hypot(cx - 59, cy - 15.5) < 4.2 || Math.abs(cx - 59) < 1.1)) grid[y][x] = ',';   // caminhos e praça do Bairro Leste
     }
     for (const [x, y] of HUB.trees) grid[y][x] = '#';
     for (const h of HUB.houses) for (let y = h.y; y < h.y + h.h; y++) for (let x = h.x; x < h.x + h.w; x++) G.block.add(x + ',' + y);
@@ -476,6 +485,22 @@ function buildWorld(key, G) {
       rail([px0, pz0], [gA, pz0]); rail([gB, pz0], [px1, pz0]); rail([px1, pz0], [px1, pz1]); rail([px1, pz1], [px0, pz1]); rail([px0, pz1], [px0, pz0]);
       S.box([(pn.x0 + 1.6) * T, .35, (pn.y1 - .2) * T], [.55, .35, .4], 17, 0);
       for (let k = 0; k < 30; k++) S.cone([(pn.x0 + 1.6) * T + (R() - .5) * 1.1, .68, (pn.y1 - .2) * T + (R() - .5) * .8], [(pn.x0 + 1.6) * T + (R() - .5) * 1.3, .8, (pn.y1 - .2) * T + (R() - .5) * .9], .03, 17, 0);
+    }
+    { // Bairro Leste: fogueira, bancos, cerca da arena e cais do lago
+      const [fx, fz] = HUB.fire;
+      for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; S.tube([[fx + Math.cos(a) * .55, .12, fz + Math.sin(a) * .55, .12, 0], [fx - Math.cos(a) * .2, .32, fz - Math.sin(a) * .2, .08, 0]], 12, { sub: 1 }); }
+      for (let k = 0; k < 9; k++) { const a = k / 9 * 6.283; S.ell([fx + Math.cos(a) * .85, .12, fz + Math.sin(a) * .85], [.2, .14, .18], 11, 0); }
+      emitters.push({ t: 'forge', x: fx, y: .4, z: fz }); emitters.push({ t: 'smoke', x: fx, y: 1.4, z: fz });
+      for (const [ox, oz] of [[-.18, 0], [.18, .08], [0, -.16]]) emitters.push({ t: 'torch', x: fx + ox, y: .35, z: fz + oz });   // chamas
+      for (const [bx, bz, yaw] of HUB.benches) { const c = Math.cos(yaw), s = Math.sin(yaw), hw = 1.1; S.box([bx, .42, bz], [Math.abs(c) * hw + Math.abs(s) * .28, .06, Math.abs(s) * hw + Math.abs(c) * .28], 12, 0, { faces: 'tnsew' }); for (const d of [-.85, .85]) S.box([bx + c * d, .2, bz + s * d], [.08, .2, .08], 12, 0, { faces: 'nsew' }); }
+      const A = HUB.arena;
+      for (let i = 0; i <= 14; i++) for (const side of [0, 1, 2, 3]) {
+        const u = i / 14, px = side < 2 ? A.x - A.w + u * 2 * A.w : (side === 2 ? A.x - A.w : A.x + A.w), pz = side < 2 ? (side === 0 ? A.z - A.h : A.z + A.h) : A.z - A.h + u * 2 * A.h;
+        if (side === 1 && Math.abs(px - A.x) < 1.6) continue;   // entrada da arena
+        if (i % 2 === 0) S.tube([[px, 0, pz, .07, 0], [px, .9, pz, .06, 0]], 12, { sub: 1, flags: 8 });
+      }
+      for (let k = 0; k < 4; k++) S.ell([A.x - A.w + 1 + k * 4, .02, A.z], [1.2, .02, 1.2], 9, 0);   // chão batido da arena
+      const [qx, qz] = HUB.fish; S.box([qx + 1.4, .14, qz], [1.6, .06, .5], 12, 0, { faces: 'tnsew' }); for (const d of [0, 1.4, 2.8]) S.tube([[qx + d, -.3, qz + .45, .07, 0], [qx + d, .14, qz + .45, .07, 0]], 12, { sub: 1 });
     }
     { const pd = HUB.pond, wx0 = (pd.x - pd.rx) * T + .4, wz = pd.y * T; S.box([wx0 + 1.6, .14, wz], [1.7, .06, .45], 12, 0, { faces: 'tnsew' }); for (let i = 0; i < 4; i++) for (const sz of [-.4, .4]) S.tube([[wx0 + .2 + i * 1.05, -.3, wz + sz, .06, 0], [wx0 + .2 + i * 1.05, .3, wz + sz, .06, 0]], 12, { sub: 1 }); }
     for (const [px, pz, kind] of HUB.props) {

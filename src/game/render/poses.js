@@ -60,6 +60,7 @@ function poseStaff(A, rx, rz) {
 function poseEnemy(e, t) {
   const A = e.anim; resetAnim(A);
   switch (e.type) {
+    case 'dummy': if (e.hitT > 0) A[1].rz = Math.sin(e.t * 40) * .2 * e.hitT / .18; break;   // boneco de treino balança
     case 'gosmo': { const air = e.hop > 0 ? Math.sin(Math.PI * (1 - e.hop / .45)) : 0, land = e.hop <= 0 ? Math.max(0, 1 - (e.cd > 0 ? (1 - e.cd) * 4 : 1)) : 0; const sy = 1 + .22 * air - .2 * land + .03 * Math.sin(t * 5); A[1].sy = sy; A[1].sx = A[1].sz = 1 / Math.sqrt(sy); break; }
     case 'wisp': A[1].ty = Math.sin(t * 2) * .12; A[1].ry = t * 1.5; break;
     case 'afogado':

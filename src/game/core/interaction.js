@@ -118,7 +118,7 @@ function updateWilds() {
   }
 }
 function updateTriggers(dt) {
-  updateWilds();
+  updateWilds(); updateHubLife(dt);
   if (inter.some(i => i.taken)) inter = inter.filter(i => !i.taken);
   nearInter = null; let bd = 99;
   for (const it of inter) {
@@ -136,7 +136,7 @@ function updateTriggers(dt) {
   if (RG.key === 'hub') { const [fx, fz] = HUB.fountain, d = Math.hypot(fx - P.x, fz - P.z); if (d < 3.4 && d < bd) { bd = d; nearInter = { kind: 'shrine', x: fx, z: fz, hub: true }; } }
   const pr = $('#prompt'), tu = $('#tUse');
   if (nearInter && P.dieT < 0) {
-    const HL = { obelisk: nearInter.kind === 'obelisk' ? ((G.save.obel || []).includes(nearInter.zone) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
+    const HL = { bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar', obelisk: nearInter.kind === 'obelisk' ? ((G.save.obel || []).includes(nearInter.zone) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
     const label = HL[nearInter.kind] || (nearInter.kind === 'appletree' ? 'Deixar a maçã na macieira' : nearInter.kind === 'altar' ? 'Desafiar ' + BOSSDEF[REG[RG.key].boss].name.split(',')[0] + ' de novo · ' + curDiff().n : nearInter.kind === 'npc' ? 'Falar com ' + nearInter.npc.name : nearInter.kind === 'shrine' ? 'Descansar e salvar' : nearInter.kind === 'chest' ? 'Abrir baú' : nearInter.kind === 'portal' ? (nearInter.to === 'hub' ? 'Voltar à Vila Brasa' : 'Entrar: ' + REG[nearInter.to].name) : nearInter.kind === 'dragon' ? 'Falar com Varkhaz' : nearInter.kind === 'board' ? 'Ver contratos' : nearInter.kind === 'riftportal' ? 'Entrar na Fenda do Tear' : 'Usar');
     pr.innerHTML = (G.touch ? '' : '<kbd>E</kbd>') + label; pr.hidden = false; tu.hidden = !G.touch;
     if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
@@ -163,6 +163,8 @@ function interact() {
   const it = nearInter;
   if (it.kind === 'revive') { coopStartSew(it.id); return; }
   if (it.kind === 'npc') { const n = it.npc; n.talkT = 4; G.save.met['t_' + n.id] = true; const lines = questLines(n.id) || DIALOG[n.id](); say(lines, () => updateObjective()); }
+  else if (it.kind === 'bench') sitBench(it);
+  else if (it.kind === 'fish') fishAction();
   else if (it.kind === 'obelisk') useObelisk(it);
   else if (it.kind === 'cave') enterCave(it);
   else if (it.kind === 'shrine') {
@@ -238,6 +240,11 @@ function loadRegion(key, atCp) {
     for (const p of HUB.portals) { const [lit, lock] = portalState(p.to); inter.push({ kind: 'portal', to: p.to, x: p.x, z: p.z, r: 2.2, lit, lock, model: getModel('portal'), anim: newAnim(getModel('portal')), yaw: p.yaw || 0 }); }
     for (const n of NPCS) { const m = makeModel('npc-' + n.id, () => buildHumanoid(n.cfg, 32 + NPCS.indexOf(n) * 8)); npcs.push({ ...n, model: m, anim: newAnim(m), yaw: n.baseYaw || 0, talkT: 0, visible: n.id !== 'desf' || (G.save.bosses.forest && (!G.save.ended || G.save.ended === 'B')) }); }
     spawnCritters();
+    // Bairro Leste: Bardo, bancos da fogueira, ponto de pesca e bonecos de treino
+    { const m = makeModel('npc-bardo', () => buildHumanoid(BARD.cfg, 152)); npcs.push({ ...BARD, model: m, anim: newAnim(m), yaw: BARD.baseYaw, talkT: 0, visible: true }); }
+    for (const [bx, bz] of HUB.benches) inter.push({ kind: 'bench', x: bx, z: bz, r: 1.6 });
+    inter.push({ kind: 'fish', x: HUB.fish[0] + 1.4, z: HUB.fish[1], r: 2.2 });
+    for (const [dx, dz] of HUB.dummies) { const e = spawnEnemy('skel', dx, dz, 0); e.type = 'dummy'; e.model = getModel('dummy'); e.anim = newAnim(e.model); e.scale = 1; e.dummy = true; e.spawnT = 0; e.hp = e.maxHp = 5000; e.yaw = 0; e.log = []; }
     if (G.save.q && G.save.q.nina && G.save.q.nina.st === 'active') placeNina();
   } else if (key === 'home') {
     setupHome();
@@ -421,4 +428,51 @@ function enterCave(it) {
   G.arrive = { region: 'wilds', x: it.x, z: it.z + 2.6 };
   withSeed(70001 + it.ri * 131, () => startRift(L));
   G.rift.cave = { zone: it.zone }; REG.rift.name = 'Covil · ' + b.n; REG.rift.sub = 'uma caverna sob os Ermos';
+}
+
+// ---------- Vila 2.0: Bairro Leste ----------
+/** Sentar no banco (emote que os outros veem). Perto da fogueira, a vida volta aos poucos. */
+function sitBench(it) {
+  P.x = it.x; P.z = it.z; P.vx = P.vz = 0;
+  if (window.TessGame) window.TessGame.myEmote('sentar'); else { P.emote = 'sentar'; P.emoteT = 0; }
+  const n = NETON(); if (n && n.room) n.emote('sentar');
+  sfx('ui');
+}
+/** Pesca: lançar a linha, esperar o peixe morder (2 a 6 s) e puxar na janela de 0,9 s. */
+const FISH = [
+  { n: 'Lambari', p: .62, g: 6, c: '#d8d2c4' }, { n: 'Tilápia-de-Brasa', p: .27, g: 15, c: '#6fd36a' },
+  { n: 'Carpa Dourada', p: .1, g: 45, c: '#ffbf3d' }, { n: 'Peixe-Lua', p: .01, g: 160, c: '#c07bff' },
+];
+function fishAction() {
+  const F = G.fishing;
+  if (!F) { G.fishing = { t: 0, biteAt: 2 + Math.random() * 4, bite: false }; P.emote = null; toast('Linha lançada…', false, 'APERTE DE NOVO QUANDO O PEIXE MORDER'); sfx('ui'); return; }
+  if (!F.bite) { G.fishing = null; toast('Puxou cedo demais', false, 'O PEIXE FUGIU'); return; }
+  G.fishing = null;
+  let r = Math.random(), f = FISH[0]; for (const x of FISH) { if (r < x.p) { f = x; break; } r -= x.p; }
+  addGold(f.g); gainXp(Math.round(f.g * .6));
+  const st = G.save.st = G.save.st || {}; st.fish = (st.fish || 0) + 1;
+  toast(f.n.toUpperCase(), f.p < .05, '+' + f.g + ' CENTELHAS · ' + st.fish + ' PEIXES PESCADOS', f.c); sfx(f.p < .05 ? 'legend' : 'lvl');
+  burst(HUB.fish[0] + 3, .2, HUB.fish[1] + 1, 20, 15, 3, .5, .12); writeSave();
+}
+function updateHubLife(dt) {
+  if (!RG || RG.key !== 'hub' || !P) { G.fishing = null; return; }
+  // pesca: o peixe morde, a janela fecha
+  const F = G.fishing;
+  if (F) {
+    F.t += dt;
+    if (!F.bite && F.t >= F.biteAt) { F.bite = true; F.biteT = 0; toast('PEIXE MORDEU!', true, 'APERTE AGORA'); sfx('hit'); burst(HUB.fish[0] + 3, .2, HUB.fish[1] + 1, 14, 15, 2, .4, .1); }
+    else if (F.bite && (F.biteT += dt) > .9) { G.fishing = null; toast('O peixe escapou', false, 'TENTE DE NOVO'); }
+    if (Math.hypot(P.x - HUB.fish[0] - 1.4, P.z - HUB.fish[1]) > 3) G.fishing = null;
+  }
+  // fogueira: sentado perto dela, a vida volta
+  if (P.emote === 'sentar' && Math.hypot(P.x - HUB.fire[0], P.z - HUB.fire[1]) < 6 && P.hp < P.maxHp) { P.hp = Math.min(P.maxHp, P.hp + P.maxHp * .04 * dt); if (Math.random() < dt * 4) spawn({ x: P.x + rr(-.3, .3), y: rr(.8, 1.6), z: P.z + rr(-.3, .3), vy: .6, life: .7, s0: .06, s1: .02, b0: 1, b1: .2, mat: 31 }); }
+  // bonecos: dano por segundo dos últimos 5 s
+  for (const e of enemies) {
+    if (!e.dummy || !e.log.length) continue;
+    e.dpsT = (e.dpsT || 0) - dt; if (e.dpsT > 0) continue; e.dpsT = 1;
+    const now = G.time; e.log = e.log.filter(l => now - l[0] < 5);
+    if (!e.log.length) continue;
+    const span = Math.max(1, Math.min(5, now - e.log[0][0])), dps = Math.round(e.log.reduce((a, l) => a + l[1], 0) / span);
+    popNum(e.x, 3.1, e.z, 'DPS ' + dps, 'info');
+  }
 }

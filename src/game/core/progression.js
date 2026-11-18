@@ -80,6 +80,7 @@ const FEITOS = [
   { id: 'magnata', n: 'Magnata de Tessária', d: 'Gaste 50.000 Centelhas.', chk: s => (s.spent || 0) >= 50000 },
   { id: 'correio', n: 'Carta a um Amigo', d: 'Envie um item pelo Correio do Tear.', chk: s => ((s.st || {}).mailSent || 0) >= 1 },
   { id: 'wild3', n: 'Até o Fim do Mapa', d: 'Chegue ao Ermo Profundo.', chk: s => (s.wz || 0) >= 3 },
+  { id: 'pesca', n: 'Paciência de Tecelão', d: 'Pesque 10 peixes no lago do Bairro Leste.', chk: s => ((s.st && s.st.fish) || 0) >= 10 },
   { id: 'alpha5', n: 'Caçador de Alfas', d: 'Derrote 5 Alfas nos Ermos.', chk: s => ((s.st || {}).alphas || 0) >= 5 },
   { id: 'act2', n: 'Fios Soltos', d: 'Derrote a Hidra do Lodo e O Reflexo.', chk: s => !!(s.bosses.swamp && s.bosses.glass) },
   { id: 'diff3', n: 'Mestre Tecelão', d: 'Derrote um guardião na dificuldade Mestre.', chk: s => Object.values(s.bossDiff || {}).some(v => v >= 3) },

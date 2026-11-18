@@ -8,7 +8,7 @@ export const HUB_CAP = 40;          // jogadores por sala da vila
 export const SNAP_HZ = 10;          // snapshots por segundo
 export const VISIBLE_MAX = 12;      // jogadores remotos desenhados ao mesmo tempo (cores próprias na paleta)
 export const CHAT_MAX = 140;
-export const HUB_BOUNDS = { x0: 4, x1: 84, z0: 4, z1: 60 };
+export const HUB_BOUNDS = { x0: 4, x1: 150, z0: 4, z1: 60 };   // vila + Bairro Leste
 export const MAX_SPEED = 12;        // unidades/s (corrida + esquiva com folga)
 // ---------- instâncias (co-op) ----------
 /** Bases de Fenda que o jogo conhece (core/progression.js, RTYPES). */

@@ -573,6 +573,17 @@ function buildEye() {
   for (let k = 0; k < 6; k++) { const b = bones.length, a = k / 6 * 6.283 + .3, st = [Math.cos(a) * .6, 1.55, Math.sin(a) * .6]; bones.push({ p: 1, v: st }); S.tube([[...st, .16, b], [st[0] * 1.6, .9, st[2] * 1.6, .1, b], [st[0] * 1.2, .3, st[2] * 1.2, .02, b]], 147, { sub: 4, noSolid: true }); }
   return { bones, data: S.build() };
 }
+/** Boneco de treino do Bairro Leste: poste, palha e um alvo pintado. Balança quando apanha. */
+function buildDummy() {
+  const S = new SplatSet(67, 900), bones = [{ p: -1, v: [0, 0, 0] }, { p: 0, v: [0, .9, 0] }];
+  S.tube([[0, 0, 0, .07, 0], [0, 1.0, 0, .06, 0]], 12, { sub: 1 });
+  S.ell([0, 1.35, 0], [.32, .42, .26], 17, 1);
+  S.tube([[-.62, 1.5, 0, .05, 1], [.62, 1.5, 0, .05, 1]], 12, { sub: 1 });
+  for (const sx of [-1, 1]) S.ell([sx * .6, 1.5, 0], [.12, .1, .1], 17, 1);
+  S.ell([0, 1.95, 0], [.2, .2, .2], 17, 1);
+  S.ell([0, 1.38, .25], [.16, .16, .03], 16, 1); S.ell([0, 1.38, .27], [.07, .07, .02], 28, 1);
+  return { bones, data: S.build() };
+}
 function buildPylon() {
   const S = new SplatSet(66, 420), bones = [{ p: -1, v: [0, 0, 0] }, { p: 0, v: [0, 2.0, 0] }];
   S.box([0, .15, 0], [.55, .15, .55], 11, 0);

@@ -22,6 +22,7 @@ function hurtEnemy(e, dmg, dx, dz, crit, kbm = 1) {
   const l = Math.hypot(dx, dz) || 1, kb = (e.type === 'beetle' ? 2 : 6) * kbm; e.kx += dx / l * kb; e.kz += dz / l * kb;
   popNum(e.x, 1.6 * e.scale + (e.type === 'bat' ? 1 : 0), e.z, crit ? dmg + '!' : '' + dmg, crit ? 'crit' : '');
   sfx('hit'); burst(e.x, 1, e.z, 6, 7, 3, .3, .1);
+  if (e.dummy) { e.log.push([G.time, dmg]); if (e.hp < e.maxHp * .3) e.hp = e.maxHp; e.kx = e.kz = 0; if (!G.save.st || !G.save.st.dummy) { (G.save.st = G.save.st || {}).dummy = 1; toast('Boneco de treino', false, 'ELE MOSTRA O SEU DANO POR SEGUNDO'); } return; }
   if (e.hp <= 0 && e.dieT < 0) {
     e.dieT = 0; if (!COOP.remoteHit) hitStop(.03);
     if (coopShare(e)) {
@@ -37,6 +38,7 @@ function hurtEnemy(e, dmg, dx, dz, crit, kbm = 1) {
 function dropGold(x, z, n) { for (let i = 0; i < n; i++) { const a = rr(0, 6.28), s = rr(1, 3); pickups.push({ kind: 'gold', x, y: .8, z, vx: Math.cos(a) * s, vy: rr(3, 5), vz: Math.sin(a) * s, t: 0, v: 1 }); } }
 function moveEnt(e, vx, vz, dt) { const mm = (e.spdMul || 1) * (e.slowT > 0 ? .5 : 1), kl = Math.hypot(e.kx, e.kz); if (kl > 18) { e.kx *= 18 / kl; e.kz *= 18 / kl; } moveSafe(e, (vx * mm + e.kx) * dt, (vz * mm + e.kz) * dt, Math.max(.3, e.def.r * e.scale)); e.kx *= Math.exp(-dt * 6); e.kz *= Math.exp(-dt * 6); }
 function updateEnemy(e, dt) {
+  if (e.dummy) { e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.kx = e.kz = 0; e.hitT = (e.hitT || 0) - dt; return; }   // boneco de treino
   e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.actT += dt;
   if (e.dieT >= 0) { e.dieT += dt; if (e.dieT > .6) e.dead = true; return; }
   if (e.spawnT > 0) { e.spawnT -= dt; return; }

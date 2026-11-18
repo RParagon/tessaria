@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.17.0 · Vila 2.0: Bairro Leste
+- **A vila quase dobrou:** um bairro novo a leste, ligado à praça por um caminho de pedra, com casas, lampiões e árvores
+- **Praça da fogueira:** fogueira acesa com quatro bancos. Sentar perto dela recupera a vida aos poucos, e os outros jogadores veem você sentado
+- **Bardo Tomé:** morador novo junto à fogueira, com canções e rumores sobre os biomas, os covis, a Lua de Sangue, os obeliscos e o co-op
+- **Arena de treino:** três bonecos de palha que nunca caem, balançam quando apanham e mostram o seu **dano por segundo**
+- **Lago de pesca:** lance a linha, espere o peixe morder e aperte na hora certa. Quatro peixes (Lambari, Tilápia-de-Brasa, Carpa Dourada e o raro Peixe-Lua) e o feito "Paciência de Tecelão"
+- O portal da Cidadela de Vidro foi para a nova borda leste da vila
+
 ## 0.16.0 · Ermos em grupo, dificuldade do grupo e Fio de Elo
 - **Ermos do grupo:** em grupo, o líder que entra no portal dos Ermos abre os Ermos para todos (aviso **Pronto?**). Mesmo mapa, mesmos monstros, Costurar, escala por jogador e loot sorteado pelo servidor no nível de cada bioma. A Lua de Sangue do líder vale para todos
 - **Dificuldade do grupo:** vale a do líder, limitada à maior que todos já desbloquearam; o líder recebe o motivo quando ela cai ("Lume ainda não desbloqueou o Expert"). Cada um volta para a própria ao sair

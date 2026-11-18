@@ -80,3 +80,34 @@ test('Ermos 2.0: mapa grande com 8 biomas, obelisco, covil com volta na boca e e
   await page.waitForFunction(() => window.__T.ev('!!G.amb && G.amb.list.length >= 4'), null, { timeout: 5000 });
   expect(errors).toEqual([]);
 });
+
+test('Vila 2.0: Bairro Leste com Bardo, bonecos de treino, fogueira com bancos e pesca', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  expect(await ev('[RG.W, npcs.some(n => n.id === "bardo"), enemies.filter(e => e.dummy).length, inter.filter(i => i.kind === "bench").length, inter.some(i => i.kind === "fish")]')).toEqual([76, true, 3, 4, true]);
+  // boneco: registra o dano, mostra o DPS e não cai
+  for (let i = 0; i < 40; i++) await ev("hurtEnemy(enemies.find(e => e.dummy), 200, 0, 1, false)");
+  expect(await ev('(e => e.dieT < 0 && e.hp > 0 && e.log.length === 40)(enemies.find(e => e.dummy))')).toBe(true);
+  // pesca: lança, o peixe morde, puxa na hora
+  await ev('P.x = HUB.fish[0] + 1.4; P.z = HUB.fish[1]');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'fish', null, { timeout: 5000 });
+  const ouro = await ev('G.save.gold');
+  await page.keyboard.press('e');
+  await ev('G.fishing.biteAt = .05');
+  await page.waitForFunction(() => window.__T.ev('!!(G.fishing && G.fishing.bite)'), null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => window.__T.ev('(G.save.st && G.save.st.fish) === 1'), null, { timeout: 3000 });
+  expect(await ev('G.save.gold')).toBeGreaterThan(ouro);
+  // banco perto da fogueira: senta e a vida volta
+  await ev('P.hp = 5; sitBench(inter.find(i => i.kind === "bench"))');
+  await page.waitForFunction(() => window.__T.ev('P.hp > 6'), null, { timeout: 5000 });
+  expect(await ev('P.emote')).toBe('sentar');
+  // o Bardo conta um rumor
+  await ev('(n => { P.x = n.x + 1; P.z = n.z + 1; P.emote = null; })(npcs.find(n => n.id === "bardo"))');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'npc' && window.__T.nearInter.npc.id === 'bardo', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await expect(page.locator('#dialog')).toContainText('Bardo Tomé');
+  expect(errors).toEqual([]);
+});

@@ -9,6 +9,7 @@ const STORY = [
   'Você acordou na Vila Brasa com uma agulha de luz na palma da mão. Só os Tecelões nascem assim. O último morreu há cem anos.',
 ];
 const DIALOG = {
+  bardo: () => [{ who: 'Bardo Tomé', text: BARD_SONGS[Math.floor(Math.random() * BARD_SONGS.length)] }, { who: 'Bardo Tomé', text: BARD_RUMORS[Math.floor(Math.random() * BARD_RUMORS.length)] }],
   ysolde() {
     const s = G.save, Y = 'Anciã Ysolde';
     if (!s.met.ysolde) {
@@ -185,6 +186,20 @@ function playStory(lines, cb) { G.storyLines = lines; G.storyEnd = cb; G.storyI 
 
 /* ---- caixa de diálogo ---- */
 const DLG = { q: [], cur: null, shown: 0, done: null };
+// Rumores do Bardo Tomé (Bairro Leste): dicas sobre os Ermos e o co-op
+const BARD_RUMORS = [
+  'Dizem que na Teia Funda a Rainha guarda um casulo dourado. Quem anda nas teias fica lento… e vira jantar.',
+  'Os obeliscos dos Ermos dormem. Toque em um e ele lembra de você. Toque em outro e eles conversam.',
+  'Quando a lua fica vermelha nos Ermos, as feras saem em bando. Muito perigo, muita experiência.',
+  'Nas Colinas Partidas as pedras caem do céu. Fique fora dos círculos e você vive pra contar.',
+  'Vi gente sair de uma caverna nos Ermos com mais ouro do que entrou. A caverna devolve você na porta.',
+  'Amigo caído não é amigo perdido. Fique ao lado dele e costure: três segundos e ele levanta.',
+  'Na Fenda do grupo, os monstros ficam mais fortes, mas cada um leva o próprio tesouro.',
+  'Se seu amigo é novato, leve ele junto: o Fio de Elo puxa ele pra perto de você. E quem ajuda ganha mais Centelhas.',
+  'O lago aqui do lado tem um Peixe-Lua. Eu nunca vi. Meu avô jurava que viu.',
+  'Os bonecos da arena não reclamam. Bata à vontade e veja quanto dano você faz.',
+];
+const BARD_SONGS = ['♪ Fio de luz, agulha e mão, costura o Sol de volta ao chão ♪', '♪ Na Vila Brasa a chama não se apaga, quem chega cansado aqui se embriaga… de histórias ♪'];
 function say(lines, done) {
   DLG.q = lines.slice(); DLG.done = done || null; G.prevMode = G.mode === 'dialog' ? G.prevMode : G.mode; G.mode = 'dialog';
   input.atk = false; $('#dialog').hidden = false; $('#prompt').hidden = true; refreshHudVis(); nextLine();
