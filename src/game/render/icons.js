@@ -22,7 +22,9 @@ const ICONS = {
   gear: ['....k..k....', '...kgkkgk...', '.k.kggggk.k.', 'kgkggkkggkgk', '.kggk..kggk.', '.kgk....kgk.', '.kgk....kgk.', '.kggk..kggk.', 'kgkggkkggkgk', '.k.kggggk.k.', '...kgkkgk...', '....k..k....'],
 };
 const iconURL = {};
+const ICON3D = {};   // ícones 3D assados pelo motor de splats (render.js, bakeIcons); os de pixel ficam de reserva
 function icon(name) {
+  if (ICON3D[name]) return ICON3D[name];
   if (iconURL[name]) return iconURL[name];
   const rows = ICONS[name] || ICONS.gem, c = document.createElement('canvas'); c.width = c.height = 12;
   const x = c.getContext('2d');

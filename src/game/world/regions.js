@@ -65,16 +65,26 @@ const HUB = {
     { x: 47, y: 5, w: 4, h: 3, roof: 23 }, { x: 53, y: 5, w: 3, h: 3, roof: 22 }, { x: 47, y: 23, w: 3, h: 3, roof: 22 }, { x: 52, y: 24, w: 3, h: 3, roof: 23 }],
   fountain: [44, 32], portals: [{ to: 'forest', x: 24, z: 9 }, { to: 'crypt', x: 44, z: 8 }, { to: 'peaks', x: 64, z: 9 }, { to: 'swamp', x: 9, z: 33, yaw: 1.57 }, { to: 'wilds', x: 44, z: 56, yaw: 3.14 }, { to: 'glass', x: 145, z: 33, yaw: -1.57 }],
   lamps: [[34, 24], [54, 24], [34, 40], [54, 40], [24, 15], [64, 15], [40, 14], [48, 14], [18, 32], [70, 32], [92, 24], [92, 40], [110, 21], [126, 21], [110, 43], [140, 30], [128, 40], [140, 18]],
-  spawn: [44, 42], stalls: [[26, 12, 16], [29, 12, 18]], trees: [[3, 14], [17, 20], [39, 14], [38, 27], [3, 27], [12, 26], [36, 3], [72, 5], [72, 27], [46, 15], [58, 27], [63, 5]],
+  spawn: [44, 42], stalls: [[26, 12, 16], [29, 12, 18], [52, 18, 15], [55, 18, 22]], /* as duas últimas: feira do Bairro Leste */ trees: [[3, 14], [17, 20], [39, 14], [38, 27], [3, 27], [12, 26], [36, 3], [72, 5], [72, 27], [46, 15], [58, 27], [63, 5]],
   pond: { x: 30.5, y: 25.5, rx: 2.8, ry: 1.6 }, lake: { x: 66, y: 23.6, rx: 4.4, ry: 2.4 },
   // Bairro Leste (coordenadas do mundo): fogueira com bancos, arena com bonecos, ponto de pesca
   fire: [118, 31], benches: [[114.2, 31, 1.57], [121.8, 31, -1.57], [118, 27.2, 0], [118, 34.8, 3.14]], arena: { x: 134, z: 13, w: 7, h: 5 }, dummies: [[130, 13], [134, 13], [138, 13]], fish: [122.5, 47], pen: { x0: 14, y0: 23, x1: 18, y1: 27 },
   // Santuário da Fenda (mundo): portal sombrio no estrado ao sul, pilares de obsidiana com chama violeta e arco na entrada
   sanct: { x: 118, z: 77, gate: [118, 68.5], pil: [[107, 67], [129, 67], [132, 78], [108, 87.5], [128, 87.5]], arch: [101.5, 77] },
-  props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board'], [102, 16, 'crate'], [102.8, 16.6, 'barrel'], [98, 50, 'barrel'], [112, 52, 'crate']],
+  props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board'], [102, 16, 'crate'], [102.8, 16.6, 'barrel'], [98, 50, 'barrel'], [112, 52, 'crate'],
+    // Bairro Leste: feira, poço, canteiros, feno e varal
+    [101.6, 38.6, 'barrel'], [102.3, 39.4, 'crate'], [113.2, 38.4, 'crate'], [113.8, 39.3, 'barrel'], [123, 12, 'well'], [96, 30, 'flowers'], [104, 28, 'flowers'], [134, 33, 'flowers'], [140, 40, 'flowers'], [116, 20, 'flowers'],
+    [142, 25, 'hay'], [143.2, 26.3, 'hay'], [101, 46.5, 'line'], [120.5, 51.6, 'crate'], [121.3, 52.3, 'barrel'], [136, 20.5, 'crate']],
 };
 /** Bardo do Bairro Leste: fica fora de NPCS (as linhas de paleta dos moradores estão cheias) e usa as linhas 152-159, livres na vila. */
 const BARD = { id: 'bardo', name: 'Bardo Tomé', x: 121.6, z: 27.6, baseYaw: 2.6, cfg: { seed: 81, body: 1, hair: 'longo', hairCol: 2, skin: 3, outfit: 3, trim: 4, glow: 3, acc: 'pena', cape: true, gear: 'alaude' } };
+/** Moradores do Bairro Leste: linhas de paleta próprias (128-143), livres na vila (lá ninguém usa as cores do Cavaleiro e dos monstros). */
+const EAST_NPCS = [
+  { id: 'lucia', name: 'Acendedora Lúcia', x: 93.5, z: 25.5, base: 128, spd: 1.15, wander: [[93.5, 25.5], [111.5, 22.5], [127.5, 22.5], [141.5, 19.5], [141.5, 31.5], [129.5, 41.5], [111.5, 44.5], [93.5, 41.5]],
+    cfg: { seed: 83, body: 0, hair: 'coque', hairCol: 0, skin: 4, outfit: 9, trim: 2, glow: 1, acc: 'chapeu', cape: false, gear: 'vara' } },
+  { id: 'dora', name: 'Feirante Dora', x: 108, z: 37.6, baseYaw: 0, base: 136,
+    cfg: { seed: 84, body: 2, hair: 'rabo', hairCol: 3, skin: 1, outfit: 4, trim: 5, glow: 0, acc: 'bandana', cape: false, apron: true } },
+];
 const WANDER_KIDS = [[36, 27], [52, 27], [52, 38], [36, 38], [44, 24], [40, 44], [50, 44]];
 const NPCS = [
   { id: 'ysolde', name: 'Anciã Ysolde', x: 37, z: 32, baseYaw: 1.57, cfg: { seed: 61, body: 0, hair: 'longo', hairCol: 4, skin: 1, outfit: 7, trim: 0, glow: 1, acc: 'coroa', cape: true, cls: 'arcano' } },
@@ -217,6 +227,7 @@ function genRegion(key) {
     for (const p of HUB.portals) reserve(p.x, p.z, 1);
     { const sc = HUB.sanct; for (const [px, pz] of sc.pil) G.block.add(Math.floor(px / T) + ',' + Math.floor(pz / T)); reserve(sc.gate[0], sc.gate[1], 2); for (const dz of [-2.9, 2.9]) G.block.add(Math.floor(sc.arch[0] / T) + ',' + Math.floor((sc.arch[1] + dz) / T)); }
     for (const n of NPCS) reserve(n.x, n.z, 0);
+    for (const n of EAST_NPCS) reserve(n.x, n.z, 0);
     for (const l of HUB.lamps) reserve(l[0], l[1], 0);
     for (const p of HUB.props) reserve(p[0], p[1], 0);
   }
@@ -511,6 +522,10 @@ function buildWorld(key, G) {
     for (const [px, pz, kind] of HUB.props) {
       if (kind === 'crate') { S.box([px, .35, pz], [.35, .35, .35], p => (Math.abs(frac((p[0] + p[1] + p[2]) / .7) - .5) < .07) ? 19 : 12, 0); }
       else if (kind === 'barrel') S.ell([px, .45, pz], [.3, .45, .3], p => (Math.abs(p[1] - .2) < .05 || Math.abs(p[1] - .7) < .05) ? 11 : 12, 0);
+      else if (kind === 'well') { S.tube([[px, 0, pz, .85, 0], [px, .85, pz, .85, 0]], 11, { sub: 1 }); S.ell([px, .82, pz], [.72, .03, .72], 15, 0, { noSolid: true }); for (const sx of [-.8, .8]) S.tube([[px + sx, .8, pz, .06, 0], [px + sx, 2.2, pz, .06, 0]], 12, { sub: 1 }); S.mem([[[px - 1.1, 2.1, pz - .7], [px + 1.1, 2.1, pz - .7], [px, 2.7, pz]], [[px - 1.1, 2.1, pz + .7], [px + 1.1, 2.1, pz + .7], [px, 2.7, pz]]], 22, () => 0); S.tube([[px - .8, 1.8, pz, .04, 0], [px + .8, 1.8, pz, .04, 0]], 12, { sub: 1 }); S.box([px + .1, 1.35, pz], [.14, .16, .14], 12, 0); }
+      else if (kind === 'flowers') { S.box([px, .12, pz], [1.0, .12, .5], 12, 0, { faces: 'tnsew' }); S.box([px, .25, pz], [.92, .02, .42], 9, 0, { faces: 't' }); for (let k = 0; k < 14; k++) { const fx = px - .8 + (k % 7) * .27, fz = pz - .2 + Math.floor(k / 7) * .4; S.tube([[fx, .25, fz, .015, 0], [fx, .5, fz, .015, 0]], 13, { sub: 1 }); S.ell([fx, .54, fz], .07, [16, 17, 28, 18][k % 4], 0, { min: 6 }); } }
+      else if (kind === 'hay') { S.ell([px, .45, pz], [.55, .45, .45], p => frac(p[1] * 6) < .15 ? 12 : 17, 0); }
+      else if (kind === 'line') { for (const sx of [-1.6, 1.6]) S.tube([[px + sx, 0, pz, .05, 0], [px + sx, 1.8, pz, .05, 0]], 12, { sub: 1 }); S.tube([[px - 1.6, 1.75, pz, .012, 0], [px, 1.62, pz, .012, 0], [px + 1.6, 1.75, pz, .012, 0]], 28, { sub: 3, noSolid: true }); [[-1.0, 16], [-.3, 18], [.4, 28], [1.05, 17]].forEach(([ox, m]) => S.box([px + ox, 1.35, pz], [.22, .27, .015], m, 0, { faces: 'ns', flags: 1 })); }
       else { for (const sx of [-.7, .7]) S.tube([[px + sx, 0, pz, .06, 0], [px + sx, 1.7, pz, .06, 0]], 12, { sub: 1 }); S.box([px, 1.25, pz], [.85, .45, .05], 12, 0, { faces: 'ns' }); for (const [ox, oy] of [[-.4, 1.35], [.1, 1.2], [.45, 1.4], [-.15, 1.0]]) S.box([px + ox, oy, pz + .07], [.16, .13, .02], 28, 0, { faces: 's' }); }
     }
     { const wx = 9.5 * T, wz = 18.5 * T, r = []; for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283; r.push([wx + Math.cos(a) * .72, .42, wz + Math.sin(a) * .72, .26, 0]); }
@@ -585,6 +600,7 @@ function buildWorld(key, G) {
     const [ax, az] = sc.arch;   // arco da entrada (a oeste, o caminho passa por baixo)
     for (const dz of [-2.9, 2.9]) { S.box([ax, 2.2, az + dz], [.5, 2.2, .5], 29, 0, { faces: 'tnsew' }); S.ell([ax, 4.5, az + dz], .3, 151, 0, { min: 16 }); emitters.push({ t: 'voidflame', x: ax, y: 4.6, z: az + dz }); }
     S.box([ax, 4.55, az], [.5, .35, 3.6], 29, 0, { faces: 'tnsew' }); for (let i = -2; i <= 2; i++) S.ell([ax + .52, 4.55, az + i * 1.2], .1, 151, 0, { min: 8 });
+    for (const [fx, fz] of [[126, 42], [138, 44], [130, 52], [118, 31], [100, 30]]) emitters.push({ t: 'fly', x: fx, y: .8, z: fz });   // vaga-lumes no lago e na fogueira
     for (let k = 0; k < 5; k++) emitters.push({ t: 'voidmist', x: gx + (k - 2) * 1.6, y: .35, z: gz + 1.5 + (k % 2) });
   }
   if (key === 'hub') for (let k = 0; k < 16; k++) { const a = k * 2.4, ry = 1.95 + (k % 4) * .22, rad = 1.12 - Math.abs(ry - 2.3) * .4; S.ell([25 + Math.cos(a) * rad, ry, 53 + Math.sin(a) * rad], .1, 16, 0, { min: 8 }); }

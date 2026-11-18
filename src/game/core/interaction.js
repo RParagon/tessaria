@@ -243,6 +243,7 @@ function loadRegion(key, atCp) {
     spawnCritters();
     // Bairro Leste: Bardo, bancos da fogueira, ponto de pesca e bonecos de treino
     { const m = makeModel('npc-bardo', () => buildHumanoid(BARD.cfg, 152)); npcs.push({ ...BARD, model: m, anim: newAnim(m), yaw: BARD.baseYaw, talkT: 0, visible: true }); }
+    for (const n of EAST_NPCS) { const m = makeModel('npc-' + n.id, () => buildHumanoid(n.cfg, n.base)); npcs.push({ ...n, model: m, anim: newAnim(m), yaw: n.baseYaw || 0, talkT: 0, visible: true }); }
     for (const [bx, bz, by] of HUB.benches) inter.push({ kind: 'bench', x: bx, z: bz, yaw: by, r: 1.6 });
     inter.push({ kind: 'fish', x: HUB.fish[0] + 1.4, z: HUB.fish[1], r: 2.2 });
     for (const [dx, dz] of HUB.dummies) { const e = spawnEnemy('skel', dx, dz, 0); e.type = 'dummy'; e.model = getModel('dummy'); e.anim = newAnim(e.model); e.scale = 1; e.dummy = true; e.spawnT = 0; e.hp = e.maxHp = 5000; e.yaw = 0; e.log = []; }

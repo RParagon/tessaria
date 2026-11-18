@@ -8,7 +8,11 @@ const STORY = [
   'Desde então o mundo se desfaz. Árvores viram poeira de luz, rios esquecem de correr, e gente some no meio de uma frase.',
   'Você acordou na Vila Brasa com uma agulha de luz na palma da mão. Só os Tecelões nascem assim. O último morreu há cem anos.',
 ];
+const LUCIA_LINES = ['Toda noite eu acendo um por um. Se algum apagar sozinho, me avisa: lampião que apaga sozinho é Desfio chegando.', 'Viu o santuário ao sul? Antes era só um poço. Depois que a Fenda abriu, as pedras ficaram pretas e começaram a cantar baixinho.', 'O Ivo diz que as minhocas-de-brasa só saem perto do fogo. Eu acho que elas gostam é dos meus lampiões.', 'Dica de quem anda a vila inteira: sentar perto da fogueira cura mais rápido que qualquer poção.', 'Os bonecos da arena não caem nunca. Já tentei com a vara. Duas vezes.'];
+const DORA_LINES = ['Fruta fresca, peixe do Ivo e fofoca de graça! A fruta é que se paga.', 'Tem gente que volta da Fenda com cada coisa… Um rapaz me ofereceu uma espada que gritava. Recusei.', 'Se você pescar uma Carpa Dourada, mostra pra mim! Faz três invernos que não vejo uma.', 'Dizem que o Bardo Tomé sabe onde ficam os covis dos Ermos. Mas ele só conta cantando, e desafinado.', 'O Guarda-Roupa da sua casa? Sorte a sua. O meu só tem avental.'];
 const DIALOG = {
+  lucia: () => [{ who: 'Acendedora Lúcia', text: LUCIA_LINES[Math.floor(Math.random() * LUCIA_LINES.length)] }],
+  dora: () => [{ who: 'Feirante Dora', text: DORA_LINES[Math.floor(Math.random() * DORA_LINES.length)] }],
   bardo: () => [{ who: 'Bardo Tomé', text: BARD_SONGS[Math.floor(Math.random() * BARD_SONGS.length)] }, { who: 'Bardo Tomé', text: BARD_RUMORS[Math.floor(Math.random() * BARD_RUMORS.length)] }],
   ysolde() {
     const s = G.save, Y = 'Anciã Ysolde';

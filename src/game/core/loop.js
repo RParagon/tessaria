@@ -40,7 +40,7 @@ if (__DEV__ || /[?&]debug=1/.test(location.search)) window.__T = { G, startRift:
 setTimeout(() => {
   try {
     document.querySelectorAll('img[data-ic]').forEach(el => el.src = icon(el.dataset.ic));
-    toTitle();
+    toTitle(); bakeIcons();
     $('#loading').hidden = true;
     requestAnimationFrame(t => { last = t; frame(t); });
   } catch (err) { $('#loading').textContent = 'ERRO: ' + err.message; console.error(err); }

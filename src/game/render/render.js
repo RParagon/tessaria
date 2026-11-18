@@ -142,6 +142,10 @@ function render(dt) {
       n.cls = n.cfg.cls; poseHuman(n.anim, n, t + n.x);
       if (n.id === 'lio' && !talking) { n.anim[5].rx = -.9 + Math.sin(t * 9) * .18; n.anim[4].rx = -.75; n.anim[4].ry = -.6; n.anim[3].rz = Math.sin(t * 2) * .08; }
       if (n.id === 'brann') { n.anim[2].rx += .22; n.anim[3].rx -= .1; }
+      if (n.id === 'lucia' && !talking && (n.moveAmt || 0) < .2) {   // parada num lampião: ergue a vara e acende
+        n.anim[5].rx = -2.3 + Math.sin(t * 3) * .1; n.anim[3].rx = -.3; if (n.W && Math.random() < .25) { const tip = tp(n.W[8], [-.38, 1.6, 1.76]); spawn({ x: tip[0], y: tip[1], z: tip[2], vx: rr(-.5, .5), vy: rr(.5, 1.5), vz: rr(-.5, .5), life: .5, s0: .07, s1: .02, b0: 1, b1: .2, mat: 14 }); }
+      }
+      if (n.id === 'dora' && !talking) { const ph = Math.sin(t * 1.3); n.anim[4].rx = -.7 + ph * .25; n.anim[5].rx = -.7 - ph * .25; n.anim[2].rx += .15; if (Math.sin(t * .35) > .92) { n.act = 'wave'; } }   // arruma a banca
       if (n.id === 'ivo' && !talking) { n.anim[5].rx = -.75 + Math.sin(t * .8) * .05; }
       if (n.id === 'bruma' && !talking) { const ph = (t * .9) % 1; n.anim[5].rx = ph < .7 ? lerp(-.3, -2.5, ph / .7) : lerp(-2.5, -.2, clamp((ph - .7) / .08, 0, 1)); if (ph > .7) n.anim[2].rx += .15; if (n.lastPh !== undefined && n.lastPh < .78 && ph >= .78) { for (let i = 0; i < 10; i++) spawn({ x: 55 + rr(-.15, .15), y: .75, z: 44.9 + rr(-.1, .1), vx: rr(-2, 2), vy: rr(1.5, 3.5), vz: rr(-2, 2), life: rr(.3, .6), s0: .06, s1: .02, b0: 1, b1: .3, mat: 14, buoy: -9 }); if (P && G.mode === 'play' && Math.hypot(P.x - 55, P.z - 45) < 9) sfx('clink'); } n.lastPh = ph; }
       if (n.id === 'mel' && !talking) { n.anim[4].rx = -1.0 + Math.sin(t * 5) * .25; n.anim[5].rx = -1.0 - Math.sin(t * 5) * .25; n.anim[2].rx += .25; }
@@ -149,6 +153,12 @@ function render(dt) {
       if (n.id === 'lio' && !talking && Math.random() < .03) spawn({ x: n.x + rr(-.3, .3), y: 1.6, z: n.z + .3, vx: rr(-.2, .2), vy: .6, vz: rr(-.1, .2), life: 1.6, s0: .1, s1: .04, b0: 1, b1: .2, mat: 14 });
       n.W = drawModel(n.model, n.anim, n.x, 0, n.z, n.yaw, n.scale || 1, { dis: n.id === 'desf' && !(G.save && G.save.ended === 'B') ? .1 + .05 * Math.sin(t * 2) : 0, dmat: 63 });
       if (n.id === 'ivo' && n.W) { const tip = tp(n.W[8], [-.38, 1.6, 1.76]), bx = IVO_BOB[0], bz = IVO_BOB[1], by = .02 + Math.sin(t * 2.2) * .04; for (let k = 0; k <= 10; k++) { const u = k / 10; dyn(lerp(tip[0], bx, u), lerp(tip[1], by, u) - Math.sin(u * Math.PI) * .35, lerp(tip[2], bz, u), .5, 28, .045); } dyn(bx, by + .05, bz, .9, 16, .16); }
+    }
+    if (RG && RG.key === 'hub') {   // patos nadando no lago do Bairro Leste
+      const dm = getModel('chicken'); G.ducks = G.ducks || [0, 1, 2, 3].map(() => newAnim(dm));
+      G.ducks.forEach((A, k) => { const dir = k % 2 ? 1 : -1, a = t * (.12 + k * .02) * dir + k * 1.57, rr2 = .45 + k * .1, x = 132 + Math.cos(a) * 8.8 * rr2, z = 47.2 + Math.sin(a) * 4.8 * rr2;
+        resetAnim(A); A[2].rx = Math.sin(t * 2 + k) > .85 ? .9 : .1; A[1].rz = Math.sin(t * 3 + k) * .08; drawModel(dm, A, x, -.14 + Math.sin(t * 2.2 + k) * .02, z, a + (dir > 0 ? 0 : Math.PI), k === 0 ? 1 : .8);
+        if (Math.random() < .05) spawn({ x: x + rr(-.2, .2), y: .02, z: z + rr(-.2, .2), vy: .2, life: .6, s0: .06, s1: .14, b0: .6, b1: .1, mat: 15 }); });
     }
     for (const c of critters) { resetAnim(c.anim); c.anim[2].rx = c.peck > 0 ? .9 * Math.sin(c.peck * 16) ** 2 : 0; c.anim[1].ty = Math.abs(Math.sin(c.ph * 9)) * .05 * c.moving; c.anim[1].rz = Math.sin(c.ph * 9) * .08 * c.moving; drawModel(c.model, c.anim, c.x, 0, c.z, c.yaw, 1); }
     for (const it of inter) {
@@ -218,6 +228,18 @@ function render(dt) {
   }
   for (const p of pickups) { if (p.kind === 'item') { const r = RAR[p.item.rar].row; dyn(p.x, p.y + .15 + Math.sin(t * 3 + p.x) * .08, p.z, 1, r, .36); for (let k = 0; k < 8; k++) { const a = t * 2 + k / 8 * 6.283; dyn(p.x + Math.cos(a) * .45, .06, p.z + Math.sin(a) * .45, .55, r, .14); } } else dyn(p.x, p.y, p.z, .8 + .2 * Math.sin(t * 10 + p.x), p.kind === 'gold' ? 30 : p.kind === 'orb' ? 122 : 31, p.kind === 'gold' ? .2 : .34); }
   drawTelegraphs(); drawZones(t);
+  // coleta visível: feixe de luz em cada item, minhocas desenhadas e uma seta no chão para o mais perto
+  { const tg = collectTargets(); let best = null, bd = 1e9;
+    for (const c of tg) {
+      for (let k = 0; k < 16; k++) { const y = .3 + k * .3, w = Math.sin(t * 4 - k * .6) * .06; dyn(c.x + w, y, c.z, 1 - k * .045, c.mat, .26 - k * .012); }   // feixe que se vê de longe
+      for (let k = 0; k < 10; k++) { const a = t * 2.2 + k / 10 * 6.283; dyn(c.x + Math.cos(a) * .55, .07, c.z + Math.sin(a) * .55, .85, c.mat, .14); }   // anel no chão
+      if (c.worm) for (let k = 0; k < 6; k++) { const u = k / 5, wig = Math.sin(t * 6 + k * 1.2) * .08; dyn(c.x - .3 + u * .6, .1 + Math.abs(Math.sin(t * 4 + k)) * .04, c.z + wig, .95, 21, .15 - Math.abs(u - .5) * .08); }
+      const d = P ? Math.hypot(c.x - P.x, c.z - P.z) : 1e9; if (d < bd) { bd = d; best = c; }
+    }
+    if (best && P && bd > 2.2 && G.mode === 'play') { const a = Math.atan2(best.x - P.x, best.z - P.z), s = Math.sin(a), c2 = Math.cos(a), pl = .5 + .5 * Math.sin(t * 5);
+      for (let k = 0; k < 7; k++) { const r = 1.0 + k * .26 + pl * .15; dyn(P.x + s * r, .1, P.z + c2 * r, .7 + .3 * pl, 14, .2 - k * .01); }   // seta dourada no chão
+      for (const sd of [-1, 1]) for (let k = 1; k <= 3; k++) dyn(P.x + s * (2.7 - k * .2) + c2 * k * .17 * sd, .1, P.z + c2 * (2.7 - k * .2) - s * k * .17 * sd, .7 + .3 * pl, 14, .17); }
+  }
   for (const it of inter) if (it.kind === 'qitem') { const y = .5 + Math.sin(t * 3 + it.x) * .1; dyn(it.x, y, it.z, 1, it.mat, .3); for (let k = 0; k < 6; k++) { const a = t * 2 + k / 6 * 6.283; dyn(it.x + Math.cos(a) * .35, .06, it.z + Math.sin(a) * .35, .6, it.mat, .12); } if (Math.random() < .4) spawn({ x: it.x + rr(-.1, .1), y: .3, z: it.z + rr(-.1, .1), vy: rr(1, 2), life: .7, s0: .08, s1: .02, b0: 1, b1: .2, mat: it.mat }); }
   if (dynN) {
     gl.uniformMatrix4fv(U.u_bones, false, IDB); gl.uniform1f(U.u_sizeMul, 1); gl.uniform1f(U.u_dissolve, 0); gl.uniform1f(U.u_flash, 0); gl.uniform1f(U.u_glow, 1); gl.uniform1f(U.u_xray, 0); gl.uniform1f(U.u_soft, 0);
@@ -234,6 +256,88 @@ function render(dt) {
   const bgp = preview ? { bg: ['#0c0a18', '#1a1430', '#2e2048'], outline: '#06050b', star: '#ffe9c9' } : regPal;
   gl.uniform3fv(Q.u_outline, hex1(bgp.outline)); gl.uniform3fv(Q.u_star, hex1(bgp.star));
   gl.uniform3fv(Q.u_bg0, hex1(bgp.bg[0])); gl.uniform3fv(Q.u_bg1, hex1(bgp.bg[1])); gl.uniform3fv(Q.u_bg2, hex1(bgp.bg[2]));
+  gl.uniform1i(Q.u_icon, 0);
   gl.bindVertexArray(emptyVAO); gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+/** Itens de missão ainda no chão nesta região (minhocas da vara, itens das missões dos moradores). */
+function collectTargets() {
+  const out = []; if (!G.save || !RG) return out;
+  const vq = G.save.q && G.save.q.vara;
+  if (RG.key === 'hub' && vq && vq.st === 'active') WORMS.forEach(([x, z], i) => { if (!(vq.got || []).includes(i)) out.push({ x, z, mat: 21, worm: true }); });
+  for (const it of inter) if (it.kind === 'qitem' && !it.taken) out.push({ x: it.x, z: it.z, mat: it.mat });
+  return out;
+}
+/* ---------- ícones 3D: modelos de splats desenhados uma vez numa textura pequena e lidos como imagem ---------- */
+const ICON_DEFS = {
+  sword: S => { S.tube([[-.42, -.42, 0, .03, 0], [.38, .38, 0, .005, 0]], 143, { sx: 2.4, sy: .5, sub: 3, noSolid: true }); S.tube([[-.42, -.42, 0, .03, 0], [.3, .3, 0, .004, 0]], 28, { sx: .5, sy: .5, sub: 2, noSolid: true });
+    S.tube([[-.5, -.28, 0, .045, 0], [-.28, -.5, 0, .045, 0]], 14, { sub: 2, noSolid: true }); S.tube([[-.45, -.45, 0, .035, 0], [-.62, -.62, 0, .035, 0]], 12, { sub: 1, noSolid: true }); S.ell([-.66, -.66, 0], .06, 14, 0, { noSolid: true }); },
+  staff: S => { S.tube([[-.6, -.62, 0, .035, 0], [.3, .32, 0, .03, 0]], 12, { sub: 2, noSolid: true }); S.cone([.38, .4, 0], [.62, .64, 0], .13, 151, 0); S.cone([.38, .4, 0], [.24, .26, 0], .13, 151, 0);
+    for (const s of [1, -1]) S.cone([.28, .3, 0], [.34 + s * .12, .44 - s * .12, 0], .03, 14, 0); S.ell([.4, .42, 0], .2, 151, 0, { noSolid: true, dm: .25, size: .7 }); },
+  bow: S => { const p = []; for (let i = 0; i <= 8; i++) { const u = i / 8, a = -1.1 + u * 2.2; p.push([-.15 + Math.cos(a) * .55 - .4, Math.sin(a) * .62, 0, .045 - Math.abs(u - .5) * .04, 0]); } S.tube(p, 12, { sub: 2, noSolid: true });
+    S.tube([[-.45, -.55, 0, .01, 0], [-.45, .55, 0, .01, 0]], 28, { sub: 1, noSolid: true }); S.tube([[-.45, 0, 0, .02, 0], [.55, 0, 0, .02, 0]], 28, { sub: 1, noSolid: true }); S.cone([.5, 0, 0], [.7, 0, 0], .07, 11, 0); },
+  dash: S => { for (const k of [0, 1]) { const x = -.35 + k * .45; S.tube([[x - .25, .45, 0, .07, 0], [x + .15, 0, 0, .09, 0], [x - .25, -.45, 0, .07, 0]], 150, { sub: 2, noSolid: true }); } },
+  fire: S => { for (let i = 0; i < 14; i++) { const a = i / 14 * 6.283, r = .2 + i * .028; S.ell([Math.cos(a) * r, Math.sin(a) * r * .9, 0], .1 + i * .006, i % 3 ? 27 : 21, 0, { noSolid: true, noCheck: true }); } S.ell([0, 0, 0], .16, 21, 0, { noSolid: true }); },
+  nova: S => { S.ell([0, 0, 0], .2, 151, 0, { noSolid: true }); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283, l = i % 2 ? .45 : .68; S.cone([Math.cos(a) * .15, Math.sin(a) * .15, 0], [Math.cos(a) * l, Math.sin(a) * l, 0], .08, i % 2 ? 151 : 30, 0); } },
+  rain: S => { for (const [x, y] of [[-.35, .3], [.05, .45], [.35, .05], [-.1, -.2]]) { S.tube([[x - .18, y + .28, 0, .018, 0], [x + .1, y - .2, 0, .018, 0]], 28, { sub: 1, noSolid: true }); S.cone([x + .08, y - .16, 0], [x + .16, y - .3, 0], .05, 150, 0); } },
+  potion: S => { S.ell([0, -.18, 0], [.38, .38, .38], (p) => p[1] < -.12 ? 16 : 143, 0); S.tube([[0, .15, 0, .12, 0], [0, .38, 0, .11, 0]], 143, { sub: 1 }); S.tube([[0, .38, 0, .13, 0], [0, .5, 0, .13, 0]], 12, { sub: 1 }); S.ell([-.14, -.06, .3], [.06, .1, .03], 28, 0, { noSolid: true, noCheck: true }); },
+  bag: S => { S.ell([0, -.12, 0], [.46, .4, .34], 12, 0); S.ell([0, .2, .05], [.4, .14, .3], 19, 0); S.tube([[-.18, .3, .18, .03, 0], [0, .48, .1, .03, 0], [.18, .3, .18, .03, 0]], 19, { sub: 2, noSolid: true }); S.box([0, .02, .33], [.08, .07, .03], 14, 0, { faces: 's' }); },
+  heart: S => { for (const s of [1, -1]) S.ell([s * .2, .15, 0], .28, 16, 0); S.cone([0, .05, 0], [0, -.55, 0], .38, 16, 0, { sx: 1.25, sy: .5, sub: 2 }); S.ell([-.22, .26, .2], [.07, .05, .03], 28, 0, { noSolid: true, noCheck: true }); },
+  gold: S => { for (let i = 0; i < 4; i++) { const a = i / 4 * 6.283 + .785; S.cone([0, 0, 0], [Math.cos(a) * .6, Math.sin(a) * .6, 0], .2, 14, 0, { sx: 1, sy: .4 }); } S.ell([0, 0, 0], .2, 14, 0, { noSolid: true }); },
+  gem: S => { S.cone([0, .05, 0], [0, .55, 0], .38, 150, 0, { sub: 1 }); S.cone([0, .05, 0], [0, -.6, 0], .38, 150, 0, { sub: 1 }); S.ell([-.12, .2, .2], [.05, .08, .02], 28, 0, { noSolid: true, noCheck: true }); },
+  book: S => { S.box([0, 0, 0], [.45, .55, .12], (p, n) => n[2] > .5 || n[2] < -.5 ? 16 : 28, 0); for (const [x, y] of [[-.38, .48], [.38, .48], [-.38, -.48], [.38, -.48]]) S.box([x, y, .13], [.07, .07, .01], 14, 0, { faces: 's' }); S.ell([0, 0, .13], [.12, .12, .01], 14, 0, { noSolid: true, noCheck: true }); },
+  gear: S => { const r = []; for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; r.push([Math.cos(a) * .38, Math.sin(a) * .38, 0, .1, 0]); } S.tube(r, 11, { closed: true, sub: 2, noSolid: true }); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; S.box([Math.cos(a) * .55, Math.sin(a) * .55, 0], [.08, .08, .08], 11, 0); } },
+};
+let ICONFB = null;
+/** Desenha um modelo numa textura S×S (splats + pós com contorno) e devolve a imagem (data URL, fundo transparente). */
+function bakeModel(model, A, S, eye, tgt, yaw = 0, fov = 30) {
+  if (!ICONFB) { ICONFB = { w: 0, fbo: gl.createFramebuffer(), tex: gl.createTexture(), depth: gl.createRenderbuffer(), out: gl.createFramebuffer(), otex: gl.createTexture() }; }
+  const F = ICONFB;
+  if (F.w !== S) {
+    F.w = S;
+    for (const tx of [F.tex, F.otex]) { gl.bindTexture(gl.TEXTURE_2D, tx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, S, S, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); }
+    gl.bindRenderbuffer(gl.RENDERBUFFER, F.depth); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, S, S);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, F.fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, F.tex, 0); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, F.depth);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, F.out); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, F.otex, 0);
+  }
+  const fv = fov * Math.PI / 180, VPi = mMul(mPersp(fv, 1, .1, 50), mLook(eye, tgt, [0, 1, 0]));
+  gl.bindFramebuffer(gl.FRAMEBUFFER, F.fbo); gl.viewport(0, 0, S, S); gl.clearColor(0, 0, 0, 0); gl.clearDepth(1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(PS.p); U = PS.u;
+  gl.uniformMatrix4fv(U.u_vp, false, VPi); gl.uniform3fv(U.u_cam, eye); gl.uniform3fv(U.u_light, V.norm([-.5, .9, .7])); gl.uniform3fv(U.u_player, [0, -99, 0]); gl.uniform1f(U.u_aspect, 1);
+  gl.uniform3fv(U.u_pclip, [0, 0, -9]); gl.uniform1f(U.u_proj, S / (2 * Math.tan(fv / 2))); gl.uniform1f(U.u_time, 0);
+  const d = V.len(V.sub(eye, tgt)); gl.uniform1f(U.u_near, Math.max(.1, d - 2)); gl.uniform1f(U.u_range, 4); gl.uniform4fv(U.u_shadow, new Float32Array(32));
+  drawModel(model, A, 0, 0, 0, yaw, 1, {});
+  gl.bindFramebuffer(gl.FRAMEBUFFER, F.out); gl.viewport(0, 0, S, S); gl.disable(gl.DEPTH_TEST); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(PP.p); const Q = PP.u;
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, F.tex); gl.uniform1i(Q.u_fb, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, palTex); gl.uniform1i(Q.u_pal, 1);
+  gl.uniform1f(Q.u_px, 1); gl.uniform2f(Q.u_res, S, S); gl.uniform1f(Q.u_dither, .6); gl.uniform1f(Q.u_time, 0); gl.uniform1i(Q.u_outlineOn, 1); gl.uniform1f(Q.u_fade, 0); gl.uniform1f(Q.u_hurt, 0); gl.uniform1i(Q.u_icon, 1);
+  gl.uniform3fv(Q.u_outline, [.03, .02, .05]); gl.uniform3fv(Q.u_star, [1, 1, 1]); gl.uniform3fv(Q.u_bg0, [0, 0, 0]); gl.uniform3fv(Q.u_bg1, [0, 0, 0]); gl.uniform3fv(Q.u_bg2, [0, 0, 0]);
+  gl.bindVertexArray(emptyVAO); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.uniform1i(Q.u_icon, 0);
+  const px = new Uint8Array(S * S * 4); gl.readPixels(0, 0, S, S, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  const c = document.createElement('canvas'); c.width = c.height = S; const cx = c.getContext('2d'), img = cx.createImageData(S, S);
+  for (let y = 0; y < S; y++) img.data.set(px.subarray((S - 1 - y) * S * 4, (S - y) * S * 4), y * S * 4);   // o WebGL lê de baixo para cima
+  cx.putImageData(img, 0, 0); return c.toDataURL();
+}
+/** Assa todos os ícones (uma vez, no início; de novo se a paleta da vila mudar muito). */
+function bakeIcons() {
+  try {
+    for (const [name, fn] of Object.entries(ICON_DEFS)) {
+      const m = makeModel('icon:' + name, () => { const S = new SplatSet(91, 5200); fn(S); return { bones: [{ p: -1, v: [0, 0, 0] }], data: S.build() }; });
+      ICON3D[name] = bakeModel(m, newAnim(m), 40, [.35, .45, 2.6], [0, 0, 0], 0, 34);
+    }
+    document.querySelectorAll('img[data-ic]').forEach(el => el.src = icon(el.dataset.ic));
+    if (typeof hudCache === 'object') for (const k in hudCache) delete hudCache[k];   // a barra pega os ícones novos
+    document.body.classList.add('ic3d');
+  } catch (e) { console.warn('ícones 3D indisponíveis', e); }
+}
+/** Retrato do herói no HUD: busto de frente, refeito quando o visual ou o equipamento mudam. */
+let portraitKey = '';
+function bakePortrait() {
+  if (!playerModel || !G.char) return;
+  const k = JSON.stringify([G.char, G.save && G.save.eq && [G.save.eq.armor && G.save.eq.armor.rar, G.save.eq.charm && G.save.eq.charm.rar]]); if (k === portraitKey) return; portraitKey = k;
+  try { const A = newAnim(playerModel); if (A[8]) A[8].sx = A[8].sy = A[8].sz = .001; const url = bakeModel(playerModel, A, 48, [.45, 1.8, 2.3], [0, 1.52, 0], 0, 26); const el = $('#hPortrait'); if (el) el.src = url; } catch (e) { console.warn(e); }
 }
 

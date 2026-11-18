@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.23.0 · HUD novo, Bairro Leste vivo e coleta visível
+- **Retrato do herói no HUD:** um busto do seu personagem, desenhado pelo próprio motor, com as suas cores, cabelo, acessório e armadura; atualiza quando você troca o visual ou o equipamento
+- **Ícones 3D:** os ícones da barra de ações, das poções, das Centelhas, das Memórias e dos botões do topo agora são modelos de splats desenhados no estilo do jogo (espada, cajado, arco, esquiva, giro, nova, chuva de flechas, poção, bolsa, coração, gema, livro, engrenagem). Barra com cantos dourados e fundo próprio
+- **Coleta visível:** todo item de missão no chão tem um feixe de luz que se vê de longe e um anel no chão, as minhocas-de-brasa aparecem se mexendo, e uma **seta dourada no chão** aponta para o item mais perto
+- **Bairro Leste mais vivo:** a Acendedora Lúcia anda de lampião em lampião e acende com a vara; a Feirante Dora cuida da feira nova (duas barracas, caixotes e barris); patos nadam no lago; vaga-lumes no lago e na fogueira; poço, canteiros de flores, fardos de feno e um varal com roupas
+
 ## 0.22.0 · Estilos de armadura
 - **Estilo da armadura no Guarda-Roupa:** Clássica e Couro (grátis), Placas (1200 ✦), Escamas (1500 ✦) e Tabardo real (1800 ✦), comprados uma vez. A raridade da peça continua dando a cor do metal e do brilho e os enfeites a mais (braçadeiras, grevas, gorjal, espinhos, diadema):
   - **Couro:** gibão com tiras cruzadas e fivelas, gola de pele e ombreiras leves;

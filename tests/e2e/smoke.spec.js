@@ -179,3 +179,17 @@ test('personagem em destaque: zoom da câmera, espelho com poses e capa que esvo
   expect(await ev('G.pvPose')).toBe(null);
   expect(errors).toEqual([]);
 });
+
+test('Bairro Leste vivo: Acendedora Lúcia caminha, Feirante Dora conversa, feira e patos no lago', async ({ page }) => {
+  const errors = await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  expect(await ev('["lucia", "dora"].map(id => npcs.some(n => n.id === id))')).toEqual([true, true]);
+  const a = await ev('(n => [n.x, n.z])(npcs.find(n => n.id === "lucia"))');
+  expect(a[0]).toBeGreaterThan(90);   // anda pelo Bairro Leste, pela rota do relógio da vila
+  await ev('(n => { P.x = n.x; P.z = n.z + 1.2; })(npcs.find(n => n.id === "dora"))');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'npc' && window.__T.nearInter.npc.id === 'dora', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await expect(page.locator('#dialog')).toContainText('Feirante Dora');
+  expect(await ev('G.ducks && G.ducks.length')).toBe(4);
+  expect(errors).toEqual([]);
+});

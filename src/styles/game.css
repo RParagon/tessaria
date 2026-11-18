@@ -341,3 +341,16 @@ body:not(.tch) #title .title-box,body:not(.tch) #pause>.panel,body:not(.tch) #pa
 .posebar span{font-family:var(--f-display);font-size:9px;letter-spacing:.14em;color:var(--dim);margin-right:4px}
 .posebar button{font-size:11px;padding:5px 8px;background:var(--btn);color:var(--bone);border:2px solid #000;box-shadow:inset -2px -2px 0 #130d1e,inset 2px 2px 0 #3e3157;cursor:pointer}
 .posebar button.on{background:var(--gold);color:#1c1105}
+
+/* ---------- HUD onda 2: retrato do herói e barra com ícones 3D ---------- */
+.hud-top{display:flex;gap:8px;align-items:center}
+.hud-stats{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.portrait{width:56px;height:56px;flex:none;position:relative;background:radial-gradient(circle at 50% 40%,#3a2a55,#120c1c 70%);border:2px solid #000;box-shadow:inset 0 0 0 2px #6b4b1c,inset 0 0 0 3px #f2b84b,2px 2px 0 #000;overflow:hidden}
+.portrait img{width:100%;height:100%;image-rendering:pixelated;display:block}
+.portrait::after{content:"";position:absolute;left:-2px;right:-2px;bottom:-2px;height:4px;background:linear-gradient(90deg,#000,#f2b84b,#000)}
+body.ic3d .ab img{width:40px;height:40px}
+body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
+.ab{background:linear-gradient(#2a2040,#17111f);box-shadow:inset 0 0 0 2px #3e3157,inset 0 -6px 10px rgba(0,0,0,.45),2px 2px 0 #000}
+.ab::before{content:"";position:absolute;inset:-2px;pointer-events:none;background:linear-gradient(#f2b84b,#f2b84b) top left/7px 2px no-repeat,linear-gradient(#f2b84b,#f2b84b) top left/2px 7px no-repeat,linear-gradient(#f2b84b,#f2b84b) top right/7px 2px no-repeat,linear-gradient(#f2b84b,#f2b84b) top right/2px 7px no-repeat,linear-gradient(#f2b84b,#f2b84b) bottom left/7px 2px no-repeat,linear-gradient(#f2b84b,#f2b84b) bottom left/2px 7px no-repeat,linear-gradient(#f2b84b,#f2b84b) bottom right/7px 2px no-repeat,linear-gradient(#f2b84b,#f2b84b) bottom right/2px 7px no-repeat;z-index:1}
+.ab:hover{filter:brightness(1.15)}
+.abar{padding:8px 10px 6px;background:linear-gradient(rgba(16,11,25,0),rgba(16,11,25,.55) 30%,rgba(16,11,25,.75));border-top:2px solid rgba(242,184,75,.35)}

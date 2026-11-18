@@ -81,6 +81,7 @@ uniform sampler2D u_fb, u_pal;
 uniform float u_px, u_dither, u_time, u_fade, u_hurt;
 uniform vec2 u_res;
 uniform int u_outlineOn;
+uniform int u_icon;   // 1: assando ícone (fundo transparente)
 uniform vec3 u_outline, u_bg0, u_bg1, u_bg2, u_star;
 out vec4 o;
 const float BAY[16]=float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
@@ -99,6 +100,7 @@ void main(){
     if(u_outlineOn==1){
       for(int i=0;i<4;i++){ vec4 q=texelFetch(u_fb,clamp(lp+OFF[i],ivec2(0),R),0); if(q.a>0.0 && !isEm(int(q.r*255.0+0.5))){ col=u_outline; done=true; break; } }
     }
+    if(!done && u_icon==1){ o=vec4(0.0); return; }
     if(!done){
       float f=(1.0-uv.y)*2.0+(b-0.5)*0.9;
       int i=clamp(int(floor(f+0.5)),0,2); col=i==0?u_bg0:(i==1?u_bg1:u_bg2);
@@ -176,12 +178,14 @@ function uploadPalette(regKey) {
   rows[125] = METAL[arR]; rows[126] = RAR[arR].ramp; rows[127] = RAR[chR].ramp;
   NPCS.forEach((n, k) => { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[32 + k * 8 + i] = r[i]; });
   for (const k in XROWS) rows[k] = XROWS[k];
+  if (regKey === 'hub') for (const n of EAST_NPCS) { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[n.base + i] = r[i]; }   // moradores do Bairro Leste (só na vila)
   for (const k in REMOTE_ROWS) rows[k] = REMOTE_ROWS[k];
   if (regKey !== 'hub') { const rf = charRows({ ...G.char, skin: 5, outfit: 11, trim: 3, glow: 2 }); for (let i = 0; i < 8; i++) rows[152 + i] = rf[i]; }   // Reflexo (fora da vila; na vila as linhas são do Bardo)
   for (let m = 0; m < 256; m++) { const row = rows[m] || rows[11]; for (let i = 0; i < 5; i++) { const c = row[i], o = (m * 5 + i) * 4; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = 255; } }
   gl.bindTexture(gl.TEXTURE_2D, palTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 5, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  if (G.mode !== 'create' && G.mode !== 'title' && typeof bakePortrait === 'function') setTimeout(bakePortrait, 0);   // retrato do HUD com as cores novas
   curPal = (G.rift && RG && RG.key === 'rift') ? { ...reg, bg: ['#07030e', '#1a0b2e', '#3c1766'], star: '#e6d0ff' } : reg;
 }
 
