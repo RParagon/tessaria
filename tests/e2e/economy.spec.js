@@ -94,7 +94,7 @@ test('guarda-roupa: móvel da casa troca o visual e vende estilos raros uma vez 
 test('banco e espólio: o cofre guarda Centelhas, morrer nos Ermos deixa o resto no chão e dá para recuperar; bolsa maior', async ({ page }) => {
   const errors = await newGame(page);
   const ev = src => page.evaluate(s => window.__T.ev(s), src);
-  await ev('G.save.gold = 5000; P.x = 62; P.z = 37.8');
+  await ev('G.save.gold = 5000; P.x = HUB.bank.x; P.z = HUB.bank.z + 5.4');
   await page.waitForFunction(() => window.__T.nearInter?.kind === 'bank', null, { timeout: 5000 });
   await page.keyboard.press('e');
   await page.getByRole('button', { name: 'Guardar 1000', exact: true }).click();
@@ -114,5 +114,27 @@ test('banco e espólio: o cofre guarda Centelhas, morrer nos Ermos deixa o resto
   await ev('P.x = G.save.wloot.x; P.z = G.save.wloot.z');
   await page.waitForFunction(() => window.__T.ev('!G.save.wloot'), null, { timeout: 5000 });
   expect(await ev('[G.save.gold, G.save.inv.length]')).toEqual([700, 1]);
+  expect(errors).toEqual([]);
+});
+
+test('itens: teto de raridade pela área, nível exigido para equipar e vender tudo no Otto', async ({ page }) => {
+  const errors = await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  // Campina (nível de item ~1,3): no máximo Raro, mesmo pedindo Lendário
+  expect(await ev('[TI.rarCap(1.3), TI.rarCap(2.5), TI.rarCap(3.2), TI.rarCap(1.3, 1)]')).toEqual([2, 3, 4, 3]);
+  await ev("pickups.length = 0; dropItem(P.x + 1, P.z, 4)");
+  expect(await ev("pickups.find(p => p.kind === 'item').item.rar")).toBeLessThanOrEqual(2);
+  // item de área funda pede nível
+  await ev("G.save.inv.push(makeItem('armor', 5, 2)); openMenu('inv')");
+  expect(await ev('TI.reqLvl(G.save.inv[G.save.inv.length - 1])')).toBeGreaterThan(15);
+  await page.keyboard.press('Escape');
+  // vender tudo (dois toques), lendário fica
+  await ev("G.save.inv.push(makeItem('weapon', 3, 1), makeItem('charm', 3, 4)); openMenu('shop')");
+  const n = await ev('G.save.inv.length'), g0 = await ev('G.save.gold');
+  await page.locator('#sBag button', { hasText: 'Vender tudo' }).click();
+  await page.locator('#sBag button', { hasText: 'Confirmar' }).click();
+  expect(await ev('G.save.inv.map(i => i.rar)')).toEqual([4]);
+  expect(await ev('G.save.gold')).toBeGreaterThan(g0);
+  expect(n).toBeGreaterThan(1);
   expect(errors).toEqual([]);
 });

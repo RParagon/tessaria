@@ -392,3 +392,7 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 .wmzoom{position:absolute;right:6px;top:6px;display:flex;flex-direction:column;gap:4px;z-index:3}
 .wmzoom .px{width:30px;height:30px;padding:0;font-size:14px}
 .wmbox{overflow-x:hidden}
+
+/* detalhes do item sempre à vista: o painel de detalhes gruda embaixo; selecionar rola até ele */
+.invp .idet,.mbox .idet{position:sticky;bottom:-2px;z-index:4;background:linear-gradient(rgba(19,13,30,.94),#130d1e 18%);border-top:2px solid #3e3157;box-shadow:0 -8px 14px rgba(0,0,0,.45)}
+.invp .idet .irow,.mbox .idet .irow{flex-wrap:wrap}

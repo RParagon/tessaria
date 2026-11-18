@@ -81,14 +81,15 @@ function addGold(v) { G.pickN = (G.pickN || 0) + 1; G.pickT = .6; G.goldFrac = (
 /** Nível de item de um bioma dos Ermos: segue o nível do bioma, até 5 no Ermo Profundo (mesmo teto do mapa antigo). */
 const wildTierBase = b => 1 + Math.min(4, WZ[b].lv / 7);
 const regionTier = () => { const TM = { hub: 1, forest: 1, crypt: 2, peaks: 3, swamp: 4, glass: 5 }, k = G.rift ? G.rift.base : RG ? RG.key : 'hub', base = (RG && RG.wild && P ? wildTierBase(wZone(P.x / T, P.z / T)) : (TM[k] || 1)) + (G.rift ? G.rift.L * .5 : 0), lv = G.save ? G.save.lvl : 1; return base + curDiff().tier + Math.max(0, lv - (REGBASE[k] || 1) - 2) * .05; };
-function dropItem(x, z, rar, slot) { if (COOP.noItems) return;   // co-op: na Fenda do grupo, os itens dos monstros vêm do servidor
-  const it = makeItem(slot || pick(['weapon', 'armor', 'charm']), regionTier(), rar); if (rar === 4) { sfx('legend'); toast('ITEM LENDÁRIO!', true, 'um brilho dourado no chão'); hitStop(.08); } else if (rar === 3) sfx('epic'); pickups.push({ kind: 'item', item: it, x, y: .8, z, vx: rr(-1.5, 1.5), vy: 4.5, vz: rr(-1.5, 1.5), t: 0 }); }
+function dropItem(x, z, rar, slot, capBonus = 0) { if (COOP.noItems) return;   // co-op: na Fenda do grupo, os itens dos monstros vêm do servidor
+  const tier = regionTier(); rar = Math.min(rar, TI.rarCap(tier, capBonus));   // teto de raridade pelo nível da área
+  const it = makeItem(slot || pick(['weapon', 'armor', 'charm']), tier, rar); if (rar === 4) { sfx('legend'); toast('ITEM LENDÁRIO!', true, 'um brilho dourado no chão'); hitStop(.08); } else if (rar === 3) sfx('epic'); pickups.push({ kind: 'item', item: it, x, y: .8, z, vx: rr(-1.5, 1.5), vy: 4.5, vz: rr(-1.5, 1.5), t: 0 }); }
 function takeItem(it) {
   const s = G.save; if (it.rar === 4) { s.st = s.st || {}; s.st.legs = (s.st.legs || 0) + 1; }
-  if (!s.eq[it.slot]) { s.eq[it.slot] = it; afterEquip(); toast(it.name, false, 'EQUIPADO · ' + RAR[it.rar].n.toUpperCase(), RAR[it.rar].c); return true; }
+  if (!s.eq[it.slot] && s.lvl >= TI.reqLvl(it)) { s.eq[it.slot] = it; afterEquip(); toast(it.name, false, 'EQUIPADO · ' + RAR[it.rar].n.toUpperCase(), RAR[it.rar].c); return true; }
   if (s.inv.length >= BAG()) { if (!G.bagWarn || G.time - G.bagWarn > 3) { toast('Bolsa cheia. Desmonte ou venda itens.'); G.bagWarn = G.time; } return false; }
   s.inv.push(it); sfx('open'); writeSave();
-  toast(it.name, false, 'NOVO ITEM · ' + RAR[it.rar].n.toUpperCase() + (itemScore(it) > itemScore(s.eq[it.slot]) ? ' · MELHOR QUE O SEU' : ''), RAR[it.rar].c);
+  toast(it.name, false, 'NOVO ITEM · ' + RAR[it.rar].n.toUpperCase() + (s.lvl < TI.reqLvl(it) ? ' · REQUER NÍVEL ' + TI.reqLvl(it) : itemScore(it) > itemScore(s.eq[it.slot]) ? ' · MELHOR QUE O SEU' : ''), RAR[it.rar].c);
   return true;
 }
 function afterEquip() { rebuildPlayerModel(); const st = stats(); if (P) { const ratio = P.hp / P.maxHp; P.maxHp = st.maxHp; P.hp = Math.min(P.maxHp, Math.max(1, Math.round(ratio * P.maxHp))); } if (RG) uploadPalette(RG.key); writeSave(); netLook(); sfx('open'); }

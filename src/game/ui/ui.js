@@ -64,7 +64,7 @@ function openMenu(which) {
   G.mode = 'menu'; input.atk = false; sfx('ui');
   G.menu = which; $('#prompt').hidden = true; $('#tUse').hidden = true;
   if (which === 'skills') renderSkills(); if (which === 'board') renderBoard(); if (which === 'riftm') renderRiftMenu();
-  if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; renderShop(); }
+  if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; G.sellAllArm = false; renderShop(); }
   if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; resetMailOnline(); renderMail(); }
   if (which === 'profile') renderProfile(); if (which === 'bank') renderBank();
   if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap();
@@ -95,12 +95,12 @@ function renderDetail(box, sel, ctx, after) {
   if (!sel) { box.innerHTML = '<p class="sub">Toque num item para ver os detalhes e comparar com o que você usa.</p>'; return; }
   const it = sel.it, s = G.save, cur = s.eq[it.slot], isEq = sel.eq !== undefined;
   const sc = itemScore(it), cs = cur && !isEq ? itemScore(cur) : null;
-  box.innerHTML = `<h3 style="color:${RAR[it.rar].c}">${it.name}</h3>${it.power ? `<div class="legp">✦ ${POWERS[it.power]}</div>` : ''}<div class="meta">${SLOTN[it.slot]} · ${RAR[it.rar].n} · Poder ${sc}${cs !== null ? ` <span class="${sc >= cs ? 'up-g' : 'dn-r'}">(${sc >= cs ? '+' : ''}${sc - cs})</span>` : ''}</div><ul>${itemLinesHTML(it, isEq ? null : cur)}</ul>` + (cur && !isEq ? `<div class="meta">Comparando com: <span style="color:${RAR[cur.rar].c}">${cur.name}</span></div>` : (!cur && !isEq ? '<div class="meta">Você não tem nada neste espaço.</div>' : ''));
+  box.innerHTML = `<h3 style="color:${RAR[it.rar].c}">${it.name}</h3>${it.power ? `<div class="legp">✦ ${POWERS[it.power]}</div>` : ''}<div class="meta">${SLOTN[it.slot]} · ${RAR[it.rar].n} · <span style="color:${s.lvl < TI.reqLvl(it) ? '#ff6a5a' : 'inherit'}">Nv ${TI.reqLvl(it)}</span> · Poder ${sc}${cs !== null ? ` <span class="${sc >= cs ? 'up-g' : 'dn-r'}">(${sc >= cs ? '+' : ''}${sc - cs})</span>` : ''}</div><ul>${itemLinesHTML(it, isEq ? null : cur)}</ul>` + (cur && !isEq ? `<div class="meta">Comparando com: <span style="color:${RAR[cur.rar].c}">${cur.name}</span></div>` : (!cur && !isEq ? '<div class="meta">Você não tem nada neste espaço.</div>' : ''));
   const row = document.createElement('div'); row.className = 'irow';
   const btn = (label, cls, fn, dis) => { const b = document.createElement('button'); b.className = 'px ' + cls; b.textContent = label; b.disabled = !!dis; b.onclick = () => { fn(); after(); }; row.appendChild(b); };
   if (ctx === 'inv') {
     if (isEq) btn('Guardar na bolsa', '', () => { if (s.inv.length >= BAG()) { toast('Bolsa cheia.'); return; } s.inv.push(it); s.eq[it.slot] = null; invSel = null; afterEquip(); }, s.inv.length >= BAG());
-    else { btn('Equipar', 'gold', () => { const prev = s.eq[it.slot]; s.eq[it.slot] = it; s.inv.splice(s.inv.indexOf(it), 1); if (prev) s.inv.push(prev); invSel = { it, eq: it.slot }; afterEquip(); }); btn(`Desmontar (+${scrapVal(it)} Centelhas)`, '', () => { s.gold += scrapVal(it); s.inv.splice(s.inv.indexOf(it), 1); invSel = null; sfx('pick'); writeSave(); }); }
+    else { const rq = TI.reqLvl(it); if (s.lvl < rq) btn('Requer nível ' + rq, '', () => { }, true); else btn('Equipar', 'gold', () => { const prev = s.eq[it.slot]; s.eq[it.slot] = it; s.inv.splice(s.inv.indexOf(it), 1); if (prev) s.inv.push(prev); invSel = { it, eq: it.slot }; afterEquip(); }); btn(`Desmontar (+${scrapVal(it)} Centelhas)`, '', () => { s.gold += scrapVal(it); s.inv.splice(s.inv.indexOf(it), 1); invSel = null; sfx('pick'); writeSave(); }); }
   } else if (ctx === 'buy') {
     const pr = itemPrice(it); btn(`Comprar (${pr} Centelhas)`, 'gold', () => { spend(pr); s.shop.items.splice(s.shop.items.indexOf(it), 1); invSel = null; if (!takeItem(it)) s.inv.push(it); writeSave(); }, s.gold < pr || s.inv.length >= BAG());
   } else if (ctx === 'sell') {
@@ -119,7 +119,9 @@ function renderInv() {
   }
   $('#iStats').innerHTML = [['Vida', P.maxHp], ['Dano', Math.round(st.dmg)], ['Crítico', Math.round(st.crit * 100) + '%'], ['Defesa', Math.round(st.dr * 100) + '%'], ['Vampirismo', Math.round(st.ls * 100) + '%'], ['Recarga', st.skillCd.toFixed(1) + 's']].map(([a, b]) => `<div>${a}<b>${b}</b></div>`).join('');
   const bag = $('#iBag'); bag.innerHTML = '';
-  s.inv.forEach(it => bag.appendChild(slotBtn(it, () => { invSel = { it }; renderInv(); }, invSel && invSel.it === it)));
+  s.inv.forEach(it => { const b = slotBtn(it, () => { invSel = { it }; renderInv(); }, invSel && invSel.it === it); b.title = 'Toque duas vezes para equipar';
+    b.ondblclick = () => { if (s.lvl < TI.reqLvl(it)) { toast('Requer nível ' + TI.reqLvl(it)); return; } const prev = s.eq[it.slot]; s.eq[it.slot] = it; s.inv.splice(s.inv.indexOf(it), 1); if (prev) s.inv.push(prev); invSel = { it, eq: it.slot }; afterEquip(); renderInv(); };   // atalho: equipar sem procurar o botão
+    bag.appendChild(b); });
   for (let i = s.inv.length; i < BAG(); i++) { const e = document.createElement('div'); e.className = 'slot empty'; bag.appendChild(e); }
   $('#iCount').textContent = `${s.inv.length}/${BAG()}`;
   renderDetail($('#iDet'), invSel, 'inv', renderInv);
@@ -138,8 +140,8 @@ function wsStock(zone) {
   const tb = Math.max(1, Math.round(wildTierBase(zone))), items = withSeed(9001 + wsId * 97 + hour * 7919, () => {
     const out = [];
     for (let i = 0; i < 5; i++) {
-      const r = Math.random(), rar = r < .35 ? 1 : r < .7 ? 2 : r < .93 ? 3 : 4, slot = ['weapon', 'armor', 'charm'][Math.floor(Math.random() * 3)];
-      const it = makeItem(slot, Math.min(5, tb + (Math.random() < .3 ? 1 : 0)), rar), mood = .55 + Math.random() * 1.15;
+      const r = Math.random(), tier = Math.min(5, tb + (Math.random() < .3 ? 1 : 0)), rar = Math.min(TI.rarCap(tier), r < .4 ? 1 : r < .78 ? 2 : r < .96 ? 3 : 4), slot = ['weapon', 'armor', 'charm'][Math.floor(Math.random() * 3)];
+      const it = makeItem(slot, tier, rar), mood = .55 + Math.random() * 1.15;
       out.push({ it, price: Math.round([0, 90, 220, 520, 1500][rar] * (1 + it.tier * .6) * mood), mood });
     }
     return out;
@@ -241,8 +243,15 @@ function renderShop() {
   }
   if (!s.shop.items.length) { const p = document.createElement('p'); p.className = 'sub'; p.textContent = 'Estoque esgotado. Volte depois do próximo Fio.'; list.appendChild(p); }
   const bag = $('#sBag'); bag.innerHTML = '';
-  s.inv.forEach(it => bag.appendChild(slotBtn(it, () => { invSel = { it, sell: true }; renderShop(); }, invSel && invSel.it === it)));
+  s.inv.forEach(it => { const b = slotBtn(it, () => { invSel = { it, sell: true }; renderShop(); }, invSel && invSel.it === it); b.title = 'Toque duas vezes para vender'; b.ondblclick = () => { s.gold += scrapVal(it); s.inv.splice(s.inv.indexOf(it), 1); invSel = null; sfx('pick'); writeSave(); renderShop(); }; bag.appendChild(b); });   // atalho: vender
   if (!s.inv.length) bag.innerHTML = '<p class="sub" style="grid-column:1/-1">Sua bolsa está vazia.</p>';
+  else {   // vender tudo de uma vez (os lendários ficam; dois toques para confirmar)
+    const sellable = s.inv.filter(it => it.rar < 4), total = sellable.reduce((a, it) => a + scrapVal(it), 0), keep = s.inv.length - sellable.length;
+    const b = document.createElement('button'); b.className = 'px' + (G.sellAllArm ? ' gold' : ''); b.style.gridColumn = '1/-1'; b.disabled = !sellable.length;
+    b.textContent = G.sellAllArm ? `Confirmar: vender ${sellable.length} itens por ${total} Centelhas` : `Vender tudo (${sellable.length} itens · +${total} Centelhas)` + (keep ? ` · ${keep} lendário${keep > 1 ? 's' : ''} fica${keep > 1 ? 'm' : ''}` : '');
+    b.onclick = () => { if (!G.sellAllArm) { G.sellAllArm = true; renderShop(); return; } G.sellAllArm = false; s.gold += total; s.inv = s.inv.filter(it => it.rar >= 4); invSel = null; sfx('pick'); toast('BOLSA VENDIDA', false, '+' + total + ' CENTELHAS'); writeSave(); renderShop(); };
+    bag.prepend(b);
+  }
   renderDetail($('#sDet'), invSel, invSel && invSel.buy ? 'buy' : 'sell', renderShop);
 } $('#bPause').onclick = () => openMenu('pause');
 $('#hmClose').onclick = closeMenus; $('#stClose').onclick = closeMenus; $('#mlClose').onclick = closeMenus;

@@ -357,13 +357,13 @@ function finishBoss(b) {
   if (G.rematch) {
     G.rematch = false; const D = curDiff();
     gainXp(Math.round((b.def.xp || 320) * D.xp)); dropGold(b.x, b.z, Math.round((b.def.gold || 150) * .6));
-    dropItem(b.x - 1.2, b.z + 1, rollRar(2)); dropItem(b.x + 1.2, b.z + 1, Math.max(3, rollRar(3))); if (Math.random() < .25 + .06 * (G.save.diff || 0)) dropItem(b.x, b.z + 2.2, rollRar(3));
+    dropItem(b.x - 1.2, b.z + 1, rollRar(2), undefined, 1); dropItem(b.x + 1.2, b.z + 1, Math.max(3, rollRar(3)), undefined, 1); if (Math.random() < .25 + .06 * (G.save.diff || 0)) dropItem(b.x, b.z + 2.2, rollRar(3));
     diffFirst(key, b); endBossFight(true); boss = null; writeSave();
     toast('DESAFIO VENCIDO', true, b.def.name.split(',')[0] + ' · ' + D.n, D.c); sfx('legend'); return;
   }
   G.save.bosses[key] = true;
   gainXp(Math.round(b.def.xp * curDiff().xp)); dropGold(b.x, b.z, b.def.gold); diffFirst(key, b);
-  if (type !== 'dragon') { dropItem(b.x - 1.2, b.z + 1, rollRar(2)); dropItem(b.x + 1.2, b.z + 1, Math.max(3, rollRar(3))); }
+  if (type !== 'dragon') { dropItem(b.x - 1.2, b.z + 1, rollRar(2), undefined, 1); dropItem(b.x + 1.2, b.z + 1, Math.max(3, rollRar(3)), undefined, 1); }
   endBossFight(true); boss = null;
   if (type === 'dragon') { G.save.cp = { region: key, x: b.room.wx, z: b.room.wz + 7 }; writeSave(); say(DIALOG.dragonEnd(false), () => { }); return; }
   inter.push({ kind: 'portal', to: 'hub', x: b.room.wx, z: b.room.wz, r: 2, model: getModel('portal'), anim: newAnim(getModel('portal')), lit: true, yaw: 0 });

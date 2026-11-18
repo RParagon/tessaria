@@ -100,9 +100,13 @@ export function makeItem(slot: Slot, tier: number, rar: number, cls: string, rng
 }
 /** Raridade sorteada; `find` é a sorte (dificuldade, talentos). */
 export function rollRar(rng: Rng = Math.random, find = 1, min = 0): number {
-  const r = Math.pow(rng(), 1 / find), v = r < .55 ? 0 : r < .82 ? 1 : r < .95 ? 2 : r < .99 ? 3 : 4;
+  const r = Math.pow(rng(), 1 / find), v = r < .6 ? 0 : r < .86 ? 1 : r < .963 ? 2 : r < .993 ? 3 : 4;   // 40% mágico ou melhor, 3,7% épico ou melhor, 0,7% lendário
   return Math.max(min, v);
 }
+/** Teto de raridade pelo nível do item: começo do jogo até Raro, meio até Épico, Lendário só em áreas fundas (Brejo, Fenda 4, Tormentos). +1 degrau para chefes. */
+export function rarCap(tier: number, bonus = 0): number { return Math.min(4, (tier < 2 ? 2 : tier < 3 ? 3 : 4) + bonus); }
+/** Nível do herói para equipar um item (itens de áreas fundas pedem mais nível). */
+export function reqLvl(it: { tier: number }): number { return Math.max(1, Math.round((it.tier - 1.3) * 6)); }
 
 // ---------- loot de um monstro na Fenda (servidor, Fenda do grupo) ----------
 // Mesmas contas do jogo: regionTier (core/projectiles.js), DIFFS (core/state.js), hurtEnemy e onEnemyKilled.
@@ -124,7 +128,7 @@ export function wildsTier(biome: number, diff: number, lvl: number): number {
 /** Itens que um monstro derrotado deixa para um jogador (sem as Centelhas, que seguem no jogo). */
 export function monsterDrops(ctx: DropContext, kind: { elite: boolean; thief: boolean }, rng: Rng, id: () => string): Item[] {
   const find = DIFF_FIND[ctx.diff] ?? 1, tier = ctx.tier ?? riftTier(ctx.base, ctx.L, ctx.diff, ctx.lvl), itemFind = ctx.sorte ? 1.3 : 1, out: Item[] = [];
-  const add = (rar: number) => out.push(makeItem(pickR(rng, SLOTS), tier, rar, ctx.cls, rng, false, id()));
+  const add = (rar: number) => out.push(makeItem(pickR(rng, SLOTS), tier, Math.min(rar, rarCap(tier)), ctx.cls, rng, false, id()));
   if (rng() < .08 * itemFind) add(rollRar(rng, find, ctx.L >= 4 ? 1 : 0));
   if (kind.thief) for (let i = 0; i < 3; i++) add(rollRar(rng, find, 2));
   else if (kind.elite) add(rollRar(rng, find, 2));

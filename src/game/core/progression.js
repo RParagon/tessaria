@@ -38,7 +38,7 @@ function onEnemyKilled(e) {
     dropGold(e.x, e.z, e.def.gold * 3); dropItem(e.x, e.z, rollRar(2));
     toast(e.elite.name + ' derrotado', false, e.alpha ? 'ALFA DOS ERMOS' : 'ELITE', '#d7a6ff');
     if (e.alpha) { dropItem(e.x + 1, e.z, Math.max(3, rollRar(3))); dropGold(e.x, e.z, 20); st2.alphas = (st2.alphas || 0) + 1; }
-    if (e.lair) { dropItem(e.x - 1, e.z + 1, Math.random() < .25 ? 4 : 3); dropGold(e.x, e.z, 60); st2.lairs = (st2.lairs || 0) + 1; toast('COVIL LIMPO', true, e.elite.name.toUpperCase() + ' CAIU', '#ffbf3d'); }
+    if (e.lair) { dropItem(e.x - 1, e.z + 1, Math.random() < .08 ? 4 : 3); dropGold(e.x, e.z, 60); st2.lairs = (st2.lairs || 0) + 1; toast('COVIL LIMPO', true, e.elite.name.toUpperCase() + ' CAIU', '#ffbf3d'); }
     if (e.elite.aff.includes('expl')) { const x = e.x, z = e.z; tels.push({ kind: 'circle', x, z, r: 2.6, t: 0, dur: .9, fn: () => { sfx('boom'); burst(x, .3, z, 40, 21, 5, .6, .2); if (Math.hypot(P.x - x, P.z - z) < 2.7) hurtPlayer(22, x, z, 10); } }); }
   }
   if (hasPow('coroa') && P && P.dieT < 0) P.hp = Math.min(P.maxHp, P.hp + P.maxHp * .03);

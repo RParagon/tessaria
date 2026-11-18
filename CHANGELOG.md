@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.30.0 · Itens com peso, Banco do Tear e bolsa prática
+- **Teto de raridade pela área:** o nível do item (tier) agora limita a raridade. Começo do jogo (Campina, Fendas 1 e 2): até **Raro**; meio (Mata, Teia, Fenda 3): até **Épico**; **Lendário** só a partir do Brejo, da Fenda 4 ou dos Tormentos. Chefes ganham um degrau a mais. Vale nos drops do jogo, no loot do servidor (Fenda do grupo) e no Mercador Suspeito
+- **Raridade um pouco mais rara:** 40% dos drops são Mágicos ou melhores, 3,7% Épicos ou melhores e 0,7% Lendários (antes 45%, 5% e 1%). O covil dá Lendário em 8% (antes 25%)
+- **Nível exigido para equipar:** cada item mostra "Nv X" e itens de áreas fundas pedem nível (o botão vira "Requer nível X"). Itens que você ainda não pode usar não são equipados sozinhos
+- **Banco do Tear:** o baú virou um prédio de mármore na praça (entre a forja e a casa), com colunas, frontão com uma moeda dourada, cúpula dourada e a porta do cofre no alto da escada
+- **Vender tudo no Otto:** um botão vende a bolsa inteira (dois toques para confirmar; os Lendários ficam)
+- **Bolsa e lojas mais práticas:** o painel do item fica grudado embaixo, com os botões sempre à vista (sem rolar). Toque duas vezes num item da bolsa para equipar e, no Otto, para vender
+
 ## 0.29.0 · Cofre, espólio, bolsa maior e mapa com zoom
 - **Cofre do Tear (banco):** na praça da vila. Guarde e saque Centelhas; o que está no cofre nunca se perde
 - **Espólio nos Ermos:** morrer nos Ermos deixa no chão todas as Centelhas que você carrega e os itens da bolsa (os equipados e o cofre ficam). O espólio tem feixe dourado e a seta aponta para ele; você tem **5 minutos** para voltar e pegar, senão ele se desfaz. (Na próxima etapa, com os Ermos abertos para todos, outros jogadores também poderão pegar)

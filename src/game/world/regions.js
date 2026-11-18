@@ -71,6 +71,8 @@ const HUB = {
   fire: [118, 31], benches: [[114.2, 31, 1.57], [121.8, 31, -1.57], [118, 27.2, 0], [118, 34.8, 3.14]], arena: { x: 134, z: 13, w: 7, h: 5 }, dummies: [[130, 13], [134, 13], [138, 13]], fish: [122.5, 47], pen: { x0: 14, y0: 23, x1: 18, y1: 27 },
   // Santuário da Fenda (mundo): portal sombrio no estrado ao sul, pilares de obsidiana com chama violeta e arco na entrada
   sanct: { x: 118, z: 77, gate: [118, 68.5], pil: [[107, 67], [129, 67], [132, 78], [108, 87.5], [128, 87.5]], arch: [101.5, 77] },
+  // Banco do Tear (mundo): entre a forja e a casa da praça, fachada para o sul
+  bank: { x: 62, z: 41.4 },
   props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board'], [102, 16, 'crate'], [102.8, 16.6, 'barrel'], [98, 50, 'barrel'], [112, 52, 'crate'],
     // Bairro Leste: feira, poço, canteiros, feno e varal
     [101.6, 38.6, 'barrel'], [102.3, 39.4, 'crate'], [113.2, 38.4, 'crate'], [113.8, 39.3, 'barrel'], [123, 12, 'well'], [96, 30, 'flowers'], [104, 28, 'flowers'], [134, 33, 'flowers'], [140, 40, 'flowers'], [116, 20, 'flowers'],
@@ -254,6 +256,8 @@ function genRegion(key) {
       }
       for (const [x, y, ch] of flip) grid[y][x] = ch;
     }
+    for (let y = 19; y <= 21; y++) for (let x = 29; x <= 32; x++) G.block.add(x + ',' + y);   // prédio do banco
+    reserve(HUB.bank.x, HUB.bank.z + 4.2, 1);
     G.hills = [];   // morros decorativos removidos (a pedido): relevo de verdade, com subida, fica para o futuro
   }
   G.start = G.rooms[0];
@@ -617,6 +621,20 @@ function buildWorld(key, G) {
     const own = gsave() && gsave().house && gsave().house.owned;
     if (own) { S.tube([[72.4, 0, 46.4, .06, 0], [72.4, 3.2, 46.4, .05, 0]], 12, { sub: 1, flags: 8 }); S.mem([[[72.45, 3.1, 46.4], [73.6, 3.0, 46.4], [72.45, 2.0, 46.4]], [[73.6, 3.0, 46.4], [73.5, 2.0, 46.4], [72.45, 2.0, 46.4]]], p => Math.abs(p[1] - 2.55) < .12 ? 7 : 17, () => 0, { flags: 8 }); for (const sx of [-1, 1]) { S.ell([68.4 + sx * .75, 1.7, 46.05], [.1, .14, .1], 14, 0, { min: 12 }); emitters.push({ t: 'glow', x: 68.4 + sx * .75, y: 1.7, z: 46.1 }); } S.box([68.4, .02, 46.6], [.55, .02, .35], 16, 0, { faces: 't' }); }
     else { S.tube([[70.6, 0, 46.8, .05, 0], [70.6, 1.3, 46.8, .05, 0]], 12, { sub: 1 }); S.box([70.6, 1.3, 46.85], [.45, .28, .04], p => Math.abs((p[0] - 70.6) * .6 - (p[1] - 1.3)) < .05 ? 16 : 11, 0, { faces: 'sn' }); }
+  }
+  if (key === 'hub') {   // Banco do Tear: mármore, colunas, frontão com moeda e cúpula dourada
+    const { x: bx, z: bz } = HUB.bank, fz = bz + 2.7;
+    S.box([bx, .15, bz + .4], [4.3, .15, 3.6], 11, 0, { faces: 'tnsew' });
+    S.box([bx, 1.85, bz - .2], [3.6, 1.7, 2.6], (p, n) => (n[2] > .5 || n[0] !== 0) && Math.abs(p[1] - 2.1) < .55 && frac((p[0] - bx + p[2]) / 1.6) < .32 ? 29 : (Math.abs(p[1] - .3) < .08 ? 24 : 28), 0, { faces: 'nsew', flags: 8 });
+    for (const cx of [-2.7, -1, 1, 2.7]) { S.tube([[bx + cx, .3, fz, .27, 0], [bx + cx, 3.5, fz, .24, 0]], (p) => frac(Math.atan2(p[2] - fz, p[0] - bx - cx) * 1.3) < .2 ? 24 : 28, { sub: 1, flags: 8 }); S.box([bx + cx, 3.62, fz], [.36, .1, .36], 24, 0, { flags: 8 }); S.box([bx + cx, .38, fz], [.34, .08, .34], 24, 0); emitters.push({ t: 'glow', x: bx + cx, y: 3.2, z: fz + .3 }); }
+    S.box([bx, 3.82, fz - .1], [3.3, .12, .5], 24, 0, { faces: 'tnsew', flags: 8 });
+    S.mem([[[bx - 3.3, 3.95, fz + .3], [bx + 3.3, 3.95, fz + .3], [bx, 5.0, fz + .3]]], 28, () => 0, { flags: 8 });   // frontão
+    S.ell([bx, 4.35, fz + .34], [.36, .36, .06], 14, 0, { noSolid: true, min: 30, flags: 8 }); S.ell([bx, 4.35, fz + .4], [.2, .2, .03], 17, 0, { noSolid: true, min: 16, flags: 8 });   // moeda
+    S.ell([bx, 3.5, bz - .2], [2.7, 1.7, 2.2], (p, n) => frac(Math.atan2(p[2] - bz + .2, p[0] - bx) * 2.5) < .12 ? 14 : 17, 0, { keep: d => d[1] > 0, flags: 8 });   // cúpula
+    S.cone([bx, 5.1, bz - .2], [bx, 5.9, bz - .2], .14, 14, 0, { flags: 8 }); S.ell([bx, 6.0, bz - .2], .16, 14, 0, { flags: 8 });
+    S.box([bx, 1.1, fz - .35], [.95, 1.0, .06], (p) => (Math.abs(p[0] - bx) < .04 || frac((p[1]) * 3) < .12) ? 14 : 12, 0, { faces: 's', flags: 8 });   // porta do cofre
+    for (let i = 0; i < 3; i++) S.box([bx, .1 + i * .1, fz + .9 + (2 - i) * .35], [2.0 - i * .2, .1, .2], 11, 0, { faces: 'tnsew' });   // degraus
+    emitters.push({ t: 'shine', x: bx, y: 4.35, z: fz + .5 });
   }
   if (key === 'hub') {   // Santuário da Fenda: estrado, círculos de runas, pilares de obsidiana e arco
     const sc = HUB.sanct, [gx, gz] = sc.gate;
