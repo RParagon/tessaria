@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.30.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.31.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -24,6 +24,7 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 
 - **Três classes com identidade própria:** Lâmina (corpo a corpo, mais dano e mais risco), Arcano (o mais seguro, raios que explodem em área) e Arco (flechas que atravessam, forte contra grupos). O equilíbrio é medido em simulação a cada mudança.
 - **Criação de personagem** com corpo, pele, cabelo, barba, roupa, acessórios e capa. A armadura e a arma equipadas aparecem no visual.
+- **Golpe do Tear:** um especial por classe que carrega com o dano causado (Fúria do Tear, Estrela Cadente, Flecha do Céu).
 - **HUD com retrato e ícones 3D:** o seu herói aparece no canto do HUD e os ícones são modelos desenhados pelo motor do jogo; itens de missão têm feixe de luz e uma seta no chão aponta para o mais perto.
 - **Herói em destaque:** esqueleto com cotovelos e joelhos (o Arcano segura o cajado com a mão fechada), superfície lisa em alta definição, rosto chibi com olhos escuros, íris colorida e brilho, sobrancelhas e sorriso, cabelo em mechas, roupa com gola, punhos e botas, e capa que esvoaça ao correr. Espelho na bolsa e na criação em alta definição, com poses e zoom; no jogo, zoom da câmera pela roda do mouse (ou + e −) e um anel que marca o seu herói no grupo.
 - **Dois atos de história, com finais diferentes.** Ato I: Bosque Sussurrante, Ossuário Real e Picos de Cinza. Ato II: Pântano Afogado e Cidadela de Vidro, com O Reflexo, uma cópia sombria do seu próprio herói.
@@ -61,6 +62,7 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 | botão esquerdo do mouse (segure) ou J | botão Atacar | atacar, mirando no mouse |
 | **botão direito do mouse** ou K | botão Habil. | habilidade (muda com as runas) |
 | Espaço ou Shift | botão Esquiva | esquiva (invulnerável no salto) |
+| R | botão Golpe | Golpe do Tear (especial da classe, carrega com o dano) |
 | Q | botão de poção | poção |
 | E ou Enter | botão Usar | interagir, falar, costurar o amigo caído |
 | I · G · Tab | botões no topo | bolsa · grimório · diário |

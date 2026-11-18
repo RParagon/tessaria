@@ -89,6 +89,7 @@ function updatePlayer(dt) {
   if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1; if (keys.has('KeyS') || keys.has('ArrowDown')) iz += 1;
   if (input.joy.on) { ix += input.joy.x; iz += input.joy.y; }
   const il = Math.hypot(ix, iz); if (il > 1) { ix /= il; iz /= il; }
+  updateUlt(dt);
   P.atkCd -= dt; P.skillCd -= dt; P.dashCd -= dt; P.iframe -= dt; P.actT += dt; P.flash = Math.max(0, P.flash - dt * 6); P.slowT = (P.slowT || 0) - dt;
   if (P.act && P.actT > ({ swing: .3, cast: .3, shoot: .25, spin: .5, nova: .45, dash: .18, hurt: .25, volley: .3 }[P.act] || .3)) P.act = null;
   if (P.dashT > 0) {
@@ -211,6 +212,44 @@ function doSkill() {
     volley(); if (rn === 3) { G.later.push({ t: .16, fn: volley }); G.later.push({ t: .32, fn: volley }); }
   }
 }
+/* ---- Golpe do Tear: especial de cada classe, carregado com o dano causado (cerca de 40 golpes) ---- */
+const ULT_NAME = { lamina: 'Fúria do Tear', arcano: 'Estrela Cadente', arco: 'Flecha do Céu' };
+function ultCharge(dmg) { if (!P || G.ultFiring || P.ultT > 0) return; const was = (G.ult || 0) >= 1; G.ult = Math.min(1, (G.ult || 0) + dmg / Math.max(1, stats().dmg * 40)); if (!was && G.ult >= 1) { toast('GOLPE DO TEAR PRONTO', true, ULT_NAME[G.char.cls].toUpperCase() + ' · TECLA R', '#ffd27a'); sfx('frag'); } }
+function ultHitArea(x, z, r, dmg, slow) {
+  G.ultFiring = true;
+  try {
+    for (const e of enemies) { if (e.dieT >= 0 || e.spawnT > 0) continue; const dx = e.x - x, dz = e.z - z; if (Math.hypot(dx, dz) - e.def.r * e.scale < r) { hurtEnemy(e, dmg, dx, dz, true, 1.4); if (slow) e.slowT = Math.max(e.slowT || 0, slow); } }
+    if (boss && !boss.dying) for (const h of bossHits(boss)) if (Math.hypot(h[0] - x, h[1] - z) - h[2] < r) { hurtBoss(boss, dmg, true, h); break; }
+  } finally { G.ultFiring = false; }
+}
+function doUlt() {
+  if (G.mode !== 'play' || !P || P.dieT >= 0 || P.down > 0 || (G.ult || 0) < 1) return;
+  const st = stats(), cls = G.char.cls; G.ult = 0; sfx('legend'); hitStop(.06); G.shake = Math.max(G.shake, .25);
+  toast(ULT_NAME[cls].toUpperCase(), true, '', '#ffd27a');
+  if (cls === 'lamina') { P.ultT = 4; P.ultTick = 0; P.act = 'spin'; P.actT = 0; }   // giro contínuo (updateUlt)
+  else if (cls === 'arcano') {
+    P.act = 'nova'; P.actT = 0; const d = setAim(), tx = P.x + d[0] * 7, tz = P.z + d[1] * 7;
+    const meteor = (x, z, r, k, delay) => { tels.push({ x, z, r, t: 0, dur: delay, kind: 'circle', mat: 151 }); G.later.push({ t: delay, fn: () => {
+      for (let i = 0; i < 80; i++) { const a = Math.random() * 6.283, s = rr(2, 9); spawn({ x, y: .3, z, vx: Math.cos(a) * s, vy: rr(1, 6), vz: Math.sin(a) * s, life: rr(.5, 1), s0: .3, s1: .05, b0: 1, b1: .2, mat: i % 3 ? 21 : 151, buoy: -6 }); }
+      ultHitArea(x, z, r, st.dmg * k); G.zones.push({ x, z, r: r * .8, t: 0, dur: 4, dmg: st.dmg * .6, tick: 0, team: 'p' }); G.shake = Math.max(G.shake, .4); sfx('boom'); } }); };
+    meteor(tx, tz, 5, 12, .7); for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283, d2 = rr(2.5, 4.5); meteor(tx + Math.cos(a) * d2, tz + Math.sin(a) * d2, 2.6, 5, 1.1 + i * .25); }
+  } else {
+    P.act = 'shoot'; P.actT = 0; const d = setAim(), L = 22, W = 1.5;
+    for (let k = 0; k < 60; k++) { const u = k / 60 * L; spawn({ x: P.x + d[0] * u, y: 1.2, z: P.z + d[1] * u, vy: .3, life: .5 + k * .006, s0: .35, s1: .06, b0: 1, b1: .2, mat: 150 }); }
+    G.ultFiring = true;
+    try {
+      for (const e of enemies) { if (e.dieT >= 0 || e.spawnT > 0) continue; const rx = e.x - P.x, rz = e.z - P.z, along = rx * d[0] + rz * d[1], side = Math.abs(rx * d[1] - rz * d[0]); if (along > 0 && along < L && side < W + e.def.r * e.scale) { hurtEnemy(e, st.dmg * 10, d[0], d[1], true, 2); e.slowT = Math.max(e.slowT || 0, 3); } }
+      if (boss && !boss.dying) for (const h of bossHits(boss)) { const rx = h[0] - P.x, rz = h[1] - P.z, along = rx * d[0] + rz * d[1], side = Math.abs(rx * d[1] - rz * d[0]); if (along > 0 && along < L && side < W + h[2]) { hurtBoss(boss, st.dmg * 10, true, h); break; } }
+    } finally { G.ultFiring = false; }
+  }
+}
+function updateUlt(dt) {
+  if (!P || !(P.ultT > 0)) return;
+  P.ultT -= dt; P.act = 'spin'; P.actT = (P.actT + dt) % .5; P.iframe = Math.max(P.iframe, .05);
+  if ((P.ultTick -= dt) <= 0) { P.ultTick = .25; ultHitArea(P.x, P.z, 4, stats().dmg * 1.6); }
+  for (let i = 0; i < 6; i++) { const a = Math.random() * 6.283; spawn({ x: P.x + Math.cos(a) * 1.6, y: rr(.3, 1.6), z: P.z + Math.sin(a) * 1.6, vx: Math.cos(a + 1.57) * 6, vz: Math.sin(a + 1.57) * 6, life: .35, s0: .22, s1: .04, b0: 1, b1: .2, mat: 21 }); }
+  if (P.ultT <= 0) { P.act = null; P.ultT = 0; }
+}
 function drinkPotion() {
   if (G.mode !== 'play' || P.dieT >= 0 || P.down > 0) return;
   if (G.save.potions <= 0) { toast('Sem poções. Descanse num santuário.'); return; }
@@ -223,6 +262,7 @@ function hurtPlayer(dmg, sx, sz, kb = 7) {
   if (P && P.remote) return coopHurtRemote(dmg, sx, sz, kb);   // co-op: alvo substituto (companheiro)
   if (!P || P.dieT >= 0 || P.down > 0 || P.iframe > 0 || P.dashT > 0 || G.mode !== 'play') return false;
   if (inCamp(P.x, P.z)) return false;   // acampamento dos Ermos: zona segura
+  if (P.ultT > 0) dmg *= .5;   // Fúria do Tear
   if (coopIsHost()) dmg *= coopDmgMul();   // co-op: inimigos batem mais forte com mais gente
   dmg = Math.max(1, Math.round(dmg * monsterScale().dmg * (1 - stats().dr)));
   if (P.shield > 0) { const a = Math.min(P.shield, dmg); P.shield -= a; dmg -= a; if (dmg <= 0) { P.iframe = .35; popNum(P.x, 2.2, P.z, 'BLOQUEADO', 'info'); return true; } }

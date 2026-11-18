@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.31.0 · Golpe do Tear, banco no lugar certo e ferraria nova
+- **Golpe do Tear (tecla R):** um especial por classe que carrega com o dano que você causa (cerca de 40 golpes; os bonecos de treino não contam). Quando a barra enche, o botão brilha e um aviso aparece:
+  - **Lâmina, Fúria do Tear:** 4 s girando em chamas com dano em área contínuo e metade do dano recebido;
+  - **Arcano, Estrela Cadente:** um meteoro cai onde você mira (explosão enorme e chão em brasa) e mais três menores em volta;
+  - **Arco, Flecha do Céu:** uma flecha gigante atravessa tudo numa linha de 22 metros, com dano altíssimo, e deixa lento
+- **Banco do Tear no lugar certo:** saiu do aperto entre a forja e a casa e ocupou o lugar de uma casa que só preenchia espaço, no lado norte da praça, de frente para a rua principal
+- **Ferraria nova:** paredes de pedra em blocos, telhado de ardósia cinza, chaminé de pedra larga com fumaça, fornalha em arco com brasa, bigorna no toco, barril de têmpera, parede de ferramentas, armeiro com espadas, ferradura dourada e uma pérgola de vigas no lugar da lona (a frente fica à vista)
+
 ## 0.30.0 · Itens com peso, Banco do Tear e bolsa prática
 - **Teto de raridade pela área:** o nível do item (tier) agora limita a raridade. Começo do jogo (Campina, Fendas 1 e 2): até **Raro**; meio (Mata, Teia, Fenda 3): até **Épico**; **Lendário** só a partir do Brejo, da Fenda 4 ou dos Tormentos. Chefes ganham um degrau a mais. Vale nos drops do jogo, no loot do servidor (Fenda do grupo) e no Mercador Suspeito
 - **Raridade um pouco mais rara:** 40% dos drops são Mágicos ou melhores, 3,7% Épicos ou melhores e 0,7% Lendários (antes 45%, 5% e 1%). O covil dá Lendário em 8% (antes 25%)

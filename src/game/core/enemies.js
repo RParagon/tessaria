@@ -13,6 +13,7 @@ function spawnEnemy(type, x, z, delay = 0) {
   return e;
 }
 function hurtEnemy(e, dmg, dx, dz, crit, kbm = 1) {
+  if (!COOP.remoteHit && !e.dummy) ultCharge(dmg);   // o dano que você causa enche o Golpe do Tear
   if (e.proxy) return coopHitEnemy(e, dmg, dx, dz, crit, kbm);   // co-op: cópia; o acerto vai para o anfitrião
   if ((e.fade || 0) > .6) return;
   dmg = Math.round(dmg * (e.elite && e.elite.aff.includes('blind') ? .6 : 1));

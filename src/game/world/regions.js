@@ -59,8 +59,8 @@ const REG = {
 const HUB = {
   houses: [
     { x: 4, y: 8, w: 3, h: 3, roof: 23 }, { x: 9, y: 8, w: 3, h: 3, roof: 22 }, { x: 14, y: 9, w: 5, h: 3, roof: 22, tavern: true },
-    { x: 27, y: 8, w: 3, h: 3, roof: 22 }, { x: 33, y: 8, w: 3, h: 3, roof: 23 },
-    { x: 4, y: 20, w: 3, h: 3, roof: 22 }, { x: 9, y: 22, w: 3, h: 3, roof: 23 }, { x: 26, y: 20, w: 3, h: 2, roof: 22, forge: true }, { x: 33, y: 20, w: 3, h: 3, roof: 22 },
+    { x: 27, y: 8, w: 3, h: 3, roof: 22 },   // a casa vizinha (33,8) deu lugar ao Banco do Tear
+    { x: 4, y: 20, w: 3, h: 3, roof: 22 }, { x: 9, y: 22, w: 3, h: 3, roof: 23 }, { x: 26, y: 20, w: 3, h: 2, roof: 11, forge: true }, { x: 33, y: 20, w: 3, h: 3, roof: 22 },
     // Bairro Leste
     { x: 47, y: 5, w: 4, h: 3, roof: 23 }, { x: 53, y: 5, w: 3, h: 3, roof: 22 }, { x: 47, y: 23, w: 3, h: 3, roof: 22 }, { x: 52, y: 24, w: 3, h: 3, roof: 23 }],
   fountain: [44, 32], portals: [{ to: 'forest', x: 24, z: 9 }, { to: 'crypt', x: 44, z: 8 }, { to: 'peaks', x: 64, z: 9 }, { to: 'swamp', x: 9, z: 33, yaw: 1.57 }, { to: 'wilds', x: 44, z: 56, yaw: 3.14 }, { to: 'glass', x: 145, z: 33, yaw: -1.57 }],
@@ -72,7 +72,7 @@ const HUB = {
   // Santuário da Fenda (mundo): portal sombrio no estrado ao sul, pilares de obsidiana com chama violeta e arco na entrada
   sanct: { x: 118, z: 77, gate: [118, 68.5], pil: [[107, 67], [129, 67], [132, 78], [108, 87.5], [128, 87.5]], arch: [101.5, 77] },
   // Banco do Tear (mundo): entre a forja e a casa da praça, fachada para o sul
-  bank: { x: 62, z: 41.4 },
+  bank: { x: 69, z: 18.4 },
   props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board'], [102, 16, 'crate'], [102.8, 16.6, 'barrel'], [98, 50, 'barrel'], [112, 52, 'crate'],
     // Bairro Leste: feira, poço, canteiros, feno e varal
     [101.6, 38.6, 'barrel'], [102.3, 39.4, 'crate'], [113.2, 38.4, 'crate'], [113.8, 39.3, 'barrel'], [123, 12, 'well'], [96, 30, 'flowers'], [104, 28, 'flowers'], [134, 33, 'flowers'], [140, 40, 'flowers'], [116, 20, 'flowers'],
@@ -256,7 +256,7 @@ function genRegion(key) {
       }
       for (const [x, y, ch] of flip) grid[y][x] = ch;
     }
-    for (let y = 19; y <= 21; y++) for (let x = 29; x <= 32; x++) G.block.add(x + ',' + y);   // prédio do banco
+    for (let y = 8; y <= 10; y++) for (let x = 32; x <= 36; x++) G.block.add(x + ',' + y);   // prédio do banco (lado norte da praça)
     reserve(HUB.bank.x, HUB.bank.z + 4.2, 1);
     G.hills = [];   // morros decorativos removidos (a pedido): relevo de verdade, com subida, fica para o futuro
   }
@@ -480,9 +480,9 @@ function buildWorld(key, G) {
     };
     HUB.houses.forEach((h, hi) => {
       const x0 = h.x * T, z0 = h.y * T, w = h.w * T, d = h.h * T, cx = x0 + w / 2, cz = z0 + d / 2, hw = w / 2 - .15, hd = d / 2 - .15, fz = cz + hd;
-      const plaster = h.forge ? 11 : [24, 25, 24, 11, 25][hi % 5]; shutC = h.roof === 22 ? 23 : 18;
+      const plaster = h.forge ? 9 : [24, 25, 24, 11, 25][hi % 5]; shutC = h.roof === 22 ? 23 : 18;
       S.box([cx, .22, cz], [hw + .08, .22, hd + .08], p => frac(p[0] * 1.4 + p[2] * 1.4 + Math.floor(p[1] * 4.5) * .5) < .1 ? 29 : 11, 0, { faces: 'nsew' });
-      S.box([cx, 1.51, cz], [hw, 1.09, hd], p => (Math.abs(frac((p[0] + p[2]) / 1.5 + .5) - .5) < .04 || Math.abs(p[1] - 1.5) < .055 || p[1] > 2.5) ? 12 : plaster, 0, { faces: 'nsew', flags: 8 });
+      S.box([cx, 1.51, cz], [hw, 1.09, hd], h.forge ? p => (frac(p[1] * 2.4) < .1 || frac((p[0] + p[2]) * .9 + Math.floor(p[1] * 2.4) * .5) < .08) ? 29 : (frac(p[0] * 3.1 + p[1] * 1.7) < .3 ? 11 : 9) : p => (Math.abs(frac((p[0] + p[2]) / 1.5 + .5) - .5) < .04 || Math.abs(p[1] - 1.5) < .055 || p[1] > 2.5) ? 12 : plaster, 0, { faces: 'nsew', flags: 8 });   // ferraria: pedra em blocos
       const o = .45, ey = 2.6, ry = 4.05;
       const A = [x0 - o, ey, z0 - o], B = [x0 + w + o, ey, z0 - o], C = [x0 + w + o, ry, cz], D = [x0 - o, ry, cz], E = [x0 + w + o, ey, z0 + d + o], F = [x0 - o, ey, z0 + d + o];
       S.mem([[A, B, C], [A, C, D], [D, C, E], [D, E, F]], p => (frac(p[1] * 2.6) < .16 || frac(p[0] * .8 + Math.floor(p[1] * 2.6) * .5) < .05) ? 29 : h.roof, () => 0, { flags: 8, dm: 1.15 });
@@ -493,11 +493,20 @@ function buildWorld(key, G) {
         S.box([cx, .45, fz + .85], [.4, .25, .2], 29, 0); S.box([cx, .15, fz + .85], [.18, .15, .15], 29, 0); S.box([cx - .45, .6, fz + .85], [.08, .05, .12], 29, 0);
         S.box([x0 + .6, .5, fz + .3], [.45, .5, .3], 11, 0); S.pt([x0 + .6, 1.02, fz + .3], [0, 1, 0], 14, 0, .5);
         emitters.push({ t: 'forge', x: x0 + .6, y: 1.05, z: fz + .3 });
-        S.mem([[[x0 - .2, 2.3, fz + .05], [x0 + w + .2, 2.3, fz + .05], [x0 + w + .2, 1.9, fz + 1.4]], [[x0 - .2, 2.3, fz + .05], [x0 + w + .2, 1.9, fz + 1.4], [x0 - .2, 1.9, fz + 1.4]]], p => Math.floor((p[0] - x0) / .5) % 2 ? 23 : 28, () => 0, { flags: 8 });
+        S.tube([[x0 - .1, 2.0, fz + 1.35, .06, 0], [x0 + w + .1, 2.0, fz + 1.35, .06, 0]], 12, { sub: 1, flags: 8 }); for (let k = 0; k < 5; k++) { const bx2 = x0 + .2 + k * (w - .4) / 4; S.tube([[bx2, 2.35, fz + .05, .045, 0], [bx2, 2.0, fz + 1.4, .045, 0]], 12, { sub: 1, flags: 8 }); }   // pérgola de vigas (frente aberta)
         for (const px2 of [x0 - .1, x0 + w + .1]) S.tube([[px2, 0, fz + 1.35, .05, 0], [px2, 1.95, fz + 1.35, .05, 0]], 12, { sub: 1, flags: 8 });
         S.tube([[x0 + w - .9, .9, fz + .12, .03, 0], [x0 + w - .1, .9, fz + .12, .03, 0]], 12, { sub: 1 });
         for (let k = 0; k < 4; k++) S.tube([[x0 + w - .8 + k * .2, .2, fz + .14, .025, 0], [x0 + w - .8 + k * .2, 1.25, fz + .14, .012, 0]], 11, { sub: 1 });
         S.box([cx + 1.4, 2.0, fz + .1], [.35, .22, .04], 12, 0, { faces: 's' }); S.box([cx + 1.4, 2.04, fz + .14], [.18, .05, .02], 29, 0, { faces: 's' }); S.box([cx + 1.4, 1.93, fz + .14], [.04, .1, .02], 29, 0, { faces: 's' });
+        // estética nova: chaminé de pedra larga, fornalha em arco com brasa, toco da bigorna, barril de têmpera, ferramentas e armeiro, ferradura dourada
+        S.box([x0 + .9, 3.4, cz], [.7, 2.2, .7], p => frac(p[1] * 2.2) < .12 ? 29 : 11, 0, { faces: 'tnsew', flags: 8 }); S.box([x0 + .9, 5.65, cz], [.82, .1, .82], 29, 0, { faces: 'tnsew', flags: 8 });
+        emitters.push({ t: 'smoke', x: x0 + .9, y: 5.8, z: cz }); emitters.push({ t: 'smoke', x: x0 + 1.1, y: 5.8, z: cz + .2 });
+        { const ax = x0 + .9, az = fz + .2; S.box([ax, .7, az], [.75, .7, .32], p => frac(p[1] * 3 + Math.floor(p[0] * 2) * .5) < .12 ? 29 : 11, 0, { faces: 'tnsew' }); S.ell([ax, .62, az + .33], [.42, .42, .04], 21, 0, { noSolid: true, keep: d => d[1] > -.2, min: 30 }); S.ell([ax, .62, az + .3], [.28, .3, .03], 27, 0, { noSolid: true, noCheck: true, min: 20 }); emitters.push({ t: 'forge', x: ax, y: .7, z: az + .45 }); }
+        S.tube([[cx, 0, fz + .85, .26, 0], [cx, .2, fz + .85, .26, 0]], 12, { sub: 1 });
+        S.ell([x0 + w + .25, .45, fz + .9], [.32, .45, .32], p => Math.abs(p[1] - .45) < .05 || Math.abs(p[1] - .15) < .05 ? 29 : 12, 0); S.ell([x0 + w + .25, .9, fz + .9], [.28, .02, .28], 15, 0, { noSolid: true });
+        for (let k = 0; k < 3; k++) { const tx2 = x0 + w - 1.6 + k * .35; S.tube([[tx2, 1.0, fz + .05, .025, 0], [tx2, 1.6, fz + .05, .02, 0]], 12, { sub: 1 }); S.box([tx2, 1.62, fz + .07], [.09, .06, .04], 29, 0); }
+        for (let k = 0; k < 3; k++) S.tube([[x0 + w - .25 + k * .01, .15, fz + .35 + k * .25, .02, 0], [x0 + w - .25, 1.3, fz + .2 + k * .25, .01, 0]], 28, { sub: 1 });   // espadas no armeiro
+        S.tube([[cx + 1.4, 2.45, fz + .18, .04, 0], [cx + 1.25, 2.58, fz + .18, .04, 0], [cx + 1.4, 2.7, fz + .18, .04, 0], [cx + 1.55, 2.58, fz + .18, .04, 0]], 14, { sub: 2, noSolid: true });   // ferradura
       } else if (!h.tavern) {
         const dx2 = cx - .6;
         S.box([dx2, .9, fz + .02], [.4, .5, .04], p => Math.abs(frac(p[0] / .2) - .5) < .1 ? 29 : 12, 0, { faces: 's' });

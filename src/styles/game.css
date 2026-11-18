@@ -396,3 +396,10 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 /* detalhes do item sempre à vista: o painel de detalhes gruda embaixo; selecionar rola até ele */
 .invp .idet,.mbox .idet{position:sticky;bottom:-2px;z-index:4;background:linear-gradient(rgba(19,13,30,.94),#130d1e 18%);border-top:2px solid #3e3157;box-shadow:0 -8px 14px rgba(0,0,0,.45)}
 .invp .idet .irow,.mbox .idet .irow{flex-wrap:wrap}
+
+/* Golpe do Tear: a barra enche de baixo para cima; pronto, brilha */
+.ab.ult::after,.tb.ult::after{display:none}
+.ultf{position:absolute;left:3px;right:3px;bottom:3px;height:calc((100% - 6px) * var(--ult,0));background:linear-gradient(rgba(255,210,122,.55),rgba(242,120,40,.35));pointer-events:none;z-index:0}
+.ab.ult img,.tb.ult img{position:relative;z-index:1}
+.ab.ult.ready,.tb.ult.ready{animation:ultglow 1s ease-in-out infinite;box-shadow:inset 0 0 0 2px #ffd27a,0 0 14px #ffb347,2px 2px 0 #000}
+@keyframes ultglow{50%{filter:brightness(1.35)}}

@@ -27,6 +27,7 @@ function updateHud() {
   const dc = clamp(P.dashCd / st.dashCd, 0, 1), sc = clamp(P.skillCd / st.skillCd, 0, 1), ac = clamp(P.atkCd / st.atkCd, 0, 1);
   $('#abDash').style.setProperty('--cd', dc); $('#abSkill').style.setProperty('--cd', sc); $('#abAtk').style.setProperty('--cd', ac);
   $('#tDash').style.setProperty('--cd', dc); $('#tSkill').style.setProperty('--cd', sc);
+  { const u = Math.min(1, G.ult || 0), us = u.toFixed(2); if (hudCache.ult !== us) { hudCache.ult = us; for (const id of ['#abUlt', '#tUlt']) { $(id).style.setProperty('--ult', us); $(id).classList.toggle('ready', u >= 1); } } }
   const sk = P.skillCd > 0 ? Math.ceil(P.skillCd) : ''; setTxt('#abSkillT', sk); setTxt('#tSkillT', sk);
   setTxt('#abPotN', s.potions); setTxt('#tPotN', s.potions);
   if (hudCache.pe !== (s.potions <= 0)) { hudCache.pe = s.potions <= 0; $('#abPot').classList.toggle('empty', hudCache.pe); $('#tPot').classList.toggle('empty', hudCache.pe); }
@@ -34,6 +35,8 @@ function updateHud() {
     hudCache.cls = G.char.cls;
     for (const id of ['#abAtk img', '#tAtk img']) $(id).src = icon(CLSICON[G.char.cls]);
     for (const id of ['#abSkill img', '#tSkill img']) $(id).src = icon(SKILLICON[G.char.cls]);
+    for (const id of ['#abUlt img', '#tUlt img']) $(id).src = icon('ult');
+    $('#abUlt').dataset.tip = ULT_NAME[G.char.cls] + '\nR · carrega com o dano que você causa';
     $('#abSkillL').textContent = SKILLNAME[G.char.cls];
   }
   { const R2 = RUNES[G.char.cls][curRune()], tip = (R2 ? R2.n + '\n' + R2.d : 'Habilidade') + '\nBotão direito do mouse (ou K)'; if (hudCache.tip !== tip) { hudCache.tip = tip; $('#abSkill').dataset.tip = tip; } }   // dica com a runa ativa
@@ -73,7 +76,7 @@ function openMenu(which) {
 }
 function closeMenus() { showOnly(null); G.mode = 'play'; G.menu = null; refreshHudVis(); updateObjective(); }
 $('#bJournal').onclick = () => openMenu('journal'); $('#bBag').onclick = () => openMenu('inv');
-$('#abBag').onclick = () => openMenu('inv'); $('#abDash').onclick = () => doDash(); $('#abSkill').onclick = () => doSkill(); $('#abPot').onclick = () => drinkPotion();
+$('#abBag').onclick = () => openMenu('inv'); $('#abDash').onclick = () => doDash(); $('#abSkill').onclick = () => doSkill(); $('#abUlt').onclick = () => doUlt(); $('#abPot').onclick = () => drinkPotion();
 $('#iClose').onclick = closeMenus; $('#sClose').onclick = closeMenus; $('#kClose').onclick = closeMenus; $('#bdClose').onclick = closeMenus; $('#rClose').onclick = closeMenus;
 $('#bSkills').onclick = () => openMenu('skills');
 let invSel = null;

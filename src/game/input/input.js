@@ -37,6 +37,7 @@ addEventListener('keydown', e => {
   else if (k === 'Minus' || k === 'NumpadSubtract') camZoom(1);
   else if (k === 'KeyH') { const el = $('#keys'); el.classList.toggle('faded'); G.keysT = 1e9; }
   else if (k === 'KeyK' || k === 'KeyL') doSkill();
+  else if (k === 'KeyR') doUlt();
   else if (k === 'KeyQ') drinkPotion();
   else if (k === 'KeyE' || k === 'Enter') interact();
   else if (k === 'KeyJ') input.atk = true;
@@ -69,6 +70,7 @@ $('#prompt').addEventListener('pointerdown', e => { if (G.mode === 'play') { e.p
 tbtn('#tAtk', () => { if (G.mode === 'play') input.atk = true; }, () => input.atk = false);
 tbtn('#tDash', () => { if (G.mode === 'play') doDash(); });
 tbtn('#tSkill', () => { if (G.mode === 'play') doSkill(); });
+tbtn('#tUlt', () => { if (G.mode === 'play') doUlt(); });
 tbtn('#tPot', () => { if (G.mode === 'play') drinkPotion(); });
 tbtn('#tUse', () => { if (G.mode === 'play') interact(); });
 

@@ -47,6 +47,7 @@ function endBossFight(won) {
 }
 function updateBossBar() { if (boss) $('#bHp').style.width = clamp(boss.hp / boss.maxHp, 0, 1) * 100 + '%'; }
 function hurtBoss(b, dmg, crit, h) {
+  if (!COOP.remoteHit) ultCharge(dmg);
   if (b.proxy) return coopHitBoss(b, dmg, crit, h);   // co-op: cópia; o acerto vai para o anfitrião
   if (b.invuln > 0 || b.spawnT > 0 || (b.blinkDis || 0) > .5) { popNum(h[0], 3, h[1], 'IMUNE', 'info'); return; }
   dmg = Math.round(dmg); b.hp -= dmg; b.flash = 1; if (!COOP.remoteHit) { lifeSteal(dmg); if (crit) hitStop(.05); }
