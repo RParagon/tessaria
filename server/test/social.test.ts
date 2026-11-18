@@ -206,6 +206,10 @@ for (const kind of STORES) {
       assert.equal((await a.c.waitFor(m => m.t === 'gx' && m.d.k === 'hit')).from, wb.id);
       a.c.send({ t: 'hto', to: wb.id, d: { k: 'hurt', dmg: 3 } });
       await b.c.waitFor(m => m.t === 'hx' && m.d.k === 'hurt');
+      b.c.send({ t: 'px', d: { k: 'down' } });                  // entre jogadores: para todos
+      await a.c.waitFor(m => m.t === 'px' && m.d.k === 'down' && m.from === wb.id);
+      a.c.send({ t: 'px', to: wb.id, d: { k: 'rev' } });       // para um
+      await b.c.waitFor(m => m.t === 'px' && m.d.k === 'rev' && m.from === wa.id);
       a.c.send({ t: 'hx', d: 'texto' });                        // conteúdo precisa ser objeto
       await sleep(150);
       assert.ok(!a.c.msgs.some((m: any) => m.t === 'hx' && m.d.k === 'falso'));

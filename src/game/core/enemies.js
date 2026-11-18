@@ -17,17 +17,21 @@ function hurtEnemy(e, dmg, dx, dz, crit, kbm = 1) {
   if ((e.fade || 0) > .6) return;
   dmg = Math.round(dmg * (e.elite && e.elite.aff.includes('blind') ? .6 : 1));
   if (e.shieldT > 0) { dmg = Math.max(1, Math.round(dmg * .2)); if (Math.random() < .4) popNum(e.x, 2.2, e.z, 'ESCUDO', 'info'); }
-  e.hp -= dmg; e.flash = 1; e.hitT = .18; if (!COOP.remoteHit) { lifeSteal(dmg); if (crit) hitStop(.045); }
+  e.hp -= dmg; e.flash = 1; e.hitT = .18; if (!COOP.remoteHit) { e.hitByMe = true; lifeSteal(dmg); if (crit) hitStop(.045); }
   if (e.thief && e.hp > 0) dropGold(e.x, e.z, 2);
   const l = Math.hypot(dx, dz) || 1, kb = (e.type === 'beetle' ? 2 : 6) * kbm; e.kx += dx / l * kb; e.kz += dz / l * kb;
   popNum(e.x, 1.6 * e.scale + (e.type === 'bat' ? 1 : 0), e.z, crit ? dmg + '!' : '' + dmg, crit ? 'crit' : '');
   sfx('hit'); burst(e.x, 1, e.z, 6, 7, 3, .3, .1);
   if (e.hp <= 0 && e.dieT < 0) {
-    e.dieT = 0; G.save.kills++; hitStop(.03);
-    dropGold(e.x, e.z, e.def.gold + Math.floor(rr(0, 3)));
-    if (Math.random() < .07) pickups.push({ kind: 'heart', x: e.x, y: .5, z: e.z, vx: 0, vy: 3, vz: 0, t: 0 });
-    if (Math.random() < .08 * stats().itemFind) dropItem(e.x, e.z, rollRar(G.rift && G.rift.L >= 4 ? 1 : 0));
-    onEnemyKilled(e); coopKilled(e);
+    e.dieT = 0; if (!COOP.remoteHit) hitStop(.03);
+    if (coopShare(e)) {
+      G.save.kills++;
+      dropGold(e.x, e.z, e.def.gold + Math.floor(rr(0, 3)));
+      if (Math.random() < .07) pickups.push({ kind: 'heart', x: e.x, y: .5, z: e.z, vx: 0, vy: 3, vz: 0, t: 0 });
+      if (Math.random() < .08 * stats().itemFind) dropItem(e.x, e.z, rollRar(G.rift && G.rift.L >= 4 ? 1 : 0));
+      onEnemyKilled(e);
+    } else coopFarKill(e);   // co-op: longe e sem ter acertado: só o progresso da Fenda
+    coopKilled(e);
   }
 }
 function dropGold(x, z, n) { for (let i = 0; i < n; i++) { const a = rr(0, 6.28), s = rr(1, 3); pickups.push({ kind: 'gold', x, y: .8, z, vx: Math.cos(a) * s, vy: rr(3, 5), vz: Math.sin(a) * s, t: 0, v: 1 }); } }

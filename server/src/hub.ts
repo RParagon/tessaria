@@ -168,7 +168,7 @@ export class Hub {
       case 'look': return this.onLook(p, msg.look);
       case 'where': return this.onWhere(p, msg.r, msg.n, msg.i);
       case 'iopen': return this.openInst(p, msg);
-      case 'hx': case 'gx': case 'hto': return this.relay(p, msg, raw.length);
+      case 'hx': case 'gx': case 'hto': case 'px': return this.relay(p, msg, raw.length);
       case 'ijoin': return this.joinInst(p, msg.inst);
       case 'pinvite': return void this.invite(p, msg.name);
       case 'paccept': return this.accept(p, msg.from);
@@ -368,6 +368,10 @@ export class Hub {
     const isHost = inst.host === p.id;
     if (m.t === 'hx' && isHost) inst.room.broadcast({ t: 'hx', from: p.id, d: m.d }, p);
     else if (m.t === 'hto' && isHost) { const to = inst.room.players.get(m.to); if (to) send(to, { t: 'hx', from: p.id, d: m.d }); }
+    else if (m.t === 'px') {   // entre jogadores: para um (to) ou para todos da instância
+      if (m.to === undefined) inst.room.broadcast({ t: 'px', from: p.id, d: m.d }, p);
+      else { const to = inst.room.players.get(m.to); if (to && to !== p) send(to, { t: 'px', from: p.id, d: m.d }); }
+    }
     else if (m.t === 'gx' && !isHost) { const h = inst.room.players.get(inst.host); if (h) send(h, { t: 'gx', from: p.id, d: m.d }); }
   }
   private enterMsg(i: Instance): ServerMsg { return { t: 'ienter', inst: i.id, kind: 'rift', rift: { L: i.L, base: i.base, aff: i.aff, boss: i.boss, seed: i.seed } }; }

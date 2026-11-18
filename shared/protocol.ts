@@ -12,6 +12,10 @@ export const HUB_BOUNDS = { x0: 4, x1: 84, z0: 4, z1: 60 };
 export const MAX_SPEED = 12;        // unidades/s (corrida + esquiva com folga)
 // ---------- instâncias (co-op) ----------
 /** Bases de Fenda que o jogo conhece (core/progression.js, RTYPES). */
+/** Co-op: vida e dano dos inimigos pelo número de jogadores na instância (índice = jogadores). */
+export const COOP_HP = [1, 1, 1.75, 2.5, 3.25];
+export const COOP_DMG = [1, 1, 1.1, 1.15, 1.2];
+export const DOWN_SECS = 15, SEW_SECS = 3, SEW_HP = .3, XP_SHARE_DIST = 30;
 export const RIFT_BASES = ['forest', 'crypt', 'peaks', 'swamp', 'glass'] as const;
 export const INST_CAP = 4;                 // jogadores por instância
 export const INST_READY_MS = 20_000;       // tempo do aviso "Pronto?"
@@ -70,7 +74,8 @@ export type ClientMsg =
   | { t: 'ijoin'; inst: number }   // entrar na instância do grupo
   | { t: 'hx'; d: unknown }                // anfitrião → todos da instância (estado dos inimigos, mortes, projéteis)
   | { t: 'gx'; d: unknown }                // jogador → anfitrião (acertos)
-  | { t: 'hto'; to: number; d: unknown }   // anfitrião → um jogador (dano recebido)   // pedido da hora do servidor (c: hora do cliente no envio)
+  | { t: 'hto'; to: number; d: unknown }   // anfitrião → um jogador (dano recebido)
+  | { t: 'px'; to?: number; d: unknown }   // jogador → jogador (ou todos) da instância: caído, levantou, costurar   // pedido da hora do servidor (c: hora do cliente no envio)
   // amigos e grupo (docs/ONLINE.md). Fora da vila a conexão continua aberta só para isso.
   | { t: 'where'; r: string; n?: number; i?: number }        // região atual (chave do jogo), nível da Fenda e instância do grupo
   | { t: 'pinvite'; name: string }              // convidar para o grupo
@@ -89,7 +94,8 @@ export type ServerMsg =
   | { t: 'iclosed'; inst: number }
   | { t: 'ihost'; id: number }   // quem simula o combate na instância
   | { t: 'hx'; from: number; d: any }
-  | { t: 'gx'; from: number; d: any }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
+  | { t: 'gx'; from: number; d: any }
+  | { t: 'px'; from: number; d: any }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
   | { t: 'join'; p: PublicPlayer }
   | { t: 'leave'; id: number }
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação

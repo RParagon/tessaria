@@ -83,6 +83,7 @@ function unstuck(e) {
 function updatePlayer(dt) {
   const st = stats();
   if (P.dieT >= 0) { P.dieT += dt; if (P.dieT > 1.6 && !G.respawning) respawn(); return; }
+  if (P.down > 0) { coopDownTick(dt); return; }   // co-op: Caído
   let ix = 0, iz = 0;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1; if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
   if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1; if (keys.has('KeyS') || keys.has('ArrowDown')) iz += 1;
@@ -123,7 +124,7 @@ function updatePlayer(dt) {
 }
 function setAim() { const d = aimDir(); P.aimYaw = Math.atan2(d[0], d[1]); P.aimT = G.time; P.yaw = P.aimYaw; return d; }
 function doAttack() {
-  if (G.mode !== 'play' || P.dieT >= 0) return;
+  if (G.mode !== 'play' || P.dieT >= 0 || P.down > 0) return;
   const st = stats(), cls = G.char.cls, d = setAim();
   P.atkCd = st.atkCd; P.actT = 0; P.fxSkill = false;
   const crit = () => Math.random() < stats().crit;
@@ -169,7 +170,7 @@ function meleeHit(range, arc, dmg, d) {
   }
 }
 function doDash() {
-  if (G.mode !== 'play' || P.dieT >= 0 || P.dashCd > 0) return;
+  if (G.mode !== 'play' || P.dieT >= 0 || P.down > 0 || P.dashCd > 0) return;
   let ix = 0, iz = 0;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1; if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
   if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1; if (keys.has('KeyS') || keys.has('ArrowDown')) iz += 1;
@@ -181,7 +182,7 @@ function doDash() {
   if (hasPow('desfiado')) { const x = P.x, z = P.z; tels.push({ kind: 'circle', x, z, r: 2.2, t: 0, dur: .5, mat: 7, fn: () => { burst(x, .5, z, 30, 7, 5, .5, .18); sfx('boom'); aoeDamage(x, z, 2.4, stats().dmg * 1.5); } }); }
 }
 function doSkill() {
-  if (G.mode !== 'play' || P.dieT >= 0 || P.skillCd > 0) return;
+  if (G.mode !== 'play' || P.dieT >= 0 || P.down > 0 || P.skillCd > 0) return;
   const st = stats(), cls = G.char.cls, rn = curRune(); P.skillCd = st.skillCd; P.actT = 0; P.fxSkill = true; sfx('skill');
   if (cls === 'lamina') {
     P.act = 'spin'; P.iframe = .35; const R2 = rn === 2 ? 4.6 : 3.5;
@@ -211,7 +212,7 @@ function doSkill() {
   }
 }
 function drinkPotion() {
-  if (G.mode !== 'play' || P.dieT >= 0) return;
+  if (G.mode !== 'play' || P.dieT >= 0 || P.down > 0) return;
   if (G.save.potions <= 0) { toast('Sem poções. Descanse num santuário.'); return; }
   if (P.hp >= P.maxHp) { toast('Sua vida já está cheia.'); return; }
   G.save.potions--; const h = Math.round(P.maxHp * (hasPow('maca') ? 1 : stats().potHeal)); P.hp = Math.min(P.maxHp, P.hp + h);
@@ -220,7 +221,8 @@ function drinkPotion() {
 }
 function hurtPlayer(dmg, sx, sz, kb = 7) {
   if (P && P.remote) return coopHurtRemote(dmg, sx, sz, kb);   // co-op: alvo substituto (companheiro)
-  if (!P || P.dieT >= 0 || P.iframe > 0 || P.dashT > 0 || G.mode !== 'play') return false;
+  if (!P || P.dieT >= 0 || P.down > 0 || P.iframe > 0 || P.dashT > 0 || G.mode !== 'play') return false;
+  if (coopIsHost()) dmg *= coopDmgMul();   // co-op: inimigos batem mais forte com mais gente
   dmg = Math.max(1, Math.round(dmg * monsterScale().dmg * (1 - stats().dr)));
   if (P.shield > 0) { const a = Math.min(P.shield, dmg); P.shield -= a; dmg -= a; if (dmg <= 0) { P.iframe = .35; popNum(P.x, 2.2, P.z, 'BLOQUEADO', 'info'); return true; } }
   if (hasPow('guardiao') && Math.random() < .25) { P.shield = 30; popNum(P.x, 2.6, P.z, 'ESCUDO DE MUSGO', 'heal'); }
@@ -229,9 +231,11 @@ function hurtPlayer(dmg, sx, sz, kb = 7) {
   const dx = P.x - sx, dz = P.z - sz, l = Math.hypot(dx, dz) || 1; P.kx = dx / l * kb; P.kz = dz / l * kb;
   popNum(P.x, 2.2, P.z, '-' + dmg, 'hurt'); sfx('hurt');
   if (P.hp <= 0 && stats().tal.has('ultimo') && !G.ultUsed) { G.ultUsed = true; P.hp = Math.round(P.maxHp * .4); P.iframe = 2; toast('ÚLTIMO FIO', true, 'você se recusa a cair'); burst(P.x, 1, P.z, 40, 7, 5, .6, .18); }
-  if (P.hp <= 0) { P.hp = 0; P.dieT = 0; G.save.deaths++; toast('Você se desfez em fios…', true, 'o Tear vai costurar você de volta'); const dv = G.save.diff || 0; if (dv > 0) { const lost = Math.floor(G.save.gold * Math.min(.2, .04 * dv)); if (lost > 0) { G.save.gold -= lost; setTimeout(() => toast('-' + lost + ' Centelhas', false, 'O PREÇO DA ' + curDiff().n.toUpperCase(), '#ff8a6a'), 1100); } } }
+  if (P.hp <= 0 && !coopTryDown()) playerDie();   // co-op: com companheiro de pé, fica Caído em vez de morrer
   return true;
 }
+/** Morte de verdade: custo da dificuldade e volta no ponto seguro. */
+function playerDie() { P.hp = 0; P.dieT = 0; G.save.deaths++; toast('Você se desfez em fios…', true, 'o Tear vai costurar você de volta'); const dv = G.save.diff || 0; if (dv > 0) { const lost = Math.floor(G.save.gold * Math.min(.2, .04 * dv)); if (lost > 0) { G.save.gold -= lost; setTimeout(() => toast('-' + lost + ' Centelhas', false, 'O PREÇO DA ' + curDiff().n.toUpperCase(), '#ff8a6a'), 1100); } } }
 function respawn() {
   G.respawning = true;
   fadeTo(1, .5, () => {

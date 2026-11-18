@@ -28,6 +28,21 @@ async function onlinePlayer(browser: Browser, cls = 'lamina') {
 async function skipStory(page: Page) {
   for (let i = 0; i < 8; i++) { const s = page.locator('#story'); if (!(await s.isVisible())) break; await s.click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(150); }
 }
+/** Dois jogadores em grupo dentro da mesma Fenda do grupo (A é o líder e simula os monstros). */
+async function groupRift(browser: Browser) {
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
+  await A.page.evaluate(n => (window as any).TessNet.invite(n), B.name);
+  await B.page.click('.net-invite button:has-text("Aceitar")');
+  await A.page.waitForFunction(() => (window as any).TessNet.party?.members.length === 2, null, { timeout: 10_000 });
+  await A.page.evaluate(() => (window as any).__T.ev('netGroupRift(1)'));
+  await B.page.locator('.net-ready button:has-text("Entrar")').click();
+  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.RG?.key === 'rift' && (window as any).TessNet.room, null, { timeout: 20_000 });
+  await A.page.waitForFunction(() => (window as any).TessNet.isHost, null, { timeout: 10_000 });
+  await B.page.waitForFunction(() => (window as any).TessNet.hostId > 0 && !(window as any).TessNet.isHost, null, { timeout: 10_000 });
+  const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
+  return { A, B, ev };
+}
+
 const waitSync = (page: Page) => page.waitForFunction(() => (window as any).TessNet.sync === 'salvo', null, { timeout: 20_000 });
 
 test('dois jogadores se veem na vila, conversam e usam emotes', async ({ browser }) => {
@@ -233,6 +248,38 @@ test('Fenda do grupo: os monstros são os mesmos para os dois, o acerto do convi
   for (let i = 0; i < 5 && !(await ev(A.page, '!!(boss && boss.dying) || G.rift.done')); i++) { await ev(B.page, 'boss && hurtBoss(boss, 60, false, bossHits(boss)[0])'); await B.page.waitForTimeout(300); }
   await A.page.waitForFunction(() => (window as any).__T.ev('G.rift.done'), null, { timeout: 15_000 });
   await B.page.waitForFunction(() => (window as any).__T.ev('G.rift.done'), null, { timeout: 15_000 });
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
+test('Fenda do grupo: monstros mais fortes em dupla, Caído, Costurar e grupo inteiro caído', async ({ browser }) => {
+  const { A, B, ev } = await groupRift(browser);
+  // 1. escala: com 2 jogadores, vida 1,75x
+  const base = await ev(A.page, "(() => { const e = spawnEnemy('gosmo', P.x + 6, P.z + 6); e.spawnT = 0; e.def = Object.assign({}, e.def, { dmg: 0 }); window.__s = e; return e.maxHp; })()");
+  await A.page.waitForFunction(() => (window as any).__T.ev('__s.nid > 0'), null, { timeout: 5000 });
+  expect(await ev(A.page, '__s.maxHp')).toBe(Math.round(base * 1.75));
+  await ev(A.page, '__s.dieT = 0');
+
+  // 2. o convidado cai: fica Caído (não morre) e o líder vê
+  await ev(B.page, 'P.iframe = 0; P.dashT = 0; P.hp = 1; hurtPlayer(500, P.x + 1, P.z)');
+  expect(await ev(B.page, 'P.down > 0 && P.dieT < 0')).toBe(true);
+  await A.page.waitForFunction(() => (window as any).TessNet.players().some((r: any) => r.down), null, { timeout: 5000 });
+  await expect(A.page.locator('#marks .tag.rp .rt', { hasText: 'CAÍDO' })).toBeVisible();
+
+  // 3. o líder chega perto, aperta E e costura de volta
+  await ev(A.page, '(r => { P.x = r.x + .8; P.z = r.z; })(TessNet.players()[0])');
+  await A.page.waitForFunction(() => (window as any).__T.nearInter?.kind === 'revive', null, { timeout: 5000 });
+  await A.page.keyboard.press('e');
+  await B.page.waitForFunction(() => (window as any).__T.ev('!(P.down > 0)'), null, { timeout: 8000 });
+  const [hp, max] = await ev(B.page, '[P.hp, P.maxHp]');
+  expect(hp).toBe(Math.max(1, Math.round(max * .3)));
+  await A.page.waitForFunction(() => !(window as any).TessNet.players()[0].down, null, { timeout: 5000 });
+
+  // 4. os dois caídos: todos voltam ao início da Fenda, de pé
+  await ev(B.page, 'P.iframe = 0; P.hp = 1; hurtPlayer(500, P.x + 1, P.z)');
+  await A.page.waitForFunction(() => (window as any).TessNet.players()[0].down, null, { timeout: 5000 });
+  await ev(A.page, 'P.iframe = 0; P.dashT = 0; P.hp = 1; hurtPlayer(500, P.x + 1, P.z)');
+  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.ev('!(P.down > 0) && P.dieT < 0 && P.hp === P.maxHp'), null, { timeout: 10_000 });
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
   await A.ctx.close(); await B.ctx.close();
 });

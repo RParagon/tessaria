@@ -130,10 +130,11 @@ function updateTriggers(dt) {
     if (d < (it.r || 1.8) && d < bd && !(it.kind === 'chest' && it.open)) { bd = d; nearInter = it; }
   }
   for (const n of npcs) { if (!n.visible) continue; const d = Math.hypot(n.x - P.x, n.z - P.z); if (d < 2.2 && d < bd) { bd = d; nearInter = { kind: 'npc', npc: n }; } }
+  { const rv = coopReviveTarget(); if (rv && rv.d < bd) { bd = rv.d; nearInter = { kind: 'revive', id: rv.id, name: rv.name }; } }   // co-op: companheiro caído
   if (RG.key === 'hub') { const [fx, fz] = HUB.fountain, d = Math.hypot(fx - P.x, fz - P.z); if (d < 3.4 && d < bd) { bd = d; nearInter = { kind: 'shrine', x: fx, z: fz, hub: true }; } }
   const pr = $('#prompt'), tu = $('#tUse');
   if (nearInter && P.dieT < 0) {
-    const HL = { house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
+    const HL = { revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
     const label = HL[nearInter.kind] || (nearInter.kind === 'appletree' ? 'Deixar a maçã na macieira' : nearInter.kind === 'altar' ? 'Desafiar ' + BOSSDEF[REG[RG.key].boss].name.split(',')[0] + ' de novo · ' + curDiff().n : nearInter.kind === 'npc' ? 'Falar com ' + nearInter.npc.name : nearInter.kind === 'shrine' ? 'Descansar e salvar' : nearInter.kind === 'chest' ? 'Abrir baú' : nearInter.kind === 'portal' ? (nearInter.to === 'hub' ? 'Voltar à Vila Brasa' : 'Entrar: ' + REG[nearInter.to].name) : nearInter.kind === 'dragon' ? 'Falar com Varkhaz' : nearInter.kind === 'board' ? 'Ver contratos' : nearInter.kind === 'riftportal' ? 'Entrar na Fenda do Tear' : 'Usar');
     pr.innerHTML = (G.touch ? '' : '<kbd>E</kbd>') + label; pr.hidden = false; tu.hidden = !G.touch;
     if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
@@ -154,6 +155,7 @@ function updateTriggers(dt) {
 function interact() {
   if (!nearInter || P.dieT >= 0) return;
   const it = nearInter;
+  if (it.kind === 'revive') { coopStartSew(it.id); return; }
   if (it.kind === 'npc') { const n = it.npc; n.talkT = 4; G.save.met['t_' + n.id] = true; const lines = questLines(n.id) || DIALOG[n.id](); say(lines, () => updateObjective()); }
   else if (it.kind === 'shrine') {
     P.hp = P.maxHp; G.save.potions = stats().maxPot; G.save.cp = { region: RG.key, x: P.x, z: P.z }; writeSave();

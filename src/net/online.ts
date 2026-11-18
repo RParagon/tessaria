@@ -189,6 +189,7 @@ export class Net {
   hx(d: object) { this.send({ t: 'hx', d }); }
   gx(d: object) { this.send({ t: 'gx', d }); }
   hto(to: number, d: object) { this.send({ t: 'hto', to, d }); }
+  px(d: object, to?: number) { this.send(to === undefined ? { t: 'px', d } : { t: 'px', to, d }); }
   get groupRift() { return !!this.party && this.party.members.length > 1 && this.isLeader && this.connected; }
   /** Na vila e com a sala conectada. */
   get inRoom() { return this.connected && !!this.room; }
@@ -303,7 +304,7 @@ export class Net {
       case 'iready': this.ready = { inst: m.inst, L: m.L, by: m.by, until: Date.now() + m.ms }; this.emit('iready', this.ready); break;
       case 'ienter': this.ready = null; G?.startGroupRift(m.inst, m.rift as RiftParams); break;
       case 'ihost': this.hostId = m.id; G?.coopHost?.(m.id === this.myId); break;
-      case 'hx': case 'gx': G?.coopMsg?.(m.t, m.from, m.d); break;
+      case 'hx': case 'gx': case 'px': G?.coopMsg?.(m.t, m.from, m.d); break;
       case 'iclosed':
         if (this.ready?.inst === m.inst) { this.ready = null; this.emit('iready', null); }
         if (this.inst === m.inst) { this.inst = null; this.emit('iclosed', m.inst); }

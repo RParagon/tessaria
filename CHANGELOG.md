@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.13.0 · Fenda do grupo (co-op, parte 3): escala, Caído e Costurar
+- **Monstros mais fortes com mais gente:** vida 1,75× em dupla, 2,5× com 3 e 3,25× com 4; dano +10%, +15% e +20%. Vale para o chefe também
+- **Caído:** com algum companheiro de pé, quem perde toda a vida fica caído por 15 segundos em vez de morrer (os monstros ignoram quem está caído)
+- **Costurar:** chegue perto do companheiro caído e aperte E (ou toque no botão de ação); fique 3 segundos perto e ele volta com 30% da vida, sem perder Centelhas. Afastar ou levar dano interrompe
+- **Grupo inteiro caído:** todos voltam ao início da Fenda e o guardião recomeça com a vida cheia
+- **XP e loot por proximidade:** ganha a recompensa de um monstro quem estava a até 30 de distância ou acertou ele; o progresso da Fenda conta sempre
+
 ## 0.12.0 · Fenda do grupo (co-op, parte 2): monstros compartilhados
 - **Os mesmos monstros para todos:** o jogo do líder comanda inimigos e chefe e envia o estado deles 10 vezes por segundo; os outros veem as mesmas criaturas, no mesmo lugar, com as mesmas animações
 - **Todo golpe vale:** acertos de qualquer jogador vão para o líder e tiram vida de verdade; cada um ganha o próprio XP, Centelhas e chance de item quando um inimigo cai

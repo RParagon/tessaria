@@ -380,7 +380,8 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 | 2.2 | **Fendas em grupo** (instâncias, caminho A), em três partes: | |
 | 2.2a | instância da Fenda: o líder abre, "Pronto?" para o grupo, semente do servidor (mesmo mapa para todos), sala da instância (todos se veem), "Entrar na Fenda do grupo" pelo painel | feito (0.11.0) |
 | 2.2b | inimigos e chefe simulados pelo líder: cópias nos outros, acertos repassados ao líder, alvo substituto na IA, projéteis e áreas marcadas como eventos, mortes repassadas | feito (0.12.0) |
-| 2.2c | escala por número de jogadores, Caído/Costurar, loot sorteado pelo servidor com conferência de plausibilidade (o fim da Fenda para todos já entrou na 2.2b) | próximo |
+| 2.2c | escala por número de jogadores, Caído/Costurar, grupo inteiro caído, XP por proximidade | feito (0.13.0) |
+| 2.2d | gerador de itens único em `shared/` (jogo e servidor); na Fenda do grupo, loot sorteado pelo servidor com conferência de plausibilidade e registro | próximo |
 | 2.3 | Dificuldade do grupo e Fio de Elo | |
 | 2.4 | Portais da história em grupo (na etapa, Eco, Antes), escolhas pessoais, Reflexo e Hidra em grupo, Marca do Tear | |
 | 2.5 | Nível de item visível e teto de NI no correio; correio com Centelhas e bloqueio | |

@@ -6,7 +6,16 @@
 // Convidados: os inimigos e o chefe são cópias desenhadas a partir do estado; os acertos vão para o
 // anfitrião (gx), que aplica o dano. Cada jogo dá o próprio XP e o próprio loot quando um inimigo cai.
 
-const COOP = { nseq: 0, acc: 0, proxies: new Map(), byNid: new Map(), remoteHit: false };
+const COOP = { nseq: 0, acc: 0, proxies: new Map(), byNid: new Map(), remoteHit: false, sew: null, wipeT: 0 };
+// Mesmos valores de shared/protocol.ts (o jogo ainda não importa módulos).
+const CO_HP = [1, 1, 1.75, 2.5, 3.25], CO_DMG = [1, 1, 1.1, 1.15, 1.2], CO_DOWN = 15, CO_SEW = 3, CO_SEW_HP = .3, CO_SHARE = 30;
+/** Jogadores na instância (este e os da sala), de 1 a 4. */
+function coopCount() { const n = coopNet(); return n ? Math.min(4, 1 + n.players().length) : 1; }
+function coopDmgMul() { return CO_DMG[coopCount()] || 1; }
+/** Recompensa de um inimigo: quem estava a até 30 de distância ou acertou ele. Fora do co-op, sempre. */
+function coopShare(e) { if (!coopNet()) return true; return !!e.hitByMe || (!!P && Math.hypot(P.x - e.x, P.z - e.z) < CO_SHARE); }
+/** Inimigo caiu longe e sem acerto deste jogador: só conta o progresso da Fenda. */
+function coopFarKill(e) { if (G.rift && !G.rift.bossUp) riftProgress(e.elite ? 8 : 2.4); }
 // Campos de um inimigo (ou do chefe) que bastam para desenhar e animar a cópia.
 const COOP_F = ['x', 'z', 'y', 'yaw', 'hp', 'maxHp', 'state', 'act', 'actT', 'hop', 'cd', 'moveAmt', 'walkPh', 'stance', 'spawnT', 'dieT', 'scale', 'shieldT', 'fade', 'st', 'phase2', 'invuln', 'blinkDis', 'dying', 'flash'];
 const cr2 = v => (typeof v === 'number' ? Math.round(v * 100) / 100 : typeof v === 'boolean' ? (v ? 1 : 0) : v === undefined ? null : v);
@@ -33,14 +42,14 @@ function coopTargets(dt) {
     if (r.x === undefined) continue;
     let q = COOP.proxies.get(r.id);
     if (!q) { q = { remote: r.id, y: 0, hp: 100, maxHp: 100, dieT: -1, iframe: 0, dashT: 0, vx: 0, vz: 0, slowT: 0, kx: 0, kz: 0 }; COOP.proxies.set(r.id, q); }
-    q.x = r.x; q.z = r.z; q.yaw = r.yaw; q.iframe -= dt; q.live = true; live.add(r.id);
+    q.x = r.x; q.z = r.z; q.yaw = r.yaw; q.iframe -= dt; q.live = true; q.dieT = r.down ? 0 : -1; live.add(r.id);
   }
   for (const [id, q] of COOP.proxies) if (!live.has(id)) { q.live = false; COOP.proxies.delete(id); }
   return [...COOP.proxies.values()];
 }
 function coopNearest(x, z, me, tg) {
-  let best = me.dieT < 0 ? me : null, bd = best ? Math.hypot(me.x - x, me.z - z) : 1e9;
-  for (const q of tg) { const d = Math.hypot(q.x - x, q.z - z); if (d < bd) { bd = d; best = q; } }
+  let best = me.dieT < 0 && !(me.down > 0) ? me : null, bd = best ? Math.hypot(me.x - x, me.z - z) : 1e9;
+  for (const q of tg) { if (q.dieT >= 0) continue; const d = Math.hypot(q.x - x, q.z - z); if (d < bd) { bd = d; best = q; } }
   return best || me;
 }
 /** Laço dos inimigos: normal fora do co-op; com alvo substituto no anfitrião; cópias no convidado. */
@@ -49,7 +58,7 @@ function coopUpdateEnemies(dt) {
   if (!n) { for (const e of enemies) updateEnemy(e, dt); return; }
   if (!n.isHost) { for (const e of enemies) coopProxyEnemy(e, dt); return; }
   const tg = coopTargets(dt), me = P;
-  for (const e of enemies) { if (!e.nid) e.nid = n.selfId * 100000 + (++COOP.nseq); P = coopNearest(e.x, e.z, me, tg); try { updateEnemy(e, dt); } finally { P = me; } }
+  for (const e of enemies) { if (!e.nid) { e.nid = n.selfId * 100000 + (++COOP.nseq); const m = CO_HP[coopCount()] || 1; if (m > 1) { e.hp = Math.round(e.hp * m); e.maxHp = Math.round(e.maxHp * m); } } P = coopNearest(e.x, e.z, me, tg); try { updateEnemy(e, dt); } finally { P = me; } }
 }
 function coopUpdateBoss(dt) {
   if (!boss) return;
@@ -62,7 +71,7 @@ function coopUpdateBoss(dt) {
 /** hurtPlayer com o P apontando para um companheiro: o dano vai pela rede. */
 function coopHurtRemote(dmg, sx, sz, kb) {
   const q = P, n = coopNet(); if (!n || q.iframe > 0) return false;
-  q.iframe = .5; n.hto(q.remote, { k: 'h', d: Math.round(dmg), x: cr2(sx), z: cr2(sz), kb: cr2(kb) });
+  q.iframe = .5; n.hto(q.remote, { k: 'h', d: Math.round(dmg * coopDmgMul()), x: cr2(sx), z: cr2(sz), kb: cr2(kb) });
   return true;
 }
 /** Telegrafado terminou no anfitrião: confere também cada companheiro (a função lê o P). */
@@ -87,7 +96,10 @@ function coopPlain(o) {
 }
 /** Uma vez por quadro, no fim do laço: projéteis e telegrafados novos, e o estado 10x por segundo. */
 function coopTick(dt) {
-  const n = coopNet(); if (!n || !n.isHost) return;
+  const n = coopNet(); if (!n) return;
+  coopSewTick(n, dt);
+  if (!n.isHost) return;
+  coopCheckWipe(n, dt);
   const shots = [], tl = [];
   for (const p of projs) if (!p._n) { p._n = 1; if (p.team === 'e') shots.push(coopPlain(p)); }
   for (const t of tels) if (!t._n) { t._n = 1; tl.push(coopPlain(t)); }
@@ -100,7 +112,11 @@ function coopTick(dt) {
   });
 }
 function coopKilled(e) { const n = coopNet(); if (n && n.isHost && e.nid) n.hx({ k: 'k', nid: e.nid }); }
-function coopBossStart(rm) { const n = coopNet(); if (n && n.isHost) n.hx({ k: 'bs', i: RG.rooms.indexOf(rm) }); }
+function coopBossStart(rm) {
+  const n = coopNet(); if (!n || !n.isHost) return;
+  const m = CO_HP[coopCount()] || 1; if (boss && m > 1) { boss.hp = Math.round(boss.hp * m); boss.maxHp = Math.round(boss.maxHp * m); updateBossBar(); }
+  n.hx({ k: 'bs', i: RG.rooms.indexOf(rm) });
+}
 function coopBossDone() { const n = coopNet(); if (n && n.isHost) n.hx({ k: 'bd' }); }
 
 // ---------- convidado ----------
@@ -145,7 +161,7 @@ function coopSnap(d) {
 }
 function coopHitEnemy(e, dmg, dx, dz, crit, kbm) {
   const n = coopNet(); if (!n || e.dieT >= 0 || e.spawnT > 0) return;
-  dmg = Math.round(dmg); e.flash = 1; e.hitT = .18; lifeSteal(dmg); if (crit) hitStop(.045);
+  dmg = Math.round(dmg); e.flash = 1; e.hitT = .18; e.hitByMe = true; lifeSteal(dmg); if (crit) hitStop(.045);
   popNum(e.x, 1.6 * e.scale, e.z, crit ? dmg + '!' : '' + dmg, crit ? 'crit' : ''); sfx('hit'); burst(e.x, 1, e.z, 6, 7, 3, .3, .1);
   n.gx({ k: 'h', nid: e.nid, d: dmg, c: crit ? 1 : 0, x: cr2(dx), z: cr2(dz), kb: cr2(kbm) });
 }
@@ -159,11 +175,12 @@ function coopHitBoss(b, dmg, crit, h) {
 function coopReward(e) {
   if (e.rewarded) return; e.rewarded = true;
   if (!(e.dieT >= 0)) e.dieT = 0;
+  if (!coopShare(e)) return;   // longe e sem ter acertado
   G.save.kills++;
   dropGold(e.x, e.z, e.def.gold + Math.floor(rr(0, 3)));
   if (Math.random() < .07) pickups.push({ kind: 'heart', x: e.x, y: .5, z: e.z, vx: 0, vy: 3, vz: 0, t: 0 });
   if (Math.random() < .08 * stats().itemFind) dropItem(e.x, e.z, rollRar(G.rift && G.rift.L >= 4 ? 1 : 0));
-  onEnemyKilled(e);
+  const n0 = tels.length; onEnemyKilled(e); tels.length = n0;   // explosões chegam do anfitrião, não duplica
 }
 
 // ---------- mensagens ----------
@@ -175,6 +192,14 @@ function coopMsg(kind, from, d) {
     else if (d.k === 'bh' && boss && !boss.dying) { COOP.remoteHit = true; try { hurtBoss(boss, +d.d || 0, !!d.c, bossHits(boss)[0]); } finally { COOP.remoteHit = false; } }
     return;
   }
+  if (kind === 'px') {                      // entre jogadores: caído, levantou, costurar
+    const r = n.players().find(x => x.id === from);
+    if (d.k === 'down' && r) r.down = true;
+    else if (d.k === 'up' && r) r.down = false;
+    else if (d.k === 'rev' && P && P.down > 0) coopRevived(r ? r.name : 'Um companheiro');
+    return;
+  }
+  if (d.k === 'wipe') return coopWipe();
   if (n.isHost) return;                     // daqui em diante: convidado recebe do anfitrião
   if (d.k === 's') coopSnap(d);
   else if (d.k === 'k') { const e = COOP.byNid.get(d.nid); if (e) coopReward(e); }
@@ -193,3 +218,60 @@ function coopHost(isHost) {
   if (boss) boss.proxy = !isHost;
 }
 if (window.TessGame) Object.assign(window.TessGame, { coopMsg, coopHost });
+
+// ---------- Caído e Costurar ----------
+/** A vida zerou: com algum companheiro de pé na Fenda, fica Caído em vez de morrer. */
+function coopTryDown() {
+  const n = coopNet(); if (!n || !P) return false;
+  if (!n.players().some(r => !r.down)) return false;
+  P.hp = 0; P.down = CO_DOWN; P.iframe = 0; P.act = null; P.emote = null; P.kx = P.kz = 0; COOP.sew = null;
+  n.px({ k: 'down' });
+  toast('CAÍDO', true, 'UM COMPANHEIRO PODE COSTURAR VOCÊ DE VOLTA'); sfx('hurt'); G.shake = Math.max(G.shake, .3);
+  return true;
+}
+function coopDownTick(dt) {
+  P.down -= dt; P.moveAmt = lerp(P.moveAmt || 0, 0, .3); P.vx = P.vz = 0;
+  if (Math.random() < dt * 6) spawn({ x: P.x + rr(-.5, .5), y: rr(.1, .8), z: P.z + rr(-.5, .5), vy: rr(.3, .8), life: .8, s0: .08, s1: .02, b0: .8, b1: .1, mat: 7 });
+  if (P.down <= 0) { P.down = 0; const n = coopNet(); if (n) n.px({ k: 'up' }); playerDie(); }
+}
+/** Pose de quem está caído: ajoelhado, cabeça baixa, braços largados. */
+function coopDownPose(A, t) {
+  A[1].ty = -.5; A[1].rx = .25; A[2].rx = .85; A[2].ry = 0; A[3].rx = .45 + Math.sin(t * 1.3) * .04;
+  A[4].rx = .35; A[5].rx = .35; A[4].rz = .25; A[5].rz = -.25; A[6].rx = A[7].rx = -1.45;
+}
+function coopRevived(by) {
+  const n = coopNet(); P.down = 0; P.hp = Math.max(1, Math.round(P.maxHp * CO_SEW_HP)); P.iframe = 1.5;
+  if (n) n.px({ k: 'up' });
+  toast('COSTURADO DE VOLTA', true, by.toUpperCase() + ' TE PUXOU PELOS FIOS'); sfx('lvl');
+  burst(P.x, 1, P.z, 30, 7, 4, .6, .1);
+}
+/** Companheiro caído perto (para o aviso de interação). */
+function coopReviveTarget() {
+  const n = coopNet(); if (!n || !P || P.down > 0 || P.dieT >= 0) return null;
+  let best = null;
+  for (const r of n.players()) { if (!r.down || r.x === undefined) continue; const d = Math.hypot(r.x - P.x, r.z - P.z); if (d < 1.8 && (!best || d < best.d)) best = { id: r.id, name: r.name, d }; }
+  return best;
+}
+function coopStartSew(id) { if (!COOP.sew || COOP.sew.id !== id) { COOP.sew = { id, t: 0, hp0: P.hp }; sfx('ui'); } }
+/** Costurando: ficar perto 3 s; afastar, levar dano ou cair interrompe. */
+function coopSewTick(n, dt) {
+  const s = COOP.sew; if (!s) return;
+  const r = n.players().find(x => x.id === s.id);
+  if (!r || !r.down || !P || P.down > 0 || P.dieT >= 0 || P.hp < s.hp0 || Math.hypot(r.x - P.x, r.z - P.z) > 2.4) { COOP.sew = null; return; }
+  s.t += dt;
+  if (Math.random() < dt * 30) { const u = Math.random(); spawn({ x: lerp(P.x, r.x, u), y: 1 + Math.sin(u * Math.PI) * .6, z: lerp(P.z, r.z, u), life: .35, s0: .09, s1: .02, b0: 1, b1: .4, mat: 7 }); }
+  if (s.t >= CO_SEW) { n.px({ k: 'rev' }, r.id); r.down = false; COOP.sew = null; toast('Você costurou ' + r.name + ' de volta', false, 'GRUPO'); sfx('lvl'); }
+}
+/** Anfitrião: todos caídos (ou mortos) → todos voltam ao início e o chefe recomeça. */
+function coopCheckWipe(n, dt) {
+  COOP.wipeT = Math.max(0, COOP.wipeT - dt);
+  const ps = n.players(); if (!ps.length || COOP.wipeT > 0 || !P) return;
+  const meOut = P.down > 0 || P.dieT >= 0;
+  if (meOut && ps.every(r => r.down)) { COOP.wipeT = 5; n.hx({ k: 'wipe' }); coopWipe(); }
+}
+function coopWipe() {
+  const n = coopNet(); if (n) for (const r of n.players()) r.down = false;
+  COOP.sew = null; if (P) { P.down = 0; P.dieT = -1; }
+  toast('O GRUPO CAIU', true, 'TODOS VOLTAM AO INÍCIO DA FENDA · O GUARDIÃO RECOMEÇA', '#ff8a6a');
+  if (!G.respawning) respawn();
+}

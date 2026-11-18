@@ -163,6 +163,7 @@ function poseRemote(r, t) {
   const A = r.anim; resetAnim(A);
   const e2 = { moveAmt: r.m, walkPh: r.walkPh, cls: r.look.cls, act: r.act || null, actT: r.actT || 0, combo: r.combo || 0, stance: r.stance || 0, lean: 0, idleT: 0 };
   poseHuman(A, e2, t);
+  if (r.down) { coopDownPose(A, t); return; }
   if (!r.act && r.emote && r.emoteT < 6 && r.m < .2) applyEmote(A, r.emote, t);
 }
 /** Chamado no render da vila: suaviza posições, anima e desenha. */
@@ -211,7 +212,7 @@ function updateRemoteMarks() {
     if (nm.textContent !== r.name) nm.textContent = r.name;
     const ally = !!(n.party && n.party.members.some(m => m.name === r.name));
     if (el.classList.contains('ally') !== ally) el.classList.toggle('ally', ally);
-    if (tt.textContent !== r.title) tt.textContent = r.title;
+    { const want = r.down ? 'CAÍDO · chegue perto para costurar' : r.title; if (tt.textContent !== want) tt.textContent = want; }
     const showBub = r.chat && r.chatT < 6;
     bub.hidden = !showBub; if (showBub && bub.textContent !== r.chat) bub.textContent = r.chat;
   }
