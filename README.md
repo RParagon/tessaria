@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.10.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.17.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -25,14 +25,15 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 - **Três classes com identidade própria:** Lâmina (corpo a corpo, mais dano e mais risco), Arcano (o mais seguro, raios que explodem em área) e Arco (flechas que atravessam, forte contra grupos). O equilíbrio é medido em simulação a cada mudança.
 - **Criação de personagem** com corpo, pele, cabelo, barba, roupa, acessórios e capa. A armadura e a arma equipadas aparecem no visual.
 - **Dois atos de história, com finais diferentes.** Ato I: Bosque Sussurrante, Ossuário Real e Picos de Cinza. Ato II: Pântano Afogado e Cidadela de Vidro, com O Reflexo, uma cópia sombria do seu próprio herói.
-- **Ermos de Tessária:** um mapa aberto em volta da vila, com zonas de perigo crescente, animais em matilha, Alfas e acampamentos que renascem.
+- **Ermos de Tessária:** um mapa aberto enorme em volta da vila, com **oito biomas** (da Campina Brasa ao Ermo Profundo, passando pela Teia Funda das aranhas, o Brejo Cinzento, as Colinas Partidas, o Cemitério Esquecido e o Planalto de Cinzas), covis com Alfas nomeados, cavernas, obeliscos de viagem rápida, Lua de Sangue e emboscadas.
 - **Fendas do Tear** geradas a cada vez, com mapas novos, afixos e guardiões. É onde o jogo continua sem fim.
 - **Progressão estilo ARPG:**
   - sete dificuldades, até Tormento III;
   - loot com raridades e lendários com poderes;
   - runas, talentos e itens aprimorados até +10.
+- **Vila Brasa:** o hub, com o Bairro Leste: fogueira com bancos, o Bardo Tomé e seus rumores, arena com bonecos que mostram o seu dano por segundo e um lago de pesca.
 - **Casa do Tecelão:** baú permanente, mobília com bônus visíveis e o Correio do Tear, para trocar itens com amigos.
-- **Vila online:** entre com e-mail, Google ou como convidado e encontre outros Tecelões na Vila Brasa, com chat e emotes. Seu progresso vai junto para qualquer aparelho, e o Correio entrega itens pelo nome do amigo.
+- **Online e co-op:** encontre outros Tecelões na vila, forme grupo com até 4 amigos e jogue junto nas Fendas e nos Ermos, com os mesmos monstros para todos, cada um com o próprio loot.
 - **Feito para celular:** jogado na horizontal, com controles de toque grandes, mira automática e vibração.
 
 <table>
@@ -45,6 +46,8 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 <td><img src="docs/img/celular.png" alt="Interface de toque no celular na horizontal"></td>
 </tr>
 </table>
+
+<img src="docs/img/biomas.png" alt="Os oito biomas dos Ermos: Campina, Mata, Teia Funda, Brejo, Colinas, Cemitério, Planalto de Cinzas e Ermo Profundo" width="100%">
 
 ## Como o visual é feito
 
@@ -130,19 +133,29 @@ Os detalhes estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 
-## Online
+## Online e co-op
 
 <img src="docs/img/online.png" alt="Dois jogadores na Vila Brasa online, com nome, título e balão de conversa" width="100%">
 
-A versão 0.10 traz a fundação online:
+- **Contas:** e-mail e senha, Google ou convidado (que vira conta depois sem perder nada).
+- **Save na nuvem:** continue em outro aparelho. Se dois aparelhos gravarem ao mesmo tempo, o jogo pergunta qual progresso usar.
+- **Servidor que confere:** saves impossíveis (itens acima do teto, Centelhas demais para o tempo jogado) são recusados.
+- **Vila Brasa online:** até 40 por sala, chat com filtro, emotes, e moradores que andam igual para todos.
+- **Amigos e grupo:** pedidos de amizade, lista com quem está online e onde, grupo de até 4 com chat próprio.
+- **Correio pelo nome**, sem duplicar itens.
 
-- **contas:** e-mail e senha, Google ou convidado (que vira conta depois sem perder nada);
-- **save na nuvem:** continue em outro aparelho; se dois aparelhos gravarem ao mesmo tempo, o jogo pergunta qual progresso usar;
-- **servidor que confere:** saves impossíveis (itens acima do teto, Centelhas demais para o tempo jogado) são recusados;
-- **Correio pelo nome**, sem duplicar itens;
-- **Vila Brasa online:** até 40 por sala, chat com filtro, emotes e o título de cada um (nível, classe e dificuldade).
+### Jogando junto
 
-A aventura continua rodando no aparelho, e dá para jogar offline normalmente. Os próximos passos (grupos, Ermos compartilhados, zona PvP com perdas maiores e mercado entre jogadores) estão em [docs/ROADMAP.md](docs/ROADMAP.md). O modelo de receita está em [docs/MONETIZATION.md](docs/MONETIZATION.md): passe de batalha e cosméticos, **nunca vantagem paga**.
+<img src="docs/img/coop.png" alt="Dois jogadores do mesmo grupo lado a lado na Fenda do Tear" width="100%">
+
+- **Fenda do grupo e Ermos do grupo:** o líder abre e todos recebem o aviso **Pronto?**. Quem entra cai no mesmo mapa.
+- **Os mesmos monstros para todos:** o jogo do líder comanda os inimigos e o chefe; o golpe de qualquer um vale; os monstros atacam quem estiver mais perto.
+- **Mais gente, monstros mais fortes:** vida 1,75× em dupla, até 3,25× com quatro.
+- **Caído e Costurar:** quem cai fica 15 segundos no chão; um amigo ao lado costura de volta em 3 segundos. Se o grupo inteiro cai, todos voltam ao início.
+- **Loot de cada um, sorteado pelo servidor**, no nível e na sorte de cada jogador. Todo item sorteado fica registrado.
+- **Dificuldade do grupo e Fio de Elo:** vale a dificuldade do líder, até onde todos desbloquearam; o amigo de nível baixo sobe para perto do líder, e quem é muito mais forte fica limitado e ganha o bônus de mentor.
+
+As regras completas estão em [docs/ONLINE.md](docs/ONLINE.md), e a ordem do que vem por aí (história em grupo, troca, mercado, guilda, Ermos abertos e PvP) em [docs/ROADMAP.md](docs/ROADMAP.md). O modelo de receita está em [docs/MONETIZATION.md](docs/MONETIZATION.md): passe de batalha e cosméticos, **nunca vantagem paga**.
 
 ## Licença
 
