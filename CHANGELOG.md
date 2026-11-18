@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 0.24.2 · Sem morros decorativos
+- Os morros decorativos da 0.24.0 saíram da vila: eram só montes de grama sem subida. Lagos orgânicos e bordas irregulares continuam
+
 ## 0.24.1 · Galinheiro livre
 - **Correção:** um dos morros novos caiu bem na frente da porteira do galinheiro da praça e impedia a entrada. Agora o galinheiro e a frente da porteira ficam reservados e nenhum morro ou recuo de borda nasce ali
 

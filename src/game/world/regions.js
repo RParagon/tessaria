@@ -252,17 +252,7 @@ function genRegion(key) {
       }
       for (const [x, y, ch] of flip) grid[y][x] = ch;
     }
-    // morros: espaços abertos de 3x3 longe dos caminhos, espaçados entre si
-    { const ar = HUB.arena; for (let y = Math.floor((ar.z - ar.h - 2) / T); y <= (ar.z + ar.h + 2) / T; y++) for (let x = Math.floor((ar.x - ar.w - 2) / T); x <= (ar.x + ar.w + 2) / T; x++) G.reserved.add(x + ',' + y); reserve(HUB.fire[0], HUB.fire[1], 3); for (const [wx, wz] of WORMS) reserve(wx, wz, 2); for (const n of EAST_NPCS) for (const [wx, wz] of (n.wander || [])) reserve(wx, wz, 1);
-      for (let y = pn.y0 - 5; y <= pn.y1 + 2; y++) for (let x = pn.x0 - 3; x <= pn.x1 + 3; x++) G.reserved.add(x + ',' + y); }   // galinheiro e a frente da porteira ficam livres   // arena, fogueira, minhocas e a rota da Lúcia ficam livres
-    G.hills = [];
-    for (let y = 3; y < H - 3 && G.hills.length < 7; y++) for (let x = 3; x < W - 3 && G.hills.length < 7; x++) {
-      if (hash2(x * 1.7, y * 2.9) < .86) continue;
-      let ok = true; for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1 && ok; dx++) { if (grid[y + dy][x + dx] !== '.' || !free(x + dx, y + dy)) ok = false; }
-      if (!ok || nearPath(x, y, 2) || G.hills.some(h => Math.hypot(h.x - x, h.y - y) < 9)) continue;
-      G.hills.push({ x, y, s: .8 + hash2(x, y) * .5, tree: hash2(y, x) > .45 });
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { G.block.add((x + dx) + ',' + (y + dy)); G.reserved.add((x + dx) + ',' + (y + dy)); }
-    }
+    G.hills = [];   // morros decorativos removidos (a pedido): relevo de verdade, com subida, fica para o futuro
   }
   G.start = G.rooms[0];
   return G;
@@ -625,14 +615,6 @@ function buildWorld(key, G) {
     const own = gsave() && gsave().house && gsave().house.owned;
     if (own) { S.tube([[72.4, 0, 46.4, .06, 0], [72.4, 3.2, 46.4, .05, 0]], 12, { sub: 1, flags: 8 }); S.mem([[[72.45, 3.1, 46.4], [73.6, 3.0, 46.4], [72.45, 2.0, 46.4]], [[73.6, 3.0, 46.4], [73.5, 2.0, 46.4], [72.45, 2.0, 46.4]]], p => Math.abs(p[1] - 2.55) < .12 ? 7 : 17, () => 0, { flags: 8 }); for (const sx of [-1, 1]) { S.ell([68.4 + sx * .75, 1.7, 46.05], [.1, .14, .1], 14, 0, { min: 12 }); emitters.push({ t: 'glow', x: 68.4 + sx * .75, y: 1.7, z: 46.1 }); } S.box([68.4, .02, 46.6], [.55, .02, .35], 16, 0, { faces: 't' }); }
     else { S.tube([[70.6, 0, 46.8, .05, 0], [70.6, 1.3, 46.8, .05, 0]], 12, { sub: 1 }); S.box([70.6, 1.3, 46.85], [.45, .28, .04], p => Math.abs((p[0] - 70.6) * .6 - (p[1] - 1.3)) < .05 ? 16 : 11, 0, { faces: 'sn' }); }
-  }
-  if (key === 'hub' && G.hills) for (const h of G.hills) {   // morros gramados com pedras, flores e às vezes uma árvore
-    const wx = (h.x + .5) * T, wz = (h.y + .5) * T, s = h.s;
-    S.ell([wx, -.2, wz], [3.4 * s, 1.5 * s, 3.0 * s], (p, n) => n[1] < .35 ? 12 : vnoise(p[0] * .6, p[2] * .6) > .6 ? 10 : 8, 0, { keep: d => d[1] > 0 });
-    S.ell([wx + .4, 1.1 * s, wz - .3], [1.9 * s, .55 * s, 1.6 * s], 10, 0, { keep: d => d[1] > 0, noCheck: true });
-    for (let k = 0; k < 4; k++) { const a = k * 1.7 + h.x, r = 2.4 * s; S.ell([wx + Math.cos(a) * r, .25, wz + Math.sin(a) * r * .9], [.35, .28, .3], 11, 0); }
-    for (let k = 0; k < 10; k++) { const a = k * 2.4, r = (.6 + (k % 3) * .5) * s; S.ell([wx + Math.cos(a) * r, 1.15 * s + .12, wz + Math.sin(a) * r], .07, [16, 17, 28][k % 3], 0, { min: 6, noCheck: true }); }
-    if (h.tree) tree(wx - .3, wz + .2, 1.0);
   }
   if (key === 'hub') {   // Santuário da Fenda: estrado, círculos de runas, pilares de obsidiana e arco
     const sc = HUB.sanct, [gx, gz] = sc.gate;
