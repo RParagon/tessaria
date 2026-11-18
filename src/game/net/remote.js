@@ -105,11 +105,19 @@ function assignRemoteSlots(list) {
 }
 
 /** Ajustes de pose dos emotes, aplicados depois de poseHuman (jogador local e remotos). */
-function applyEmote(A, em, t) {
+function applyEmote(A, em, t, k = 1) {   // k: 0→1 na entrada da pose (sentar desce suave)
   if (em === 'acenar') { A[5].rz = -2.5 + .35 * Math.sin(t * 9); A[5].rx = -.2; A[3].rz = .08 * Math.sin(t * 4); }
   else if (em === 'comemorar') { const k = .5 + .5 * Math.sin(t * 8); A[4].rx = A[5].rx = -2.5 - .3 * k; A[4].rz = .35; A[5].rz = -.35; A[1].ty = .12 * k; A[3].rx = -.25; if (A[13]) { A[10].rx = A[11].rx = -.25 - .3 * (1 - k); A[12].rx = A[13].rx = .35 * (1 - k); } }
   else if (em === 'dancar') { A[1].ry = Math.sin(t * 5) * .6; A[1].ty = Math.abs(Math.sin(t * 9)) * .12; A[4].rz = 1.2 + Math.sin(t * 9) * .6; A[5].rz = -1.2 + Math.sin(t * 9 + 1.5) * .6; A[6].rx = Math.sin(t * 9) * .4; A[7].rx = -Math.sin(t * 9) * .4; if (A[13]) { A[10].rx = -.9 - .4 * Math.sin(t * 9); A[11].rx = -.9 + .4 * Math.sin(t * 9); A[12].rx = .2 + .5 * Math.max(0, -Math.sin(t * 9)); A[13].rx = .2 + .5 * Math.max(0, Math.sin(t * 9)); } }
-  else if (em === 'sentar') { A[1].ty = -.48; A[6].rx = A[7].rx = -1.45; A[4].rx = A[5].rx = -.25; A[2].rx = .1; if (A[13]) { A[12].rx = A[13].rx = 1.45; A[10].rx = A[11].rx = -.6; } }
+  else if (em === 'sentar') {
+    const e = k * k * (3 - 2 * k), br = Math.sin(t * 1.6) * .012;
+    A[1].ty = lerp(A[1].ty, -.47, e); A[1].ry *= 1 - e; A[1].rz *= 1 - e;
+    A[6].rx = lerp(A[6].rx, -1.5, e); A[7].rx = lerp(A[7].rx, -1.5, e); A[6].rz = lerp(A[6].rz, .08, e); A[7].rz = lerp(A[7].rz, -.08, e);
+    A[4].rx = lerp(A[4].rx, -.55, e); A[5].rx = lerp(A[5].rx, -.55, e); A[4].rz = lerp(A[4].rz, .05, e); A[5].rz = lerp(A[5].rz, -.05, e);   // mãos nos joelhos
+    A[2].rx = lerp(A[2].rx, .06 + br, e); A[2].ry *= 1 - e; A[3].rx = lerp(A[3].rx, -.04, e);
+    if (A[13]) { A[12].rx = lerp(A[12].rx, 1.5, e); A[13].rx = lerp(A[13].rx, 1.5, e); A[10].rx = lerp(A[10].rx, -.75, e); A[11].rx = lerp(A[11].rx, -.75, e); }
+    if (A[15]) { A[14].rx = lerp(A[14].rx, .55, e); A[15].rx = lerp(A[15].rx, .45, e); }   // a capa cai por trás do banco
+  }
 }
 // Duração de cada ação, igual à do jogador local (core/player.js).
 const REMOTE_ACT_DUR = { swing: .3, cast: .3, shoot: .25, volley: .25, spin: .5, nova: .45, dash: .18 };
@@ -181,7 +189,8 @@ function poseRemote(r, t) {
   const e2 = { moveAmt: r.m, walkPh: r.walkPh, cls: r.look.cls, act: r.act || null, actT: r.actT || 0, combo: r.combo || 0, stance: r.stance || 0, lean: 0, idleT: 0 };
   poseHuman(A, e2, t);
   if (r.down) { coopDownPose(A, t); return; }
-  if (!r.act && r.emote && r.emoteT < 6 && r.m < .2) applyEmote(A, r.emote, t);
+  if (r.emote && (r.m > .2 || r.act)) r.emote = null;   // andou ou atacou: a pose acaba (sentar não volta sozinho)
+  if (!r.act && r.emote && (r.emoteT < 6 || r.emote === 'sentar')) applyEmote(A, r.emote, t, Math.min(1, (r.emoteT || 0) / .4));
 }
 /** Chamado no render da vila: suaviza posições, anima e desenha. */
 function drawRemotes(dt, t) {

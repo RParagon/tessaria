@@ -190,7 +190,7 @@ function interact() {
     say([{ who: '', text: 'Você deixa a maçã do Vovô Brann ao pé da macieira e se afasta um pouco.' }, { who: '', text: s.ended === 'B' ? 'O Sol pisca. Duas vezes. Quando você olha de novo, a maçã sumiu, e no lugar dela há uma escama dourada, ainda morna.' : 'Um vento quente sopra do norte, com cheiro de brasa. Quando você olha de novo, a maçã sumiu, e no lugar dela há uma escama dourada.' }], () => { s.q.brann.p = 1; s.q.brann.how = 'tree'; writeSave(); toast('MAÇÃ ENTREGUE', false, 'FALE COM O VOVÔ BRANN', '#ff8a6a'); });
   } else if (it.kind === 'altar') { if (boss) return; const rm = RG.rooms.find(r => r.kind === 'boss'); if (!rm) return; G.rematch = true; startBoss(rm); for (let i = 0; i < 50; i++) { const a = rr(0, 6.28); spawn({ x: it.x, y: 1, z: it.z, vx: Math.cos(a) * 4, vy: rr(0, 3), vz: Math.sin(a) * 4, life: .7, s0: .14, s1: .03, b0: 1, b1: .2, mat: 30, drag: 2 }); }
   } else if (it.kind === 'board') { openMenu('board');
-  } else if (it.kind === 'riftportal') { if (!it.lit) { toast('A Fenda abre depois de recuperar o Fio Verde.'); return; } openMenu('riftm');
+  } else if (it.kind === 'riftportal') { if (!it.lit) { toast('A Fenda abre depois de recuperar o Fio Verde.'); return; } G.arrive = { region: 'hub', x: it.x, z: it.z + 4.5 }; openMenu('riftm');   // na volta, chega no santuário
   } else if (it.kind === 'portal') {
     if (it.to !== 'hub' && !it.exit) { const [lit, lock] = portalState(it.to); it.lit = lit; it.lock = lock; }
     if (!it.lit) { toast(it.lock || 'O portal está apagado.'); return; }
@@ -236,14 +236,14 @@ function loadRegion(key, atCp) {
     inter.push({ kind: 'board', x: 36, z: 12.9, r: 2.1 });
     inter.push({ kind: 'house', x: 68.4, z: 47.1, r: 2.1 });
     { const qb = G.save.q && G.save.q.brann; if (qb && qb.st === 'active' && !qb.p && G.save.ended) inter.push({ kind: 'appletree', x: 25, z: 51.4, r: 2.4 }); }
-    inter.push({ kind: 'riftportal', x: 74, z: 22, r: 2.4, lit: !!G.save.bosses.forest, model: getModel('portal'), anim: newAnim(getModel('portal')), yaw: -1.57 });
+    { const [gx, gz] = HUB.sanct.gate; inter.push({ kind: 'riftportal', x: gx, z: gz, r: 3, y: .32, scale: .8, lit: !!G.save.bosses.forest, model: getModel('riftgate'), anim: newAnim(getModel('riftgate')), yaw: 0 }); }   // no Santuário da Fenda
     ensureContracts();
     for (const p of HUB.portals) { const [lit, lock] = portalState(p.to); inter.push({ kind: 'portal', to: p.to, x: p.x, z: p.z, r: 2.2, lit, lock, model: getModel('portal'), anim: newAnim(getModel('portal')), yaw: p.yaw || 0 }); }
     for (const n of NPCS) { const m = makeModel('npc-' + n.id, () => buildHumanoid(n.cfg, 32 + NPCS.indexOf(n) * 8)); npcs.push({ ...n, model: m, anim: newAnim(m), yaw: n.baseYaw || 0, talkT: 0, visible: n.id !== 'desf' || (G.save.bosses.forest && (!G.save.ended || G.save.ended === 'B')) }); }
     spawnCritters();
     // Bairro Leste: Bardo, bancos da fogueira, ponto de pesca e bonecos de treino
     { const m = makeModel('npc-bardo', () => buildHumanoid(BARD.cfg, 152)); npcs.push({ ...BARD, model: m, anim: newAnim(m), yaw: BARD.baseYaw, talkT: 0, visible: true }); }
-    for (const [bx, bz] of HUB.benches) inter.push({ kind: 'bench', x: bx, z: bz, r: 1.6 });
+    for (const [bx, bz, by] of HUB.benches) inter.push({ kind: 'bench', x: bx, z: bz, yaw: by, r: 1.6 });
     inter.push({ kind: 'fish', x: HUB.fish[0] + 1.4, z: HUB.fish[1], r: 2.2 });
     for (const [dx, dz] of HUB.dummies) { const e = spawnEnemy('skel', dx, dz, 0); e.type = 'dummy'; e.model = getModel('dummy'); e.anim = newAnim(e.model); e.scale = 1; e.dummy = true; e.spawnT = 0; e.hp = e.maxHp = 5000; e.yaw = 0; e.log = []; }
     if (G.save.q && G.save.q.nina && G.save.q.nina.st === 'active') placeNina();
@@ -435,7 +435,7 @@ function enterCave(it) {
 // ---------- Vila 2.0: Bairro Leste ----------
 /** Sentar no banco (emote que os outros veem). Perto da fogueira, a vida volta aos poucos. */
 function sitBench(it) {
-  P.x = it.x; P.z = it.z; P.vx = P.vz = 0;
+  const y = it.yaw || 0; P.x = it.x - Math.sin(y) * .12; P.z = it.z - Math.cos(y) * .12; P.vx = P.vz = 0; P.yaw = y;   // de frente para a fogueira, no meio do assento
   if (window.TessGame) window.TessGame.myEmote('sentar'); else { P.emote = 'sentar'; P.emoteT = 0; }
   const n = NETON(); if (n && n.room) n.emote('sentar');
   sfx('ui');
@@ -445,27 +445,50 @@ const FISH = [
   { n: 'Lambari', p: .62, g: 6, c: '#d8d2c4' }, { n: 'Tilápia-de-Brasa', p: .27, g: 15, c: '#6fd36a' },
   { n: 'Carpa Dourada', p: .1, g: 45, c: '#ffbf3d' }, { n: 'Peixe-Lua', p: .01, g: 160, c: '#c07bff' },
 ];
+function hasRod() { const s = G.save; return !!(s && (s.rod || (s.q && s.q.vara && s.q.vara.st === 'done') || (s.st && s.st.fish > 0))); }   // quem já pescava antes da missão fica com a vara
 function fishAction() {
   const F = G.fishing;
-  if (!F) { G.fishing = { t: 0, biteAt: 2 + Math.random() * 4, bite: false }; P.emote = null; toast('Linha lançada…', false, 'APERTE DE NOVO QUANDO O PEIXE MORDER'); sfx('ui'); return; }
-  if (!F.bite) { G.fishing = null; toast('Puxou cedo demais', false, 'O PEIXE FUGIU'); return; }
+  if (!hasRod()) { toast('Sem vara de pesca', false, 'O PESCADOR IVO, AQUI NO LAGO, PODE AJUDAR'); sfx('ui'); return; }
+  if (G.fishCatch) return;
+  if (!F) { P.yaw = Math.atan2(HUB.fish[0] + 4 - P.x, HUB.fish[1] - P.z); G.fishing = { t: 0, biteAt: 2.6 + Math.random() * 4, bite: false }; P.emote = null; toast('Linha lançada…', false, 'APERTE DE NOVO QUANDO O PEIXE MORDER'); sfx('ui'); return; }
+  if (F.t < .7) return;   // ainda lançando
+  if (!F.bite) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast('Puxou cedo demais', false, 'O PEIXE FUGIU'); return; }
   G.fishing = null;
   let r = Math.random(), f = FISH[0]; for (const x of FISH) { if (r < x.p) { f = x; break; } r -= x.p; }
   addGold(f.g); gainXp(Math.round(f.g * .6));
   const st = G.save.st = G.save.st || {}; st.fish = (st.fish || 0) + 1;
-  toast(f.n.toUpperCase(), f.p < .05, '+' + f.g + ' CENTELHAS · ' + st.fish + ' PEIXES PESCADOS', f.c); sfx(f.p < .05 ? 'legend' : 'lvl');
-  burst(HUB.fish[0] + 3, .2, HUB.fish[1] + 1, 20, 15, 3, .5, .12); writeSave();
+  G.fishCatch = { t: 0, f, from: fishBob(G.time) };   // o peixe salta da água até a mão do herói
+  setTimeout(() => { toast(f.n.toUpperCase(), f.p < .05, '+' + f.g + ' CENTELHAS · ' + st.fish + ' PEIXES PESCADOS', f.c); sfx(f.p < .05 ? 'legend' : 'lvl'); }, 650);
+  const b = fishBob(G.time); burst(b[0], .15, b[2], 22, 15, 3, .5, .12); writeSave();
+}
+/** Onde a boia está agora (balança na água; afunda na mordida). */
+function fishBob(t) {
+  const F = G.fishing, bx = HUB.fish[0] + 4.2, bz = HUB.fish[1] - .2;
+  const dip = F && F.bite ? -.12 - Math.abs(Math.sin(t * 22)) * .08 : 0;
+  return [bx + (F && F.bite ? Math.sin(t * 17) * .08 : 0), .06 + Math.sin(t * 2.4) * .03 + dip, bz];
+}
+/** Missão da vara: minhocas-de-brasa escondidas pelo Bairro Leste (brilham no chão). */
+const WORMS = [[101, 22], [113.5, 44], [127, 36.5], [139, 25]];
+function updateWorms(dt) {
+  const st = G.save.q.vara; st.got = st.got || [];
+  WORMS.forEach(([x, z], i) => {
+    if (st.got.includes(i)) return;
+    if (Math.random() < dt * 3) spawn({ x: x + rr(-.25, .25), y: .15, z: z + rr(-.25, .25), vy: rr(.3, .7), life: .7, s0: .08, s1: .02, b0: 1, b1: .2, mat: 21 });
+    if (Math.hypot(P.x - x, P.z - z) < 1.1) { st.got.push(i); st.p = st.got.length; sfx('frag'); burst(x, .2, z, 12, 21, 2, .4, .1); toast('MINHOCA-DE-BRASA', false, st.p + '/' + WORMS.length + ' · LEVE PARA O PESCADOR IVO'); writeSave(); }
+  });
 }
 function updateHubLife(dt) {
-  if (!RG || RG.key !== 'hub' || !P) { G.fishing = null; return; }
+  if (!RG || RG.key !== 'hub' || !P) { G.fishing = null; G.fishCatch = null; return; }
   // pesca: o peixe morde, a janela fecha
   const F = G.fishing;
   if (F) {
     F.t += dt;
-    if (!F.bite && F.t >= F.biteAt) { F.bite = true; F.biteT = 0; toast('PEIXE MORDEU!', true, 'APERTE AGORA'); sfx('hit'); burst(HUB.fish[0] + 3, .2, HUB.fish[1] + 1, 14, 15, 2, .4, .1); }
-    else if (F.bite && (F.biteT += dt) > .9) { G.fishing = null; toast('O peixe escapou', false, 'TENTE DE NOVO'); }
+    if (!F.bite && F.t >= Math.max(F.biteAt, .8)) { /* nunca morde antes de a linha cair na água */ F.bite = true; F.biteT = 0; toast('PEIXE MORDEU!', true, 'APERTE AGORA'); sfx('hit'); const b = fishBob(G.time); burst(b[0], .15, b[2], 14, 15, 2, .4, .1); }
+    else if (F.bite && (F.biteT += dt) > .9) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast('O peixe escapou', false, 'TENTE DE NOVO'); }
     if (Math.hypot(P.x - HUB.fish[0] - 1.4, P.z - HUB.fish[1]) > 3) G.fishing = null;
   }
+  if (G.fishCatch && (G.fishCatch.t += dt) > (G.fishCatch.miss ? .6 : 1.3)) { if (!G.fishCatch.miss) { P.emote = 'comemorar'; P.emoteT = 4.6; } G.fishCatch = null; }
+  if (G.save && G.save.q && G.save.q.vara && G.save.q.vara.st === 'active') updateWorms(dt);
   // fogueira: sentado perto dela, a vida volta
   if (P.emote === 'sentar' && Math.hypot(P.x - HUB.fire[0], P.z - HUB.fire[1]) < 6 && P.hp < P.maxHp) { P.hp = Math.min(P.maxHp, P.hp + P.maxHp * .04 * dt); if (Math.random() < dt * 4) spawn({ x: P.x + rr(-.3, .3), y: rr(.8, 1.6), z: P.z + rr(-.3, .3), vy: .6, life: .7, s0: .06, s1: .02, b0: 1, b1: .2, mat: 31 }); }
   // bonecos: dano por segundo dos últimos 5 s

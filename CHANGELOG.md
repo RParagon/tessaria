@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.21.0 · Santuário da Fenda, pesca do Ivo e sentar de verdade
+- **Santuário da Fenda:** a Fenda do Tear ganhou uma praça própria ao sul do Bairro Leste, com entrada pelo oeste sob um arco de obsidiana, piso de pedra, dois círculos de runas violeta, pilares com garras e chama violeta e um estrado. O **portal novo é sombrio**: anel de pedra escura e irregular, garras, um redemoinho violeta com braços pretos girando, estilhaços em órbita e centelhas subindo. Ao voltar da Fenda, você chega no santuário
+- **Missão "A Vara do Ivo":** o Pescador Ivo se mudou para o lago do Bairro Leste. Ache 4 minhocas-de-brasa (brilham no chão perto das casas, do lago e da arena) e ele te dá a vara. Sem a vara não dá para pescar; quem já tinha pescado antes fica com ela
+- **Pesca animada:** o herói guarda a arma, lança a linha, segura a vara com as duas mãos e ela verga na mordida; a boia balança e afunda; ao puxar, o peixe salta em arco até a mão (na cor do peixe) e o herói comemora
+- **Sentar de verdade:** o herói desce suave, apoia as mãos nos joelhos, dobra os joelhos, a capa cai por trás do banco, fica de frente para a fogueira e não levanta sozinho depois de 6 segundos (os outros jogadores veem igual)
+- **Correção:** no Guarda-Roupa, a armadura e a arma apareciam com a cor da raridade comum (o peitoral de ouro ficava prata)
+- **Correção:** as cores do Bardo Tomé eram trocadas pelas do Reflexo
+
 ## 0.20.2 · Correção do Guarda-Roupa
 - **Correção:** comprar o Guarda-Roupa fazia o servidor recusar o progresso ("mobília desconhecida: guarda"). O servidor agora conhece o Guarda-Roupa e os estilos raros, e um teste confere que toda mobília e todo estilo do jogo passam na validação
 

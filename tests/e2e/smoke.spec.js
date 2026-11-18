@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { newGame, T, travel, unlock } from './helpers.js';
+import { newGame, T, travel, unlock, skipDialogs } from './helpers.js';
 
 test('abre o título, cria personagem e chega à vila sem erros', async ({ page }) => {
   const errors = await newGame(page, { cls: 'arco' });
@@ -90,7 +90,25 @@ test('Vila 2.0: Bairro Leste com Bardo, bonecos de treino, fogueira com bancos e
   // boneco: registra o dano, mostra o DPS e não cai
   for (let i = 0; i < 40; i++) await ev("hurtEnemy(enemies.find(e => e.dummy), 200, 0, 1, false)");
   expect(await ev('(e => e.dieT < 0 && e.hp > 0 && e.log.length === 40)(enemies.find(e => e.dummy))')).toBe(true);
-  // pesca: lança, o peixe morde, puxa na hora
+  // pesca: sem vara não dá; a missão do Pescador Ivo (minhocas-de-brasa) entrega a vara
+  await ev('P.x = HUB.fish[0] + 1.4; P.z = HUB.fish[1]');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'fish', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  expect(await ev('!!G.fishing')).toBe(false);
+  await ev('(n => { P.x = n.x - 1; P.z = n.z; })(npcs.find(n => n.id === "ivo"))');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'npc' && window.__T.nearInter.npc.id === 'ivo', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await skipDialogs(page, 'Vou procurar');
+  expect(await ev('G.save.q.vara.st')).toBe('active');
+  let i = 0;
+  for (const [wx, wz] of await ev('WORMS')) { i++; await ev(`P.x = ${wx}; P.z = ${wz}`); await page.waitForFunction(n => window.__T.ev('G.save.q.vara.p || 0') >= n, i, { timeout: 5000 }); }
+  expect(await ev('G.save.q.vara.p')).toBe(4);
+  await ev('(n => { P.x = n.x - 1; P.z = n.z; })(npcs.find(n => n.id === "ivo"))');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'npc' && window.__T.nearInter.npc.id === 'ivo', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await skipDialogs(page);
+  expect(await ev('[G.save.q.vara.st, !!G.save.rod]')).toEqual(['done', true]);
+  // agora pesca: lança, o peixe morde, puxa na hora
   await ev('P.x = HUB.fish[0] + 1.4; P.z = HUB.fish[1]');
   await page.waitForFunction(() => window.__T.nearInter?.kind === 'fish', null, { timeout: 5000 });
   const ouro = await ev('G.save.gold');
@@ -104,6 +122,8 @@ test('Vila 2.0: Bairro Leste com Bardo, bonecos de treino, fogueira com bancos e
   await ev('P.hp = 5; sitBench(inter.find(i => i.kind === "bench"))');
   await page.waitForFunction(() => window.__T.ev('P.hp > 6'), null, { timeout: 5000 });
   expect(await ev('P.emote')).toBe('sentar');
+  // Santuário da Fenda: o portal sombrio fica na praça nova ao sul do Bairro Leste
+  expect(await ev('(p => [p.x, p.z, p.model === getModel("riftgate")])(inter.find(i => i.kind === "riftportal"))')).toEqual([118, 68.5, true]);
   // o Bardo conta um rumor
   await ev('(n => { P.x = n.x + 1; P.z = n.z + 1; P.emote = null; })(npcs.find(n => n.id === "bardo"))');
   await page.waitForFunction(() => window.__T.nearInter?.kind === 'npc' && window.__T.nearInter.npc.id === 'bardo', null, { timeout: 5000 });

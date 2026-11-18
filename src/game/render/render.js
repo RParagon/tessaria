@@ -4,6 +4,31 @@
    ========================================================= */
 let dpr = 1, pxDev = 4, VP = null;
 const EMOTES_PV = ['acenar', 'comemorar', 'dancar', 'sentar'];   // poses do espelho
+const IVO_BOB = [126.4, 50.2];   // boia do Pescador Ivo no lago do Bairro Leste
+const FISH_MAT = { 'Lambari': 28, 'Tilápia-de-Brasa': 13, 'Carpa Dourada': 14, 'Peixe-Lua': 26 };
+/** Vara (curva, verga na mordida), linha com barriga até a boia e o peixe saltando até a mão. */
+function drawFishing(t) {
+  const F = G.fishing, C = G.fishCatch, bw = [.86, 1, 1.18][G.char.body ?? 1];
+  const hand = tp(P.W[11] || P.W[5], [-.38 * bw, .85, .1]), fw = [Math.sin(P.yaw), Math.cos(P.yaw)];
+  const bend = F && F.bite ? .5 + Math.sin(t * 24) * .15 : C && !C.miss ? .35 : .12;
+  const L = 1.9, pts = [];
+  for (let k = 0; k <= 12; k++) { const u = k / 12, fwd = u * L * Math.cos(.75 - bend * u), up = u * L * Math.sin(.75 - bend * u); pts.push([hand[0] + fw[0] * fwd, hand[1] + up, hand[2] + fw[1] * fwd]); }
+  pts.forEach((p, k) => { dyn(p[0], p[1], p[2], .6, 12, .085 - k * .004); if (k < 12) dyn((p[0] + pts[k + 1][0]) / 2, (p[1] + pts[k + 1][1]) / 2, (p[2] + pts[k + 1][2]) / 2, .6, 12, .08 - k * .004); });
+  const tip = pts[12];
+  if (F && F.t > .5) {   // linha com barriga e boia vermelha e branca
+    const b = fishBob(t);
+    for (let k = 1; k < 14; k++) { const u = k / 14; dyn(lerp(tip[0], b[0], u), lerp(tip[1], b[1], u) - Math.sin(u * Math.PI) * (F.bite ? .1 : .4), lerp(tip[2], b[2], u), .85, 28, .045); }
+    dyn(b[0], b[1] + .04, b[2], .9, 16, .15); dyn(b[0], b[1] + .13, b[2], .95, 28, .09);
+    if (Math.random() < (F.bite ? .5 : .04)) spawn({ x: b[0] + rr(-.2, .2), y: .05, z: b[2] + rr(-.2, .2), vy: rr(.4, 1.2), life: .4, s0: .07, s1: .02, b0: 1, b1: .3, mat: 15 });
+  }
+  if (C && !C.miss && C.from) {   // peixe em arco da boia até a mão, depois erguido
+    const u = clamp(C.t / .6, 0, 1), h = Math.sin(u * Math.PI) * 1.6, m = FISH_MAT[C.f.n] ?? 28;
+    const x = lerp(C.from[0], hand[0], u), z = lerp(C.from[2], hand[2], u), y = lerp(.1, hand[1] + .5, u) + h, wig = Math.sin(t * 30) * .12;
+    for (let k = -3; k <= 3; k++) dyn(x + fw[0] * k * .07, y + Math.sin(k * .8 + wig * 10) * .02, z + fw[1] * k * .07, .8, m, .13 - Math.abs(k) * .015);
+    dyn(x - fw[0] * .3, y + wig, z - fw[1] * .3, .7, m, .11);   // rabo
+    if (u < .3 && Math.random() < .6) spawn({ x: C.from[0] + rr(-.3, .3), y: .1, z: C.from[2] + rr(-.3, .3), vy: rr(1, 2.5), life: .5, s0: .08, s1: .02, b0: 1, b1: .3, mat: 15 });
+  }
+}
 const cam = { x: 0, z: 0, zoom: 1 };
 const IDB = (() => { const a = new Float32Array(24 * 16); a.set(mI(), 0); return a; })();
 const boneBuf = new Float32Array(24 * 16);
@@ -100,7 +125,7 @@ function render(dt) {
     if (pose === 'idle' || EMOTES_PV.includes(pose)) { P.act = null; P.actT = 0; }
     else if (pose === 'atk') { P.act = { lamina: 'swing', arcano: 'cast', arco: 'shoot' }[G.char.cls]; P.actT = (t % 1.2) * .25; }
     P.stance = P.act && P.cls !== 'lamina' ? 1 : 0; P.combo = Math.floor(t / 12) % 3;
-    poseHuman(P.anim, P, t); if (EMOTES_PV.includes(pose)) applyEmote(P.anim, pose, t);
+    poseHuman(P.anim, P, t); if (EMOTES_PV.includes(pose)) applyEmote(P.anim, pose, t, 1);
     drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
   } else {
     drawRemotes(dt, t);
@@ -123,7 +148,7 @@ function render(dt) {
       if (n.id === 'desf' && !(G.save && G.save.ended) && Math.random() < .3) spawn({ x: n.x + rr(-.3, .3), y: rr(.3, 1.8), z: n.z + rr(-.3, .3), vx: rr(-.3, .3), vy: rr(.3, .8), vz: rr(-.3, .3), life: 1.2, s0: .07, s1: .02, b0: .9, b1: .1, mat: 63 });
       if (n.id === 'lio' && !talking && Math.random() < .03) spawn({ x: n.x + rr(-.3, .3), y: 1.6, z: n.z + .3, vx: rr(-.2, .2), vy: .6, vz: rr(-.1, .2), life: 1.6, s0: .1, s1: .04, b0: 1, b1: .2, mat: 14 });
       n.W = drawModel(n.model, n.anim, n.x, 0, n.z, n.yaw, n.scale || 1, { dis: n.id === 'desf' && !(G.save && G.save.ended === 'B') ? .1 + .05 * Math.sin(t * 2) : 0, dmat: 63 });
-      if (n.id === 'ivo' && n.W) { const tip = tp(n.W[8], [-.38, 1.6, 1.76]), bx = 59.6, bz = 50.6, by = .02 + Math.sin(t * 2.2) * .04; for (let k = 0; k <= 10; k++) { const u = k / 10; dyn(lerp(tip[0], bx, u), lerp(tip[1], by, u) - Math.sin(u * Math.PI) * .35, lerp(tip[2], bz, u), .5, 28, .045); } dyn(bx, by + .05, bz, .9, 16, .16); }
+      if (n.id === 'ivo' && n.W) { const tip = tp(n.W[8], [-.38, 1.6, 1.76]), bx = IVO_BOB[0], bz = IVO_BOB[1], by = .02 + Math.sin(t * 2.2) * .04; for (let k = 0; k <= 10; k++) { const u = k / 10; dyn(lerp(tip[0], bx, u), lerp(tip[1], by, u) - Math.sin(u * Math.PI) * .35, lerp(tip[2], bz, u), .5, 28, .045); } dyn(bx, by + .05, bz, .9, 16, .16); }
     }
     for (const c of critters) { resetAnim(c.anim); c.anim[2].rx = c.peck > 0 ? .9 * Math.sin(c.peck * 16) ** 2 : 0; c.anim[1].ty = Math.abs(Math.sin(c.ph * 9)) * .05 * c.moving; c.anim[1].rz = Math.sin(c.ph * 9) * .08 * c.moving; drawModel(c.model, c.anim, c.x, 0, c.z, c.yaw, 1); }
     for (const it of inter) {
@@ -138,7 +163,14 @@ function render(dt) {
       if (it.kind === 'chest') { if (it.open) it.openT += dt; it.anim[1].rx = -1.9 * sm(0, .35, it.openT); }
       if (it.kind === 'pylon') { it.anim[1].ry = t * 1.5; it.anim[1].ty = Math.sin(t * 2) * .12; if (!it.used) { const B = BUFFS[it.bt]; for (let k = 0; k < 14; k++) { const a = t * 1.4 + k / 14 * 6.283; dyn(it.x + Math.cos(a) * 1.0, .07, it.z + Math.sin(a) * 1.0, .7, B.mat, .16); } if (Math.random() < .5) spawn({ x: it.x + rr(-.25, .25), y: 1.7, z: it.z + rr(-.25, .25), vy: rr(.5, 1.2), life: .8, s0: .1, s1: .02, b0: 1, b1: .2, mat: B.mat }); } }
       drawModel(it.model, it.anim, it.x, it.y || 0, it.z, it.yaw, it.scale || 1, { glow: it.used ? .2 : 1 });
-      if ((it.kind === 'portal' || it.kind === 'riftportal') && it.lit) { for (let i = 0; i < 3; i++) { const a = rr(0, 6.28), r = rr(0, 1.05); spawn({ x: it.x + Math.cos(a) * r * Math.cos(it.yaw || 0), y: 1.5 + Math.sin(a) * r * 1.3, z: it.z + rr(-.1, .1) - Math.cos(a) * r * Math.sin(it.yaw || 0), vx: -Math.sin(a) * .8 * Math.cos(it.yaw || 0), vz: Math.sin(a) * .8 * Math.sin(it.yaw || 0), vy: Math.cos(a) * .8, life: .5, s0: .12, s1: .03, b0: 1, b1: .2, mat: it.kind === 'riftportal' ? 122 : it.to === 'hub' ? 30 : 31 }); } }
+      if (it.kind === 'riftportal') {   // portal sombrio: véu girando, redemoinho para dentro e estilhaços em órbita
+        it.anim[1].rz = t * (it.lit ? .7 : .1);
+        const on = it.lit ? 1 : .25, cy = .32 + 2.3 * .8;
+        for (let i = 0; i < (it.lit ? 4 : 1); i++) { const a = rr(0, 6.28), r = rr(1.1, 1.5); spawn({ x: it.x + Math.cos(a) * r, y: cy + Math.sin(a) * r * 1.08, z: it.z + .1, vx: -Math.cos(a) * 2.2 - Math.sin(a) * 1.2, vy: -Math.sin(a) * 2.2 + Math.cos(a) * 1.2, life: .55, s0: .13, s1: .02, b0: on, b1: .1, mat: Math.random() < .35 ? 29 : 151, drag: 1.5 }); }
+        for (let k = 0; k < 7; k++) { const a = t * .45 + k / 7 * 6.283, y = cy + .4 + Math.sin(t * 1.3 + k) * .5, px = it.x + Math.cos(a) * 3.1, pz = it.z + Math.sin(a) * 1.6; dyn(px, y, pz, .4, 29, .15); dyn(px, y + .13, pz, .3, 29, .1); dyn(px, y + .24, pz, .3, 29, .06); if (it.lit) dyn(px, y + .06, pz, .9, 151, .06); /* estilhaços finos */ }
+        if (it.lit && Math.random() < .2) spawn({ x: it.x + rr(-3, 3), y: .1, z: it.z + rr(-2, 2), vy: rr(.4, 1), life: rr(1, 1.8), s0: .07, s1: .02, b0: 1, b1: .1, mat: 151 });
+      }
+      if (it.kind === 'portal' && it.lit) { for (let i = 0; i < 3; i++) { const a = rr(0, 6.28), r = rr(0, 1.05); spawn({ x: it.x + Math.cos(a) * r * Math.cos(it.yaw || 0), y: 1.5 + Math.sin(a) * r * 1.3, z: it.z + rr(-.1, .1) - Math.cos(a) * r * Math.sin(it.yaw || 0), vx: -Math.sin(a) * .8 * Math.cos(it.yaw || 0), vz: Math.sin(a) * .8 * Math.sin(it.yaw || 0), vy: Math.cos(a) * .8, life: .5, s0: .12, s1: .03, b0: 1, b1: .2, mat: it.kind === 'riftportal' ? 122 : it.to === 'hub' ? 30 : 31 }); } }
     }
     for (const e of enemies) {
       if (Math.abs(e.x - tgt[0]) > 30 || Math.abs(e.z - tgt[2]) > 26) continue;
@@ -160,12 +192,14 @@ function render(dt) {
     if (P && playerModel) {
       resetAnim(P.anim); poseHuman(P.anim, P, t);
       if (P.down > 0) coopDownPose(P.anim, t);
-      else if (P.emote) { P.emoteT = (P.emoteT || 0) + dt; if (P.emoteT > 6 || (P.moveAmt || 0) > .2 || P.act) P.emote = null; else applyEmote(P.anim, P.emote, t); }
+      else if (P.emote) { P.emoteT = (P.emoteT || 0) + dt; if ((P.emoteT > 6 && P.emote !== 'sentar') || (P.moveAmt || 0) > .2 || P.act) P.emote = null; else applyEmote(P.anim, P.emote, t, Math.min(1, P.emoteT / .4)); }
+      if (G.fishing || G.fishCatch) poseFishing(P.anim, t);
       if (P.ghosts) for (const g of P.ghosts) if (g.t < .18) drawModel(playerModel, P.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
       for (const k in G.buffs) if (G.buffs[k] > 0 && Math.random() < .35) spawn({ x: P.x + rr(-.45, .45), y: rr(.1, 1.8), z: P.z + rr(-.45, .45), vy: rr(.3, .8), life: .6, s0: .09, s1: .02, b0: 1, b1: .2, mat: BUFFS[k].mat });
       const blink = P.iframe > 0 && P.dashT <= 0 && P.dieT < 0 && Math.floor(t * 20) % 2 === 0;
       if (G.settings.halo !== false && P.dieT < 0) for (let k = 0; k < 18; k++) { const a = k / 18 * 6.283 + t * .6; dyn(P.x + Math.cos(a) * .62, .07, P.z + Math.sin(a) * .62, k % 3 ? .45 : .75, 30, .13); }   // anel de destaque do herói
       if (!blink) P.W = drawModel(playerModel, P.anim, P.x, 0, P.z, P.yaw, 1, { dis: P.dieT >= 0 ? clamp(P.dieT / 1.2, 0, 1) : 0, dmat: 7, flash: P.flash > .6 ? 1 : 0 });
+      if (P.W && (G.fishing || G.fishCatch)) drawFishing(t);
       if (P.shield > 0) for (let i = 0; i < 16; i++) { const a = t * 2 + i / 16 * 6.283; dyn(P.x + Math.cos(a) * .7, .3 + (i % 4) * .4, P.z + Math.sin(a) * .7, .7, 31, .14); }
       if (G.save && G.save.eq && G.save.eq.weapon && G.save.eq.weapon.rar === 4 && P.W && Math.random() < .5) { const wp = G.char.cls === 'arco' ? handPos('bow') : G.char.cls === 'arcano' ? handPos('staff') : tp(P.W[8], [-.38 * ([.86, 1, 1.18][G.char.body ?? 1]), .6, .6]); spawn({ x: wp[0] + rr(-.1, .1), y: wp[1] + rr(-.1, .1), z: wp[2] + rr(-.1, .1), vy: .5, life: .4, s0: .08, s1: .02, b0: 1, b1: .2, mat: 124 }); }
       if (P.stance > .2 && P.dieT < 0) {

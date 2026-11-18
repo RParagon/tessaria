@@ -14,9 +14,10 @@ const FRAG = [
   { r: 'peaks', t: 'O Tear', x: '"Todo fio arrancado pode ser recosturado. Mas só por mãos que lembrem de tudo: do medo, da culpa e da maçã."' },
 ];
 const REG = {
-  hub: { name: 'Vila Brasa', sub: 'O último lugar aceso', style: 'hub', W: 76, H: 32, seed: 3, torch: 21,
+  hub: { name: 'Vila Brasa', sub: 'O último lugar aceso', style: 'hub', W: 76, H: 48, seed: 3, torch: 21,
     // a vila original (sala 0) e o Bairro Leste (sala 1): fogueira, Bardo, arena de treino e lago de pesca
-    rooms: [{ x: 22, y: 16, w: 19, h: 13, shape: 'rect', kind: 'start' }, { x: 59, y: 16, w: 14, h: 12, shape: 'rect' }], links: [[0, 1]] },
+    // sala 2: o Santuário da Fenda, ao sul do Bairro Leste
+    rooms: [{ x: 22, y: 16, w: 19, h: 13, shape: 'rect', kind: 'start' }, { x: 59, y: 16, w: 14, h: 12, shape: 'rect' }, { x: 59, y: 38.5, w: 8.5, h: 7.5, shape: 'rect' }, { x: 47, y: 38.5, w: 2.2, h: 2, shape: 'rect' }], links: [[0, 1], [1, 3], [3, 2]] },   // 3: vestíbulo a oeste (entrada do santuário)
   forest: { name: 'Bosque Sussurrante', sub: 'Onde as árvores lembram', style: 'forest', W: 50, H: 40, seed: 11, torch: 27, boss: 'golem', fio: 'FIO VERDE',
     rooms: [
       { x: 6, y: 34, r: 3, kind: 'start' }, { x: 15, y: 30, r: 4.5, en: { gosmo: 3 } }, { x: 6, y: 22, r: 3.5, frag: 0, en: { gosmo: 2 } },
@@ -68,6 +69,8 @@ const HUB = {
   pond: { x: 30.5, y: 25.5, rx: 2.8, ry: 1.6 }, lake: { x: 66, y: 23.6, rx: 4.4, ry: 2.4 },
   // Bairro Leste (coordenadas do mundo): fogueira com bancos, arena com bonecos, ponto de pesca
   fire: [118, 31], benches: [[114.2, 31, 1.57], [121.8, 31, -1.57], [118, 27.2, 0], [118, 34.8, 3.14]], arena: { x: 134, z: 13, w: 7, h: 5 }, dummies: [[130, 13], [134, 13], [138, 13]], fish: [122.5, 47], pen: { x0: 14, y0: 23, x1: 18, y1: 27 },
+  // Santuário da Fenda (mundo): portal sombrio no estrado ao sul, pilares de obsidiana com chama violeta e arco na entrada
+  sanct: { x: 118, z: 77, gate: [118, 68.5], pil: [[107, 67], [129, 67], [132, 78], [108, 87.5], [128, 87.5]], arch: [101.5, 77] },
   props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board'], [102, 16, 'crate'], [102.8, 16.6, 'barrel'], [98, 50, 'barrel'], [112, 52, 'crate']],
 };
 /** Bardo do Bairro Leste: fica fora de NPCS (as linhas de paleta dos moradores estão cheias) e usa as linhas 152-159, livres na vila. */
@@ -82,7 +85,7 @@ const NPCS = [
   { id: 'tarsa', name: 'Guarda Tarsa', x: 44, z: 13.5, wander: [[38, 13.5], [50, 13.5]], spd: 1.1, cfg: { seed: 66, body: 2, hair: 'curto', hairCol: 0, skin: 4, outfit: 6, trim: 1, glow: 1, acc: 'elmo', cape: true, cls: 'lamina', armor: 3 } },
   { id: 'mel', name: 'Padeira Mel', x: 33.6, z: 26.6, baseYaw: 3.14, cfg: { seed: 67, body: 1, hair: 'coque', hairCol: 2, skin: 0, outfit: 1, trim: 4, glow: 0, acc: 'padeiro', cape: false, apron: true } },
   { id: 'lio', name: 'Bardo Lio', x: 49.5, z: 35.5, baseYaw: -.6, cfg: { seed: 68, body: 0, hair: 'longo', hairCol: 3, skin: 1, outfit: 8, trim: 0, glow: 2, acc: 'pena', cape: true, gear: 'alaude' } },
-  { id: 'ivo', name: 'Pescador Ivo', x: 55, z: 51, baseYaw: 1.57, cfg: { seed: 69, body: 1, hair: 'curto', hairCol: 4, skin: 2, outfit: 5, trim: 2, glow: 0, acc: 'nenhum', cape: false, gear: 'vara', beard: 'barba' } },
+  { id: 'ivo', name: 'Pescador Ivo', x: 122.6, z: 51.4, baseYaw: 1.9, cfg: { seed: 69, body: 1, hair: 'curto', hairCol: 4, skin: 2, outfit: 5, trim: 2, glow: 0, acc: 'nenhum', cape: false, gear: 'vara', beard: 'barba' } },
   { id: 'brann', name: 'Vovô Brann', x: 21, z: 51.5, cfg: { seed: 70, body: 1, hair: 'careca', hairCol: 4, skin: 2, outfit: 10, trim: 2, glow: 0, acc: 'cachecol', cape: false, gear: 'bengala', beard: 'barba' } },
   { id: 'nina', name: 'Nina', x: 48, z: 26, scale: .7, wander: WANDER_KIDS, spd: 2.4, cfg: { seed: 71, body: 0, hair: 'rabo', hairCol: 3, skin: 4, outfit: 9, trim: 4, glow: 0, acc: 'nenhum', cape: false } },
 ];
@@ -103,7 +106,7 @@ const DEF = {
   sentinela: { hp: 170, dmg: 22, r: .55, xp: 36, gold: 14, model: 'sentinel', scale: 1 },
   fantasma: { hp: 190, dmg: 30, r: .45, xp: 40, gold: 15, model: 'phantom', scale: 1.05 },
 };
-const MODEL_FN = { dummy: buildDummy, gosmo: buildGosmo, wisp: buildWisp, skel: buildSkeleton, bat: buildBat, imp: buildImp, beetle: buildBeetle, golem: buildGolem, skull: buildSkullBoss, dragon: buildDragon, shrine: buildShrine, chest: buildChest, frag: buildFragment, portal: buildPortal, pedestal: buildPedestal, chicken: buildChicken, pylon: buildPylon, spider: buildSpider, spiderling: buildSpiderling, eye: buildEye, knight: () => buildHumanoid(KNIGHT_CFG, 128), toad: buildToad, boar: buildBoar, wolf: buildWolf, bear: buildBear, drowned: buildDrowned, sentinel: buildSentinel, phantom: buildPhantom, hydra: buildHydra, reflexo: () => buildHumanoid(reflexCfg(), 152) };
+const MODEL_FN = { dummy: buildDummy, gosmo: buildGosmo, wisp: buildWisp, skel: buildSkeleton, bat: buildBat, imp: buildImp, beetle: buildBeetle, golem: buildGolem, skull: buildSkullBoss, dragon: buildDragon, shrine: buildShrine, chest: buildChest, frag: buildFragment, portal: buildPortal, riftgate: buildRiftGate, pedestal: buildPedestal, chicken: buildChicken, pylon: buildPylon, spider: buildSpider, spiderling: buildSpiderling, eye: buildEye, knight: () => buildHumanoid(KNIGHT_CFG, 128), toad: buildToad, boar: buildBoar, wolf: buildWolf, bear: buildBear, drowned: buildDrowned, sentinel: buildSentinel, phantom: buildPhantom, hydra: buildHydra, reflexo: () => buildHumanoid(reflexCfg(), 152) };
 const getModel = k => k === 'reflexo' ? makeModel('reflexo:' + JSON.stringify(G.char), MODEL_FN.reflexo) : makeModel(k, MODEL_FN[k]);
 const CLS = {
   lamina: { label: 'Lâmina', desc: 'Corte em arco de perto. Hab.: Giro Flamejante.', hp: 130, dmg: 17, spd: 5.2, atkCd: .36, skillCd: 6 },
@@ -201,16 +204,18 @@ function genRegion(key) {
       if (((cx - pd.x) / pd.rx) ** 2 + ((cy - pd.y) / pd.ry) ** 2 < 1) grid[y][x] = '~';
       const lk = HUB.lake; if (((cx - lk.x) / lk.rx) ** 2 + ((cy - lk.y) / lk.ry) ** 2 < 1) grid[y][x] = '~';
       if (cx > 43 && (Math.abs(cy - 16.5) < 1.1 || Math.hypot(cx - 59, cy - 15.5) < 4.2 || Math.abs(cx - 59) < 1.1)) grid[y][x] = ',';   // caminhos e praça do Bairro Leste
+      if (cy > 30 && (Math.hypot((cx - 59) / 8, (cy - 38.5) / 7) < 1 || (cx > 44 && cx < 52 && Math.abs(cy - 38.5) < 1.6))) grid[y][x] = ',';   // piso de pedra do Santuário da Fenda e do vestíbulo
     }
     for (const [x, y] of HUB.trees) grid[y][x] = '#';
     for (const h of HUB.houses) for (let y = h.y; y < h.y + h.h; y++) for (let x = h.x; x < h.x + h.w; x++) G.block.add(x + ',' + y);
     for (const [x, y] of [[21, 15], [22, 15], [21, 16], [22, 16]]) G.block.add(x + ',' + y);
     for (const [x, y] of HUB.stalls) G.block.add(x + ',' + y);
     for (const [x, y] of [[9, 18], [13, 28]]) G.block.add(x + ',' + y);
-    reserve(74, 22, 1); reserve(36, 13, 0); reserve(68.4, 47, 0); reserve(70.6, 46.8, 0);
+    reserve(36, 13, 0); reserve(68.4, 47, 0); reserve(70.6, 46.8, 0);
     const pn = HUB.pen;
     for (let y = pn.y0; y <= pn.y1; y++) for (let x = pn.x0; x <= pn.x1; x++) { G.reserved.add(x + ',' + y); if ((x === pn.x0 || x === pn.x1 || y === pn.y0 || y === pn.y1) && !(y === pn.y0 && x === 16)) G.block.add(x + ',' + y); }
     for (const p of HUB.portals) reserve(p.x, p.z, 1);
+    { const sc = HUB.sanct; for (const [px, pz] of sc.pil) G.block.add(Math.floor(px / T) + ',' + Math.floor(pz / T)); reserve(sc.gate[0], sc.gate[1], 2); for (const dz of [-2.9, 2.9]) G.block.add(Math.floor(sc.arch[0] / T) + ',' + Math.floor((sc.arch[1] + dz) / T)); }
     for (const n of NPCS) reserve(n.x, n.z, 0);
     for (const l of HUB.lamps) reserve(l[0], l[1], 0);
     for (const p of HUB.props) reserve(p[0], p[1], 0);
@@ -565,6 +570,22 @@ function buildWorld(key, G) {
     const own = gsave() && gsave().house && gsave().house.owned;
     if (own) { S.tube([[72.4, 0, 46.4, .06, 0], [72.4, 3.2, 46.4, .05, 0]], 12, { sub: 1, flags: 8 }); S.mem([[[72.45, 3.1, 46.4], [73.6, 3.0, 46.4], [72.45, 2.0, 46.4]], [[73.6, 3.0, 46.4], [73.5, 2.0, 46.4], [72.45, 2.0, 46.4]]], p => Math.abs(p[1] - 2.55) < .12 ? 7 : 17, () => 0, { flags: 8 }); for (const sx of [-1, 1]) { S.ell([68.4 + sx * .75, 1.7, 46.05], [.1, .14, .1], 14, 0, { min: 12 }); emitters.push({ t: 'glow', x: 68.4 + sx * .75, y: 1.7, z: 46.1 }); } S.box([68.4, .02, 46.6], [.55, .02, .35], 16, 0, { faces: 't' }); }
     else { S.tube([[70.6, 0, 46.8, .05, 0], [70.6, 1.3, 46.8, .05, 0]], 12, { sub: 1 }); S.box([70.6, 1.3, 46.85], [.45, .28, .04], p => Math.abs((p[0] - 70.6) * .6 - (p[1] - 1.3)) < .05 ? 16 : 11, 0, { faces: 'sn' }); }
+  }
+  if (key === 'hub') {   // Santuário da Fenda: estrado, círculos de runas, pilares de obsidiana e arco
+    const sc = HUB.sanct, [gx, gz] = sc.gate;
+    S.ell([gx, 0, gz], [4.2, .32, 2.9], 29, 0, { keep: d => d[1] > 0 }); S.ell([gx, .3, gz], [3.4, .05, 2.3], 23, 0, { keep: d => d[1] > 0 });   // estrado
+    for (const [rad, n] of [[5.2, 700], [5.5, 700], [7.0, 900], [7.3, 900]]) for (let i = 0; i < n; i++) { const a = i / n * 6.283; S.pt([sc.x + Math.cos(a) * rad, .05, sc.z + Math.sin(a) * rad * .82], [0, 1, 0], 151, 0, .2, 2, .7); }
+    for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283 + .13, c = Math.cos(a), s = Math.sin(a); for (let k = 0; k < 18; k++) { const u = 5.7 + k * .07; S.pt([sc.x + c * u + (k % 3 === 1 ? s * .22 : 0), .05, sc.z + s * u * .82 - (k % 3 === 1 ? c * .18 : 0)], [0, 1, 0], 151, 0, .2, 2, .65); } }   // runas entre os círculos
+    for (const [px, pz] of sc.pil) {
+      S.box([px, .15, pz], [.75, .15, .75], 24, 0, { faces: 'tnsew' }); S.box([px, 1.9, pz], [.42, 1.75, .42], 29, 0, { faces: 'tnsew' });
+      for (let k = 0; k < 4; k++) S.cone([px + (k % 2 ? .3 : -.3), 3.6, pz + (k < 2 ? .3 : -.3)], [px + (k % 2 ? .55 : -.55), 4.3, pz + (k < 2 ? .55 : -.55)], .12, 29, 0);   // garras no topo
+      S.ell([px, 3.75, pz], .28, 151, 0, { min: 20 }); emitters.push({ t: 'voidflame', x: px, y: 3.9, z: pz });
+      for (let y = .8; y < 3.4; y += .8) S.box([px, y, pz + .43], [.18, .05, .01], 151, 0, { faces: 's' });   // fendas acesas
+    }
+    const [ax, az] = sc.arch;   // arco da entrada (a oeste, o caminho passa por baixo)
+    for (const dz of [-2.9, 2.9]) { S.box([ax, 2.2, az + dz], [.5, 2.2, .5], 29, 0, { faces: 'tnsew' }); S.ell([ax, 4.5, az + dz], .3, 151, 0, { min: 16 }); emitters.push({ t: 'voidflame', x: ax, y: 4.6, z: az + dz }); }
+    S.box([ax, 4.55, az], [.5, .35, 3.6], 29, 0, { faces: 'tnsew' }); for (let i = -2; i <= 2; i++) S.ell([ax + .52, 4.55, az + i * 1.2], .1, 151, 0, { min: 8 });
+    for (let k = 0; k < 5; k++) emitters.push({ t: 'voidmist', x: gx + (k - 2) * 1.6, y: .35, z: gz + 1.5 + (k % 2) });
   }
   if (key === 'hub') for (let k = 0; k < 16; k++) { const a = k * 2.4, ry = 1.95 + (k % 4) * .22, rad = 1.12 - Math.abs(ry - 2.3) * .4; S.ell([25 + Math.cos(a) * rad, ry, 53 + Math.sin(a) * rad], .1, 16, 0, { min: 8 }); }
   if (st === 'wilds') {

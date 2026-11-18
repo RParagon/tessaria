@@ -189,6 +189,9 @@ const QUESTS = {
   mel: { n: 'Cogumelos de Luz', giver: 'mel', region: 'forest', need: 5, item: 'Cogumelo de Luz', mat: 14, desc: 'Colha 5 cogumelos luminosos no Bosque Sussurrante para a Padeira Mel.', reward: '+20 de vida máxima e poções mais fortes', req: s => s.met.mel,
     offer: () => [{ who: 'Padeira Mel', text: 'Sabe o que falta no meu pão? Cogumelo de luz! Cresce no bosque, brilha azulzinho. Me traz cinco?', choices: [{ t: 'Trago, sim.', fn: () => startQuest('mel') }, { t: 'Agora não.' }] }],
     done: () => [{ who: 'Padeira Mel', text: 'Cinco cogumelos de luz! Olha só como brilham na massa…' }, { who: 'Padeira Mel', text: 'Pão de Mel com cogumelo de luz: dá força pro resto da vida. Literalmente. Come!' }] },
+  vara: { n: 'A Vara do Ivo', giver: 'ivo', need: 4, desc: 'Ache 4 minhocas-de-brasa pelo Bairro Leste (brilham no chão, perto das casas, do lago e da arena) e leve para o Pescador Ivo, no lago.', reward: 'Vara de pesca: pesque no lago do Bairro Leste', req: () => true,
+    offer: () => [{ who: 'Pescador Ivo', text: 'Mudei pro lago do Bairro Leste: a água aqui é funda e os peixes são graúdos. Só me falta isca.' }, { who: 'Pescador Ivo', text: 'Minhoca-de-brasa! Brilham no chão, se escondem perto das casas, do lago e da arena. Me traz quatro e eu te dou minha vara reserva.', choices: [{ t: 'Vou procurar.', fn: () => startQuest('vara') }, { t: 'Agora não.' }] }],
+    done: () => [{ who: 'Pescador Ivo', text: 'Quatro minhocas-de-brasa, gordinhas! Os lambaris vão fazer fila.' }, { who: 'Pescador Ivo', text: 'Toma a vara. Lance no lago, espere a boia afundar e puxe na hora certa. Peixe-Lua só aparece pra quem tem paciência.' }] },
   ivo: { n: 'O Anzol de Prata', giver: 'ivo', region: 'crypt', need: 1, item: 'Anzol de Prata', mat: 120, desc: 'Encontre o anzol de prata do Pescador Ivo no Ossuário Real.', reward: 'Anzol de Prata, um amuleto épico', req: s => s.bosses.forest,
     offer: () => [{ who: 'Pescador Ivo', text: 'Meu anzol de prata era do meu pai. Caiu num poço que dá direto no Ossuário. Se você descer lá…', choices: [{ t: 'Eu procuro.', fn: () => startQuest('ivo') }, { t: 'Talvez depois.' }] }],
     done: () => [{ who: 'Pescador Ivo', text: 'É ele! Ainda tem a marca do dente do meu pai, de quando ele abria nó com a boca.' }, { who: 'Pescador Ivo', text: 'Fica com ele. Um anzol de prata pesca sorte melhor do que peixe.' }] },
@@ -208,6 +211,7 @@ function completeQuest(id) {
   if (id === 'mel') s.perks.mel = true;
   if (id === 'lio') s.perks.lio = true;
   if (id === 'brann') { const it = makeItem('charm', Math.max(3, regionTier()), 4); it.name = 'Maçã de Âmbar'; it.power = 'maca'; takeItem(it); s.q.brann.rew = true; }
+  if (id === 'vara') { s.rod = true; setTimeout(() => toast('VARA DE PESCA', true, 'PESQUE NO LAGO DO BAIRRO LESTE', '#ffbf3d'), 1400); }
   if (id === 'ivo') { const it = makeItem('charm', 2, 3); it.name = 'Anzol de Prata'; it.st = { crit: 6, gold: 25 }; takeItem(it); }
   if (id === 'nina') { const it = makeItem('charm', 1, 1); it.name = 'Fita da Nina'; it.st = { spd: 7 }; takeItem(it); s.gold += 60; }
   if (P) P.maxHp = stats().maxHp;
@@ -222,6 +226,7 @@ function questLines(npcId) {
     const st = s.q[id];
     if (!st) { if (Q.req(s)) return Q.offer(); continue; }
     if (st.st === 'active' && Q.done && st.p >= Q.need) return Q.done().map((l, i, a) => i === a.length - 1 ? { ...l, fn: () => completeQuest(id) } : l);
+    if (st.st === 'active' && id === 'vara') return [{ who: 'Pescador Ivo', text: `Achou as minhocas? Faltam ${Q.need - (st.p || 0)}. Elas soltam faísca no chão, perto das casas, do lago e da arena.` }];
     if (st.st === 'active' && Q.region) return [{ who: NPCS.find(n => n.id === npcId).name, text: `Ainda falta: ${Q.item} (${st.p}/${Q.need}). Procure no ${RNAME[Q.region]}, eles brilham no escuro.` }];
   }
   return null;

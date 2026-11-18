@@ -25,6 +25,8 @@ function updateEmitters(dt, cx, cz) {
     const k = 'em' + i;
     switch (e.t) {
       case 'torch': rate(k, 30, dt, () => spawn({ x: e.x + rr(-.06, .06), y: e.y, z: e.z + rr(-.06, .06), vy: rr(.6, 1.2), vx: rr(-.15, .15), life: rr(.3, .5), s0: .16, s1: .03, b0: 1, b1: .15, mat: torch, drag: 1 })); break;
+      case 'voidflame': rate(k, 18, dt, () => spawn({ x: e.x + rr(-.12, .12), y: e.y, z: e.z + rr(-.12, .12), vy: rr(.7, 1.4), vx: rr(-.1, .1), life: rr(.35, .6), s0: .16, s1: .03, b0: 1, b1: .1, mat: Math.random() < .25 ? 29 : 151, drag: 1 })); break;
+      case 'voidmist': rate(k, 3, dt, () => spawn({ x: e.x + rr(-1, 1), y: e.y, z: e.z + rr(-.8, .8), vx: rr(-.1, .1), vy: rr(.15, .4), vz: rr(-.1, .1), life: rr(1.5, 2.5), s0: .07, s1: .02, b0: .9, b1: .1, mat: 151, drag: .3 })); break;   // centelhas violeta subindo do estrado
       case 'candle': rate(k, 8, dt, () => spawn({ x: e.x + rr(-.2, .2), y: e.y, z: e.z + rr(-.2, .2), vy: rr(.3, .6), life: .5, s0: .07, s1: .02, b0: 1, b1: .2, mat: 14 })); break;
       case 'smoke': rate(k, 4, dt, () => spawn({ x: e.x, y: e.y, z: e.z, vx: rr(-.1, .2), vy: rr(.4, .7), vz: rr(-.1, .1), life: rr(2, 3), s0: .12, s1: .4, b0: .18, b1: .02, mat: 21, drag: .3 })); break;
       case 'forge': rate(k, 14, dt, () => spawn({ x: e.x + rr(-.2, .2), y: e.y, z: e.z + rr(-.2, .2), vx: rr(-.6, .6), vy: rr(1.5, 3), vz: rr(-.6, .6), life: rr(.4, .8), s0: .05, s1: .02, b0: 1, b1: .3, mat: 14, buoy: -3 })); break;

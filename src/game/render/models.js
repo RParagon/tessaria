@@ -472,6 +472,20 @@ function buildPortal() {
   S.box([0, 3.05, 0], [.18, .2, .2], 30, 0);
   return { bones, data: S.build() };
 }
+/** Portal da Fenda do Tear: anel de pedra escura e irregular, garras, fendas violeta e um véu escuro no meio. */
+function buildRiftGate() {
+  const S = new SplatSet(66, 1400), bones = [{ p: -1, v: [0, 0, 0] }, { p: 0, v: [0, 2.3, 0] }];
+  const R = rng(9), r = [];
+  for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283; r.push([Math.cos(a) * 2.0, 2.3 + Math.sin(a) * 2.15, (R() - .5) * .12, .26 + R() * .14, 0]); }
+  S.tube(r, (p, n) => (n[2] > .55 || n[2] < -.55) && R() < .08 ? 151 : 29, { closed: true, sub: 3, noSolid: true });
+  for (let i = 0; i < 9; i++) { const a = .25 + i / 8 * (Math.PI - .5), c = Math.cos(a), s = Math.sin(a); S.cone([c * 2.15, 2.3 + s * 2.3, 0], [c * (2.9 + R() * .4), 2.3 + s * (3.1 + R() * .5), (R() - .5) * .3], .17, 29, 0); }   // garras
+  for (const sx of [1, -1]) { S.ell([sx * 2.0, .35, 0], [.9, .5, .75], 29, 0); S.cone([sx * 2.5, .4, .2], [sx * 3.0, 1.4, .1], .25, 29, 0); }   // rochas da base
+  // véu: redemoinho violeta com braços pretos e um olho escuro no meio (gira no osso 1)
+  for (let i = 0; i < 2600; i++) { const u = R(), d = Math.sqrt(u) * 1.78, a = R() * 6.283, arm = Math.sin(a * 3 + d * 3.4);
+    const m = d < .32 ? 29 : arm > .35 ? 29 : 151, em = .45 + .5 * (d / 1.78); S.pt([Math.cos(a) * d, 2.3 + Math.sin(a) * d * 1.08, (R() - .5) * .04], [0, 0, 1], m, 1, .085, 1, em); }
+  S.cone([0, 4.6, 0], [0, 5.5, 0], .3, 151, 0); S.cone([0, 4.6, 0], [0, 4.1, 0], .3, 151, 0);   // cristal no topo
+  return { bones, data: S.build() };
+}
 function buildBoar() {
   const S = new SplatSet(95, 650), bones = [{ p: -1, v: [0, 0, 0] }, { p: 0, v: [0, .55, 0] }, { p: 1, v: [0, .62, .5] }];
   S.ell([0, .6, -.05], [.42, .4, .66], (p, n) => n[1] < -.4 ? 17 : 16, 1);

@@ -166,17 +166,18 @@ function uploadPalette(regKey) {
   const rows = [];
   const pr = charRows(G.char);
   for (let i = 0; i < 8; i++) rows[i] = pr[i];
-  const wr = G.mode !== 'create' && G.save && G.save.eq && G.save.eq.weapon ? G.save.eq.weapon.rar : 0; rows[4] = METAL[wr];
+  const eqOn = G.mode !== 'create' || G.wardrobe;   // no guarda-roupa o herói está equipado: cores do metal e da raridade de verdade
+  const wr = eqOn && G.save && G.save.eq && G.save.eq.weapon ? G.save.eq.weapon.rar : 0; rows[4] = METAL[wr];
   for (let i = 8; i < 30; i++) rows[i] = reg.rows[i];
   for (let i = 152; i < 160; i++) if (reg.rows[i]) rows[i] = reg.rows[i];   // cores extras da região (biomas dos Ermos)
   if (regKey === 'hub') { const br = charRows(BARD.cfg); for (let i = 0; i < 8; i++) rows[152 + i] = br[i]; }   // Bardo (só na vila)
   rows[30] = SPARK; rows[31] = HEAL; RAR.forEach(r => rows[r.row] = r.ramp);
-  const eqp = G.mode !== 'create' && G.save && G.save.eq ? G.save.eq : {}, arR = eqp.armor ? eqp.armor.rar : 0, chR = eqp.charm ? eqp.charm.rar : 0;
+  const eqp = eqOn && G.save && G.save.eq ? G.save.eq : {}, arR = eqp.armor ? eqp.armor.rar : 0, chR = eqp.charm ? eqp.charm.rar : 0;
   rows[125] = METAL[arR]; rows[126] = RAR[arR].ramp; rows[127] = RAR[chR].ramp;
   NPCS.forEach((n, k) => { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[32 + k * 8 + i] = r[i]; });
   for (const k in XROWS) rows[k] = XROWS[k];
   for (const k in REMOTE_ROWS) rows[k] = REMOTE_ROWS[k];
-  { const rf = charRows({ ...G.char, skin: 5, outfit: 11, trim: 3, glow: 2 }); for (let i = 0; i < 8; i++) rows[152 + i] = rf[i]; }
+  if (regKey !== 'hub') { const rf = charRows({ ...G.char, skin: 5, outfit: 11, trim: 3, glow: 2 }); for (let i = 0; i < 8; i++) rows[152 + i] = rf[i]; }   // Reflexo (fora da vila; na vila as linhas são do Bardo)
   for (let m = 0; m < 256; m++) { const row = rows[m] || rows[11]; for (let i = 0; i < 5; i++) { const c = row[i], o = (m * 5 + i) * 4; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = 255; } }
   gl.bindTexture(gl.TEXTURE_2D, palTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 5, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);

@@ -86,6 +86,18 @@ function poseJoints(A, e, t, m, w, sw, cw, br, stc, a, at, cls, ranged) {
   if (e.landT > 0) { kL += .5 * e.landT / .15; kR += .5 * e.landT / .15; }
   A[10].rx = eL; A[11].rx = eR; A[12].rx = kL; A[13].rx = kR;
 }
+/** Pesca: lança (0 a .6 s), segura a vara com as duas mãos, puxa na mordida e ergue o peixe. A arma some (osso 8 encolhido). */
+function poseFishing(A, t) {
+  const F = G.fishing, C = G.fishCatch;
+  let raise = 0, tug = 0;
+  if (F) { const c = clamp(F.t / .6, 0, 1); raise = c < .45 ? lerp(0, 1, c / .45) : lerp(1, 0, (c - .45) / .55); if (F.bite) tug = Math.sin(t * 24) * .12; }
+  if (C) { const c = clamp(C.t / .35, 0, 1); raise = C.miss ? .4 * (1 - c) : lerp(.9, .3, c); }
+  A[5].rx = -.95 - 1.5 * raise + tug; A[5].ry = .25; A[5].rz = -.1;
+  A[4].rx = -.85 - .4 * raise; A[4].ry = -.55; A[4].rz = .2;   // a outra mão ajuda a segurar
+  if (A[11]) { A[11].rx = -.55 + .3 * raise; A[10].rx = -.9; }
+  A[2].rx += .1 - .18 * raise; A[2].ry = .15;
+  if (A[8]) A[8].sx = A[8].sy = A[8].sz = .001;   // guarda a arma
+}
 function poseEnemy(e, t) {
   const A = e.anim; resetAnim(A);
   switch (e.type) {
