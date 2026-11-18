@@ -38,6 +38,7 @@ function onEnemyKilled(e) {
     dropGold(e.x, e.z, e.def.gold * 3); dropItem(e.x, e.z, rollRar(2));
     toast(e.elite.name + ' derrotado', false, e.alpha ? 'ALFA DOS ERMOS' : 'ELITE', '#d7a6ff');
     if (e.alpha) { dropItem(e.x + 1, e.z, Math.max(3, rollRar(3))); dropGold(e.x, e.z, 20); st2.alphas = (st2.alphas || 0) + 1; }
+    if (e.lair) { dropItem(e.x - 1, e.z + 1, Math.random() < .25 ? 4 : 3); dropGold(e.x, e.z, 60); st2.lairs = (st2.lairs || 0) + 1; toast('COVIL LIMPO', true, e.elite.name.toUpperCase() + ' CAIU', '#ffbf3d'); }
     if (e.elite.aff.includes('expl')) { const x = e.x, z = e.z; tels.push({ kind: 'circle', x, z, r: 2.6, t: 0, dur: .9, fn: () => { sfx('boom'); burst(x, .3, z, 40, 21, 5, .6, .2); if (Math.hypot(P.x - x, P.z - z) < 2.7) hurtPlayer(22, x, z, 10); } }); }
   }
   if (hasPow('coroa') && P && P.dieT < 0) P.hp = Math.min(P.maxHp, P.hp + P.maxHp * .03);
@@ -130,6 +131,7 @@ function updateZones(dt) {
 }
 function drawZones(t) {
   for (const z of G.zones) {
+    if (P && Math.abs(z.x - P.x) > 32 || P && Math.abs(z.z - P.z) > 28) continue;   // só as zonas perto (os Ermos têm muitas teias)
     const ally = z.team !== 'e', m = z.mat || (ally ? 7 : 122), fade = 1 - z.t / z.dur, n = Math.ceil(z.r * 10);
     for (let i = 0; i < n; i++) { const a = i / n * 6.283 + t * (ally ? 1 : -.5); dyn(z.x + Math.cos(a) * z.r, .07, z.z + Math.sin(a) * z.r, .7 * fade + .2, m, .18); }
     for (let i = 0; i < n; i++) { const a = hash2(i, 3) * 6.283, d = Math.sqrt(hash2(i, 9)) * z.r; dyn(z.x + Math.cos(a) * d, .06 + (ally ? Math.abs(Math.sin(t * 6 + i)) * .3 : 0), z.z + Math.sin(a) * d, .45 * fade, m, .16); }
@@ -321,11 +323,11 @@ function finishRift(b) {
   const n = 2 + Math.floor(L / 3) + ({ S: 2, A: 1, B: 0, C: 0 })[rank] + (R.aff.includes('fortificada') ? 1 : 0);
   for (let i = 0; i < n; i++) dropItem(b.x + rr(-2, 2), b.z + rr(-1, 2), i === 0 && Math.random() < .15 + .04 * L + (rank === 'S' ? .15 : 0) ? 4 : rollRar(L >= 5 ? 2 : 1));
   const fios = Math.round((2 + L) * ({ S: 2, A: 1.5, B: 1, C: .7 })[rank]); s.fios = (s.fios || 0) + fios + (hasF('altar') ? Math.round(fios * .25) : 0);
-  s.riftMax = Math.max(s.riftMax || 0, L); s.riftBest = s.riftBest || {}; if (!s.riftBest[L] || R.t < s.riftBest[L].t) s.riftBest[L] = { t: R.t, rank };
+  if (!R.cave) { s.riftMax = Math.max(s.riftMax || 0, L); s.riftBest = s.riftBest || {}; if (!s.riftBest[L] || R.t < s.riftBest[L].t) s.riftBest[L] = { t: R.t, rank }; }   // covil dos Ermos não conta como recorde de Fenda
   const st2 = s.st = s.st || {}; st2.gk = [...new Set([...(st2.gk || []), R.boss])].filter(k => ['spider', 'knight', 'eye'].includes(k)); if (rank === 'S') st2.rankS = (st2.rankS || 0) + 1;
   contractEvent('rift', L);
   endBossFight(true); boss = null;
-  inter.push({ kind: 'portal', to: 'hub', x: b.room.wx, z: b.room.wz, r: 2, model: getModel('portal'), anim: newAnim(getModel('portal')), lit: true, yaw: 0 });
+  inter.push({ kind: 'portal', to: R.cave ? 'wilds' : 'hub', exit: !!R.cave, x: b.room.wx, z: b.room.wz, r: 2, model: getModel('portal'), anim: newAnim(getModel('portal')), lit: true, yaw: 0 });
   writeSave(); updateObjective();
   toast(`FENDA ${L} · RANK ${rank}`, true, `tempo ${fmtT(R.t)} · +${fios} Fios do Tear`, { S: '#ffbf3d', A: '#c07bff', B: '#5aa2ff', C: '#d8d2c4' }[rank]);
 }

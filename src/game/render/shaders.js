@@ -166,6 +166,7 @@ function uploadPalette(regKey) {
   for (let i = 0; i < 8; i++) rows[i] = pr[i];
   const wr = G.mode !== 'create' && G.save && G.save.eq && G.save.eq.weapon ? G.save.eq.weapon.rar : 0; rows[4] = METAL[wr];
   for (let i = 8; i < 30; i++) rows[i] = reg.rows[i];
+  for (let i = 152; i < 160; i++) if (reg.rows[i]) rows[i] = reg.rows[i];   // cores extras da região (biomas dos Ermos)
   rows[30] = SPARK; rows[31] = HEAL; RAR.forEach(r => rows[r.row] = r.ramp);
   const eqp = G.mode !== 'create' && G.save && G.save.eq ? G.save.eq : {}, arR = eqp.armor ? eqp.armor.rar : 0, chR = eqp.charm ? eqp.charm.rar : 0;
   rows[125] = METAL[arR]; rows[126] = RAR[arR].ramp; rows[127] = RAR[chR].ramp;

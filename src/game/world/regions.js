@@ -38,7 +38,7 @@ const REG = {
       { x: 47, y: 10, r: 2.8, frag: 8 }, { x: 28, y: 9, r: 7, kind: 'boss' }],
     links: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [3, 6], [6, 8], [8, 9], [6, 7], [6, 10]] },
   home: { name: 'Casa do Tecelão', sub: 'Seu canto em Tessária', style: 'home', W: 16, H: 13, seed: 77, torch: 14, rooms: [{ x: 8, y: 6.5, w: 5, h: 3.5, shape: 'rect', kind: 'start' }], links: [] },
-  wilds: { name: 'Ermos de Tessária', sub: 'As terras selvagens ao redor da vila', style: 'wilds', W: 96, H: 80, seed: 61, torch: 21, rooms: [], links: [] },
+  wilds: { name: 'Ermos de Tessária', sub: 'As terras selvagens ao redor da vila', style: 'wilds', W: 300, H: 260, seed: 61, torch: 21, rooms: [], links: [] },
   swamp: { name: 'Pântano Afogado', sub: 'Onde as vozes afundam', style: 'swamp', W: 52, H: 42, seed: 41, torch: 21, boss: 'hydra', fio: 'FIO DE ÁGUA',
     rooms: [
       { x: 46, y: 36, r: 3, kind: 'start' }, { x: 36, y: 33, r: 4.5, en: { sapo: 3, afogado: 1 }, pool: true }, { x: 45, y: 24, r: 3.4, en: { afogado: 2, sapo: 1 } },
@@ -116,23 +116,34 @@ const UPCOST = [25, 50, 90, 140, 200];
 function genWilds(key, spec) {
   const { W, H } = spec, R = rng(spec.seed), grid = [];
   for (let y = 0; y < H; y++) { const row = []; for (let x = 0; x < W; x++) {
-    let c = '.'; const z = wZone(x, y), edge = Math.min(x, y, W - 1 - x, H - 1 - y);
+    let c = '.'; const z = wRing(x, y), b = wZone(x, y), edge = Math.min(x, y, W - 1 - x, H - 1 - y);
     if (edge < 2 || (edge < 5 && vnoise(x * .4, y * .4) > .45)) c = '#';
     else if (vnoise(x * .13 + 5, y * .13) > .69 - z * .015 || vnoise(x * .33 + 11, y * .33 + 3) > .86) c = '#';
-    else if (z < 3 && vnoise(x * .085 + 40, y * .085 + 17) > .77) c = '~';
+    else if (b === 3 ? vnoise(x * .085 + 40, y * .085 + 17) > .6 : z < 3 && vnoise(x * .085 + 40, y * .085 + 17) > .77) c = '~';   // o Brejo tem muito mais água
     row.push(c); } grid.push(row); }
   const set = (x, y, ch) => { if (x < 2 || y < 2 || x >= W - 2 || y >= H - 2) return; grid[y][x] = ch; };
   const road = (x1, y1) => { const dx = x1 - WC.x, dy = y1 - WC.y, L = Math.hypot(dx, dy), ph = R() * 6.28, px = -dy / L, py = dx / L; for (let i = 0; i <= L * 2; i++) { const u = i / (L * 2), w = Math.sin(u * L * .2 + ph) * 2.2 * Math.sin(u * Math.PI), cx = WC.x + dx * u + px * w, cy = WC.y + dy * u + py * w; for (let yy = Math.floor(cy - 2); yy <= cy + 2; yy++) for (let xx = Math.floor(cx - 2); xx <= cx + 2; xx++) { const d = Math.hypot(xx + .5 - cx, yy + .5 - cy); if (d < 1.4) set(xx, yy, ','); else if (d < 2.6 && grid[yy] && grid[yy][xx] !== ',') set(xx, yy, '.'); } } };
-  road(WC.x, H - 4); road(4, WC.y + 2); road(W - 4, WC.y - 2); road(WC.x + 4, 4); road(12, 10); road(W - 10, H - 9);
+  // estradas saindo da vila para todos os lados (ligam os biomas e os obeliscos)
+  road(WC.x, H - 4); road(4, WC.y + 2); road(W - 4, WC.y - 2); road(WC.x + 4, 4); road(22, 18); road(W - 20, H - 18); road(W - 24, 20); road(20, H - 22);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x + .5 - WC.x, y + .5 - WC.y); if (d < 7.2) grid[y][x] = 'V'; else if (d < 10.5 && grid[y][x] !== ',') grid[y][x] = '.'; }
   const rooms = [{ x: WC.x, y: WC.y + 10.2, r: 2.4, kind: 'start' }], ok = (x, y) => { for (let yy = Math.floor(y - 1); yy <= y + 1; yy++) for (let xx = Math.floor(x - 1); xx <= x + 1; xx++) { const c = grid[yy] && grid[yy][xx]; if (c !== '.' && c !== ',') return false; } return true; };
-  for (let t = 0; t < 900 && rooms.length < 58; t++) {
-    const x = 4 + R() * (W - 8), y = 4 + R() * (H - 8), z = wZone(x, y);
+  for (let t = 0; t < 9000 && rooms.length < 420; t++) {
+    const x = 4 + R() * (W - 8), y = 4 + R() * (H - 8), z = wZone(x, y), ring = wRing(x, y);
     if (Math.hypot(x - WC.x, y - WC.y) < 12 || rooms.some(r => Math.hypot(r.x - x, r.y - y) < 7.5) || !ok(x, y)) continue;
-    const pool = WPOOL[z], n = 2 + z + Math.floor(R() * 2), en = {}; for (let i = 0; i < n; i++) { const ty = pool[Math.floor(R() * pool.length)]; en[ty] = (en[ty] || 0) + 1; }
-    rooms.push({ x, y, r: 2.5, en, zone: z });
+    const pool = WPOOL[z], n = 2 + ring + (z === 7 ? 1 : 0) + Math.floor(R() * 2), en = {}; for (let i = 0; i < n; i++) { const ty = pool[Math.floor(R() * pool.length)]; en[ty] = (en[ty] || 0) + 1; }
+    rooms.push({ x, y, r: 2.5, en, zone: z, ring });
   }
-  for (let z = 0; z < 4; z++) { const zs = rooms.filter(r => r.zone === z && !r.kind); zs.sort(() => R() - .5); const nS = z === 0 ? 1 : 2; zs.slice(0, nS).forEach(r => { delete r.en; r.kind = 'shrine'; }); zs.slice(nS, nS + (z === 0 ? 1 : 2)).forEach(r => { r.alpha = true; r.en[WPOOL[z][0]] = (r.en[WPOOL[z][0]] || 0) + 1; }); zs.slice(nS + 2, nS + 4).forEach(r => { r.chest = 1; }); }
+  // Por bioma: santuários, um obelisco (viagem rápida), uma caverna, Alfas, o covil com o Alfa nomeado e baús.
+  for (let z = 0; z < WZ.length; z++) {
+    const zs = rooms.filter(r => r.zone === z && !r.kind); zs.sort(() => R() - .5);
+    const take = n => zs.splice(0, Math.min(n, zs.length));
+    take(z === 0 ? 1 : 2).forEach(r => { delete r.en; r.kind = 'shrine'; });
+    take(1).forEach(r => { delete r.en; r.kind = 'obelisk'; r.ob = z; });
+    if (WZ[z].cave) take(1).forEach(r => { delete r.en; r.kind = 'cave'; });
+    take(z === 0 ? 1 : z === 7 ? 5 : 2).forEach(r => { r.alpha = true; r.en[WPOOL[z][0]] = (r.en[WPOOL[z][0]] || 0) + 1; });
+    take(1).forEach(r => { r.alpha = true; r.lair = WZ[z].lair; r.en[WZ[z].lair[0]] = (r.en[WZ[z].lair[0]] || 0) + 3; });
+    take(z === 2 ? 5 : 2).forEach(r => { r.chest = 1; });
+  }
   for (const rm of rooms) for (let yy = Math.floor(rm.y - 3); yy <= rm.y + 3; yy++) for (let xx = Math.floor(rm.x - 3); xx <= rm.x + 3; xx++) if (Math.hypot(xx + .5 - rm.x, yy + .5 - rm.y) < 2.6 && grid[yy] && grid[yy][xx] !== 'V' && grid[yy][xx] !== ',') set(xx, yy, '.');
   const G = { key, W, H, grid, seed: spec.seed, rooms: [], block: new Set(), gates: [], gatesOn: false, reserved: new Set(), wild: true };
   const reserve = (wx, wz, rad = 1) => { const tx = Math.floor(wx / T), tz = Math.floor(wz / T); for (let y = tz - rad; y <= tz + rad; y++) for (let x = tx - rad; x <= tx + rad; x++) G.reserved.add(x + ',' + y); };
@@ -229,6 +240,7 @@ function buildWorld(key, G) {
   };
   // Um ladrilho do mapa: chão, água ou parede, com a decoração. Só depende da posição (e do sorteio R).
   const tileAt = (x, y) => {
+    if (G.wild) S.remap = WREMAP[wZone(x, y)] || null;   // cores do bioma deste ladrilho
     const c = G.grid[y][x], wx = (x + .5) * T, wz = (y + .5) * T;
     if (c === '.' || c === ',' || c === 'V') {
       const n = Math.round(T * T * DF), th = hash2(x * 3.1, y * 7.3), th2 = hash2(y * 5.7, x * 1.9);
@@ -250,7 +262,7 @@ function buildWorld(key, G) {
           mat = rug ? (rugE ? 17 : (Math.abs(frac((px - 16) * .6 + (pz - 13.4) * .6) - .5) < .12 ? 16 : 22)) : (frac(pz / .55) < .07 || frac(px / 2.2 + Math.floor(pz / .55) * .37) < .025 ? 9 : 8);
           nrm = [0, 1, 0];
         } else if (st === 'wilds') {
-          const zz = wZone(px / T + (vnoise(px * .2, pz * .2) - .5) * 5, pz / T + (vnoise(pz * .2, px * .2 + 9) - .5) * 5), n0 = vnoise(px * .3 + 2, pz * .3);
+          const zz = WZ[wZone(px / T + (vnoise(px * .2, pz * .2) - .5) * 5, pz / T + (vnoise(pz * .2, px * .2 + 9) - .5) * 5)].style, n0 = vnoise(px * .3 + 2, pz * .3);
           if (c === 'V') mat = (frac(px / .8) < .07 || frac(pz / .8 + Math.floor(px / .8) * .5) < .07) ? 11 : (n0 > .6 ? 23 : 9);
           else if (c === ',') mat = n0 > .7 ? 8 : 9;
           else if (zz === 0) mat = n0 > .6 ? 10 : 8;
@@ -307,7 +319,7 @@ function buildWorld(key, G) {
           S.box([wx, hh, wz], [1, hh, 1], (p, n) => n[1] > .5 ? 24 : (p[1] < .25 ? 24 : (Math.abs(frac(p[0] / 2 + p[2] / 2) - .5) < .05 || Math.abs(p[1] - 1.9) < .05) ? 12 : 11), 0, { faces: f, flags: 8 });
         }
       } else if (st === 'wilds') {
-        const zz = wZone(x, y);
+        const zz = WZ[wZone(x, y)].style;
         if (edge) {
           if (zz <= 1) { if (R() < .18) S.ell([wx + (R() - .5) * .5, .55, wz + (R() - .5) * .5], [1.1, .9, 1.05], (p, n) => n[1] > .55 ? 10 : 11, 0, { keep: d => d[1] > -.3, flags: 8, dm: .7 }); else tree(wx + (R() - .5) * .6, wz + (R() - .5) * .6, (zz ? 1.05 : .9) + R() * .4); }
           else if (zz === 2) { if (R() < .6) S.ell([wx + (R() - .5) * .5, .8, wz + (R() - .5) * .5], [1.1, 1.0 + R() * .7, 1.0], (p, n) => n[1] > .6 ? 25 : (frac(p[1] * 2.2) < .12 ? 23 : 11), 0, { keep: d => d[1] > -.3, flags: 8, dm: .7 }); else { const ox = wx + (R() - .5) * .6, oz = wz + (R() - .5) * .6; S.tube([[ox, 0, oz, .2, 0], [ox + (R() - .5) * .5, 1.8, oz + (R() - .5) * .5, .08, 0]], 12, { sub: 1, flags: 8 }); S.ell([ox, 1.9, oz], [.9, .5, .9], 25, 0, { keep: d => d[1] > -.3, flags: 8, dm: .5 }); } }
@@ -356,11 +368,26 @@ function buildWorld(key, G) {
       else if (r < .08) { S.ell([ox, .3, oz], [.2, .3, .2], 12, 0); S.ell([ox, .62, oz], [.12, .04, .12], 12, 0); }
       else if (r < .1) { for (let k = 0; k < 3; k++) { const cx = ox + (R() - .5) * .4, cz = oz + (R() - .5) * .4, hh = .15 + R() * .2; S.tube([[cx, 0, cz, .04, 0], [cx, hh, cz, .04, 0]], 13, { sub: 1 }); S.pt([cx, hh + .05, cz], [0, 1, 0], 14, 0, .08); } emitters.push({ t: 'candle', x: ox, y: .4, z: oz }); }
     } else if (st === 'wilds') {
-      const zz = wZone(x, y);
+      const wb = wZone(x, y), zz = WZ[wb].style;
       if (zz === 0) { if (c === '.' && r < .14) for (let k = 0; k < 5; k++) { const fx = ox + (R() - .5) * .8, fz = oz + (R() - .5) * .8; S.cone([fx, 0, fz], [fx, .22, fz], .03, 10, 0); S.ell([fx, .24, fz], .06, [14, 17, 25][k % 3], 0, { min: 6 }); } else if (r < .22) for (let k = 0; k < 4; k++) { const a = R() * 6.28; S.cone([ox, 0, oz], [ox + Math.cos(a) * .25, .35, oz + Math.sin(a) * .25], .05, 10, 0); } }
       else if (zz === 1) { if (r < .12) for (let k = 0; k < 5; k++) { const a = R() * 6.28; S.cone([ox, 0, oz], [ox + Math.cos(a) * .45, .3, oz + Math.sin(a) * .45], .07, 13, 0); } else if (r < .16) { S.tube([[ox, 0, oz, .05, 0], [ox, .25, oz, .045, 0]], 28, { sub: 1 }); S.ell([ox, .28, oz], [.16, .07, .16], 14, 0, { min: 10 }); if (R() < .4) emitters.push({ t: 'spore', x: ox, y: .3, z: oz }); } else if (r < .18) S.tube([[ox - .8, .18, oz, .18, 0], [ox + .8, .2, oz + .3, .16, 0]], 12, { sub: 1 }); }
       else if (zz === 2) { if (r < .08) S.ell([ox, .15, oz], [.3 + R() * .3, .22, .28], 11, 0); else if (r < .13) for (let k = 0; k < 4; k++) { const a = R() * 6.28; S.cone([ox, 0, oz], [ox + Math.cos(a) * .3, .45, oz + Math.sin(a) * .3], .05, 25, 0); } }
       else { if (r < .05) { for (let k = 0; k < 3; k++) { const a = R() * 3.14; S.tube([[ox, .04, oz, .025, 0], [ox + Math.cos(a) * .35, .04, oz + Math.sin(a) * .35, .025, 0]], 28, { sub: 1 }); } S.ell([ox + .2, .1, oz], [.1, .09, .11], 28, 0); } else if (r < .08) { S.pt([ox, .02, oz], [0, 1, 0], 21, 0, .3, 16); emitters.push({ t: 'vent', x: ox, y: .1, z: oz }); } else if (r < .11) S.cone([ox, 0, oz], [ox + (R() - .5) * .3, .6 + R() * .5, oz + (R() - .5) * .3], .14, 24, 0); }
+      // detalhes de cada bioma, além da forma base
+      const r2 = R();
+      if (wb === 2) {
+        if (r2 < .06) { const a = R() * 6.28, L = .8 + R() * .7, x1 = ox + Math.cos(a) * L, z1 = oz + Math.sin(a) * L, h = .9 + R() * .6; S.mem([[[ox, .05, oz], [x1, .05, z1], [(ox + x1) / 2, h, (oz + z1) / 2]]], 152, () => 0, { dm: .35 }); }   // teia
+        else if (r2 < .09) { S.ell([ox, .45, oz], [.22, .36, .22], 152, 0, { min: 18 }); S.tube([[ox, .8, oz, .02, 0], [ox, 1.7, oz, .015, 0]], 152, { sub: 1 }); }   // casulo
+      } else if (wb === 3) {
+        if (r2 < .1) for (let k = 0; k < 6; k++) { const a = R() * 6.28, d = R() * .4; S.cone([ox + Math.cos(a) * d, 0, oz + Math.sin(a) * d], [ox + Math.cos(a) * d + (R() - .5) * .15, .6 + R() * .5, oz + Math.sin(a) * d], .03, 22, 0); }   // juncos
+        else if (r2 < .12) emitters.push({ t: 'mist', x: ox, y: .2, z: oz });
+      } else if (wb === 5) {
+        if (r2 < .07) { S.box([ox, .45, oz], [.28, .45, .09], 154, 0, { faces: 'tnsew' }); if (R() < .5) S.box([ox, .75, oz], [.42, .08, .09], 154, 0, { faces: 'tnsew' }); }   // lápide
+        else if (r2 < .085) { S.tube([[ox, 0, oz, .04, 0], [ox, .3, oz, .035, 0]], 28, { sub: 1 }); emitters.push({ t: 'candle', x: ox, y: .34, z: oz }); }
+      } else if (wb === 6) {
+        if (r2 < .05) { S.pt([ox, .02, oz], [0, 1, 0], 158, 0, .35, 16); emitters.push({ t: 'vent', x: ox, y: .1, z: oz }); }   // fenda com brasas
+        else if (r2 < .1) S.ell([ox, .2, oz], [.4 + R() * .3, .3, .35], 156, 0);
+      }
     } else if (st === 'swamp') {
       if (r < .07) for (let k = 0; k < 5; k++) { const a = R() * 6.28, d0 = R() * .35; S.cone([ox + Math.cos(a) * d0, 0, oz + Math.sin(a) * d0], [ox + Math.cos(a) * (d0 + .15), .6 + R() * .5, oz + Math.sin(a) * (d0 + .15)], .04, R() < .3 ? 12 : 10, 0); }
       else if (r < .1) { S.tube([[ox, 0, oz, .05, 0], [ox, .22, oz, .04, 0]], 28, { sub: 1 }); S.ell([ox, .25, oz], [.14, .06, .14], 14, 0, { min: 10 }); if (R() < .5) emitters.push({ t: 'spore', x: ox, y: .3, z: oz }); }
@@ -516,7 +543,7 @@ function buildWorld(key, G) {
     const HS = [[-6, -5, 0], [5, -6, 1], [-8, 4, 2], [8, 3, 3], [0, -10, 4], [-2, 2, 5]];
     for (const [hx, hz, k] of HS) { const x0 = cx + hx, z0 = cz + hz, w = 1.6 + (k % 2) * .5; S.box([x0, 1.1, z0], [w, 1.1, w * .8], p => Math.abs(frac((p[0] + p[2]) / 1.4 + .5) - .5) < .05 ? 12 : 28, 0, { faces: 'nsew', flags: 8 }); S.mem([[[x0 - w - .3, 2.2, z0 - w * .8 - .3], [x0 + w + .3, 2.2, z0 - w * .8 - .3], [x0 + w + .3, 3.5, z0]], [[x0 - w - .3, 2.2, z0 - w * .8 - .3], [x0 + w + .3, 3.5, z0], [x0 - w - .3, 3.5, z0]], [[x0 - w - .3, 3.5, z0], [x0 + w + .3, 3.5, z0], [x0 + w + .3, 2.2, z0 + w * .8 + .3]], [[x0 - w - .3, 3.5, z0], [x0 + w + .3, 2.2, z0 + w * .8 + .3], [x0 - w - .3, 2.2, z0 + w * .8 + .3]]], p => frac(p[1] * 2.6) < .15 ? 23 : 25, () => 0, { flags: 8, dm: 1.1 }); emitters.push({ t: 'smoke', x: x0 + w * .5, y: 3.8, z: z0 - .3 }); S.ell([x0, 1.4, z0 + w * .8 + .02], [.25, .2, .03], 14, 0, { min: 8 }); }
     S.tube([[cx + 2, 0, cz - 2, .4, 0], [cx + 2, 6, cz - 2, .3, 0]], 11, { sub: 1, flags: 8 }); S.ell([cx + 2, 6.5, cz - 2], .55, 14, 0, { min: 30 }); emitters.push({ t: 'crystal', x: cx + 2, y: 6.6, z: cz - 2 });
-    for (const rm of G.rooms) if (rm.zone !== undefined && R() < .5) emitters.push({ t: rm.zone >= 3 ? 'vent' : 'fly', x: rm.wx, y: .6, z: rm.wz });
+    for (const rm of G.rooms) if (rm.zone !== undefined && R() < .5) emitters.push({ t: rm.zone >= 6 ? 'vent' : rm.zone === 3 ? 'mist' : 'fly', x: rm.wx, y: .6, z: rm.wz });
     for (const rm of G.rooms) if (rm.en && !rm.kind) { S.ell([rm.wx + 1.2, .12, rm.wz - .8], [.5, .12, .5], 12, 0); for (let k = 0; k < 4; k++) S.tube([[rm.wx + 1.2 + Math.cos(k * 1.6) * .35, .1, rm.wz - .8 + Math.sin(k * 1.6) * .35, .06, 0], [rm.wx + 1.2, .35, rm.wz - .8, .02, 0]], 12, { sub: 1 }); for (let k = 0; k < 3; k++) S.tube([[rm.wx - 1, .04, rm.wz + 1 + k * .15, .025, 0], [rm.wx - .6, .04, rm.wz + 1.2 + k * .1, .025, 0]], 28, { sub: 1 }); }
   }
   if (st === 'swamp') for (const rm of G.rooms) { emitters.push({ t: 'fly', x: rm.wx, y: .6, z: rm.wz }); emitters.push({ t: 'mist', x: rm.wx + 2, y: .2, z: rm.wz - 1 }); }

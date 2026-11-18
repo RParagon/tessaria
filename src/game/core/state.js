@@ -78,11 +78,41 @@ const DIFFS = [
   { n: 'Tormento II', hp: 6.5, dmg: 2.8, xp: 3.3, gold: 3, find: 1.85, spd: 1.27, lvl: 20, act2: true, tier: 2, c: '#ff8a3d', d: 'Só para Tecelões com o equipamento certo.' },
   { n: 'Tormento III', hp: 9, dmg: 3.4, xp: 4.2, gold: 3.6, find: 2.1, spd: 1.32, lvl: 24, act2: true, tier: 2.5, c: '#ff4a4a', d: 'O limite do Tear. Boa sorte.' },
 ];
-const WZ = [{ n: 'Campina Brasa', lv: 2, c: '#9bd36a' }, { n: 'Mata dos Uivos', lv: 7, c: '#5fbf8a' }, { n: 'Colinas Partidas', lv: 13, c: '#e0a85a' }, { n: 'Ermo Profundo', lv: 20, c: '#ff6a5a' }];
-const WPOOL = [['javali', 'gosmo', 'javali', 'lobo'], ['lobo', 'javali', 'wisp', 'lobo', 'gosmo'], ['urso', 'lobo', 'imp', 'bat', 'lobo'], ['urso', 'beetle', 'imp', 'lobo', 'fantasma', 'urso']];
-const WC = { x: 48, y: 38 };
+// ---------- Ermos: biomas ----------
+// O mapa é dividido em anéis (distância da vila) e, nos anéis do meio, em setores (direção). As bordas são
+// deformadas por ruído. lv: nível dos monstros; pool: monstros dos acampamentos; lair: Alfa com nome no covil;
+// style: forma base da paisagem (0 campina, 1 mata, 2 colinas, 3 ermo); cave: base da caverna (região de Fenda).
+const WZ = [
+  { n: 'Campina Brasa', lv: 2, c: '#9bd36a', style: 0, pool: ['javali', 'gosmo', 'javali', 'lobo'], lair: ['javali', 'Javali-Rei'], cave: null },
+  { n: 'Mata dos Uivos', lv: 8, c: '#5fbf8a', style: 1, pool: ['lobo', 'lobo', 'javali', 'urso', 'wisp'], lair: ['lobo', 'Uivo Velho'], cave: 'forest' },
+  { n: 'Teia Funda', lv: 12, c: '#c9c2e6', style: 1, pool: ['aranha', 'aranha', 'aranha', 'wisp', 'bat'], lair: ['aranha', 'Rainha da Teia'], cave: 'forest' },
+  { n: 'Brejo Cinzento', lv: 15, c: '#7f9f72', style: 1, pool: ['sapo', 'afogado', 'gosmo', 'sapo'], lair: ['sapo', 'Rei-Sapo'], cave: 'swamp' },
+  { n: 'Colinas Partidas', lv: 17, c: '#e0a85a', style: 2, pool: ['urso', 'beetle', 'imp', 'lobo'], lair: ['beetle', 'Besouro Couraça'], cave: 'peaks' },
+  { n: 'Cemitério Esquecido', lv: 20, c: '#9aa0cc', style: 1, pool: ['skel', 'skel', 'bat', 'fantasma', 'afogado'], lair: ['fantasma', 'O Lamento'], cave: 'crypt' },
+  { n: 'Planalto de Cinzas', lv: 24, c: '#ff7a4a', style: 2, pool: ['imp', 'imp', 'beetle', 'bat'], lair: ['imp', 'Tirano de Cinzas'], cave: 'peaks' },
+  { n: 'Ermo Profundo', lv: 28, c: '#ff5a7a', style: 3, pool: ['urso', 'beetle', 'imp', 'skel', 'aranha', 'fantasma'], lair: ['urso', 'Urso Antigo'], cave: 'glass' },
+];
+const WPOOL = WZ.map(b => b.pool);
+const WC = { x: 150, y: 130 };
 const TYPELV = { gosmo: 1, wisp: 1, javali: 1, lobo: 2, aranha: 1, thief: 1, skel: 4, bat: 4, urso: 5, imp: 8, beetle: 8, sapo: 13, afogado: 13, sentinela: 16, fantasma: 16 };
-const wZone = (tx, ty) => { const d = Math.hypot(tx - WC.x, (ty - WC.y) * 1.15); return d < 21 ? 0 : d < 31 ? 1 : d < 40 ? 2 : 3; };
+const wDist = (tx, ty) => Math.hypot(tx - WC.x, (ty - WC.y) * 1.15) + (vnoise(tx * .035 + 3, ty * .035 + 7) - .5) * 16;
+/** Anel: 0 em volta da vila, 3 na borda. Decide densidade de paredes e quantos monstros por acampamento. */
+const wRing = (tx, ty) => { const d = wDist(tx, ty); return d < 26 ? 0 : d < 60 ? 1 : d < 96 ? 2 : 3; };
+/** Bioma (índice em WZ) de um ponto em ladrilhos. */
+const wZone = (tx, ty) => {
+  const r = wRing(tx, ty); if (r === 0) return 0; if (r === 3) return 7;
+  const a = ((Math.atan2(ty - WC.y, tx - WC.x) * 57.2958 + (vnoise(tx * .03 + 50, ty * .03 + 11) - .5) * 50) % 360 + 360) % 360;
+  if (r === 1) return a >= 180 && a < 300 ? 1 : (a >= 300 || a < 60) ? 2 : 3;   // oeste/norte · nordeste/leste · sul
+  return (a >= 280 || a < 40) ? 4 : a >= 160 ? 5 : 6;                            // norte/leste · oeste · sul
+};
+/** Troca de cores por bioma (material → material). Linhas 152-159 só existem na paleta dos Ermos. */
+const WREMAP = [null, null,
+  { 8: 157, 10: 24, 13: 29, 22: 157, 9: 24, 12: 29, 23: 157, 25: 24 },           // Teia Funda: chão violeta-escuro, copas quase pretas (as teias, claras, se destacam)
+  { 8: 153, 10: 22, 13: 22, 9: 153, 12: 19, 23: 153, 25: 22 },                    // Brejo: lodo escuro, copas verde-musgo
+  null,
+  { 8: 154, 10: 24, 13: 24, 22: 154, 9: 154, 12: 29 },           // Cemitério: pedra azulada, árvores mortas
+  { 8: 155, 9: 155, 10: 156, 11: 156, 23: 155, 25: 156, 21: 158 },// Planalto: cinza, rocha queimada, brasas
+  null];
 const wildLv = (x, z) => WZ[wZone(x / T, z / T)].lv;
 const REGBASE = { hub: 1, forest: 1, crypt: 4, peaks: 8, swamp: 13, glass: 16 };
 const curDiff = () => DIFFS[(G.save && G.save.diff) || 0] || DIFFS[0];
@@ -90,7 +120,7 @@ const diffOk = d => !!G.save && G.save.lvl >= d.lvl && (!d.act2 || !!G.save.boss
 const monLevel = () => { if (!G.save) return 1; if (RG && RG.wild && P) return wildLv(P.x, P.z); if (G.rift) return G.save.lvl + G.rift.L; return Math.max(REGBASE[RG ? RG.key : 'hub'] || 1, G.save.lvl); };
 function monsterScale() {
   const D = curDiff();
-  if (RG && RG.wild) { const zl = P ? wildLv(P.x, P.z) : 2; return { hp: D.hp * (1 + .1 * (zl - 1)), dmg: D.dmg * (1 + .06 * (zl - 1)), xp: D.xp * (1 + .08 * (zl - 1)) }; }
+  if (RG && RG.wild) { const zl = P ? wildLv(P.x, P.z) : 2; return { hp: D.hp * (1 + .1 * (zl - 1)), dmg: D.dmg * (1 + .06 * (zl - 1)), xp: D.xp * (1 + .08 * (zl - 1)) * (G.bloodT > 0 ? 1.5 : 1) }; }   // Lua de Sangue: +50% de XP
   if (G.rift) return { hp: G.rift.hm * D.hp, dmg: G.rift.dm * D.dmg, xp: D.xp };
   const base = REGBASE[RG ? RG.key : 'hub'] || 1, over = Math.max(0, (G.save ? G.save.lvl : 1) - base - 2), n = G.save && G.save.diff ? 1 : .6;
   return { hp: D.hp * (1 + .08 * n * over), dmg: D.dmg * (1 + .05 * n * over), xp: D.xp * (1 + .05 * over) };

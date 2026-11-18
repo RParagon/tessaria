@@ -1,5 +1,22 @@
 # Histórico de versões
 
+## 0.15.0 · Ermos 2.0
+- **Ermos cerca de 10× maiores** (300×260), montados em blocos sob demanda: cada pedaço do mapa é criado quando você chega perto e descartado quando fica longe, então o mapa grande não pesa no celular (entrar leva cerca de 1 s)
+- **Oito biomas**, por distância e direção da vila, com cores, monstros e perigos próprios:
+  - Campina Brasa (Nv 2) e Mata dos Uivos (Nv 8);
+  - **Teia Funda** (Nv 12): aranhas, teias no chão que deixam lento, casulos e a Rainha da Teia;
+  - **Brejo Cinzento** (Nv 15): muita água, juncos, névoa, sapos e afogados;
+  - **Colinas Partidas** (Nv 17): pedras desabando (círculos no chão antes de cair);
+  - **Cemitério Esquecido** (Nv 20): lápides, velas, esqueletos e fantasmas;
+  - **Planalto de Cinzas** (Nv 24): chuva de brasas e fendas que brilham;
+  - **Ermo Profundo** (Nv 28): mais Alfas e mais elites.
+- **Covis com Alfa nomeado** em cada bioma (Rainha da Teia, Uivo Velho, Rei-Sapo, Besouro Couraça, O Lamento, Tirano de Cinzas, Urso Antigo, Javali-Rei): maiores, bem mais fortes, com loot melhor
+- **Obeliscos**: desperte um em cada bioma e viaje entre eles (ou até o portão da vila)
+- **Cavernas (covis)**: entradas nos Ermos levam a uma caverna fixa no nível do bioma, com guardião; a saída devolve na boca da caverna
+- **Eventos**: Lua de Sangue (75 s com muito mais elites e +50% de XP) e emboscadas na estrada com recompensa
+- **Minimapa** nos Ermos vira uma janela em volta do herói, com obeliscos e cavernas marcados
+- Correções: o feito "Até o Fim do Mapa" voltou a exigir o Ermo Profundo; portais de saída de caverna nunca ficam trancados
+
 ## 0.14.0 · Loot pelo servidor e gerador de itens único
 - **Gerador de itens único:** o jogo e o servidor usam o mesmo código para criar itens (`shared/items.ts`). Acabaram as regras duplicadas que podiam divergir
 - **Loot da Fenda do grupo pelo servidor:** cada monstro derrotado é conferido pelo servidor (o mesmo monstro não paga duas vezes, há limite de ritmo e de total), que sorteia os itens de cada jogador perto, com o nível, a classe, a dificuldade e a Sorte de cada um

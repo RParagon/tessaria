@@ -105,8 +105,10 @@ function updateWilds() {
   if (!RG || !RG.wild || !P) return;
   const z = wZone(P.x / T, P.z / T);
   if (G.wzone === undefined || G.wzone === null) G.wzone = z;
-  else if (z !== G.wzone) { G.wzone = z; const W2 = WZ[z], hot = W2.lv > G.save.lvl + 3; toast(W2.n.toUpperCase(), true, `monstros nível ${W2.lv}` + (hot ? ' · PERIGOSO PARA VOCÊ' : ''), hot ? '#ff6a5a' : W2.c); updateDiffHud(); G.save.wz = Math.max(G.save.wz || 0, z); }
+  else if (z !== G.wzone) { G.wzone = z; const W2 = WZ[z], hot = W2.lv > G.save.lvl + 3; toast(W2.n.toUpperCase(), true, `monstros nível ${W2.lv}` + (hot ? ' · PERIGOSO PARA VOCÊ' : ''), hot ? '#ff6a5a' : W2.c); updateDiffHud(); G.save.wz = Math.max(G.save.wz || 0, wRing(P.x / T, P.z / T)); }   // wz: maior anel alcançado (3 = Ermo Profundo)
+  if (G.bloodT > 0 && Math.random() < .5) spawn({ x: P.x + rr(-9, 9), y: rr(2, 5), z: P.z + rr(-7, 7), vy: -rr(.5, 1.2), life: 1.4, s0: .06, s1: .02, b0: .9, b1: .1, mat: 21 });   // Lua de Sangue
   G.wT = (G.wT || 0) - 1 / 60; if (G.wT > 0) return; G.wT = 1;
+  wildsEvents(z);
   for (const rm of RG.rooms) {
     if (!rm.en || !rm.spawned) continue;
     const live = enemies.some(e => e.room === rm && e.dieT < 0), far = Math.hypot(rm.wx - P.x, rm.wz - P.z) > 30;
@@ -120,7 +122,7 @@ function updateTriggers(dt) {
   if (inter.some(i => i.taken)) inter = inter.filter(i => !i.taken);
   nearInter = null; let bd = 99;
   for (const it of inter) {
-    if (it.kind === 'portal' && it.to !== 'hub') { const [lit, lock] = portalState(it.to); it.lit = lit; it.lock = lock; }
+    if (it.kind === 'portal' && it.to !== 'hub' && !it.exit) { const [lit, lock] = portalState(it.to); it.lit = lit; it.lock = lock; }   // exit: saída (de covil), nunca trancada
     const d = Math.hypot(it.x - P.x, it.z - P.z);
     if (it.kind === 'frag' && d < 1.3 && !it.taken) { collectFrag(it); continue; }
     if (it.kind === 'frag') continue;
@@ -134,7 +136,7 @@ function updateTriggers(dt) {
   if (RG.key === 'hub') { const [fx, fz] = HUB.fountain, d = Math.hypot(fx - P.x, fz - P.z); if (d < 3.4 && d < bd) { bd = d; nearInter = { kind: 'shrine', x: fx, z: fz, hub: true }; } }
   const pr = $('#prompt'), tu = $('#tUse');
   if (nearInter && P.dieT < 0) {
-    const HL = { revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
+    const HL = { obelisk: nearInter.kind === 'obelisk' ? ((G.save.obel || []).includes(nearInter.zone) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
     const label = HL[nearInter.kind] || (nearInter.kind === 'appletree' ? 'Deixar a maçã na macieira' : nearInter.kind === 'altar' ? 'Desafiar ' + BOSSDEF[REG[RG.key].boss].name.split(',')[0] + ' de novo · ' + curDiff().n : nearInter.kind === 'npc' ? 'Falar com ' + nearInter.npc.name : nearInter.kind === 'shrine' ? 'Descansar e salvar' : nearInter.kind === 'chest' ? 'Abrir baú' : nearInter.kind === 'portal' ? (nearInter.to === 'hub' ? 'Voltar à Vila Brasa' : 'Entrar: ' + REG[nearInter.to].name) : nearInter.kind === 'dragon' ? 'Falar com Varkhaz' : nearInter.kind === 'board' ? 'Ver contratos' : nearInter.kind === 'riftportal' ? 'Entrar na Fenda do Tear' : 'Usar');
     pr.innerHTML = (G.touch ? '' : '<kbd>E</kbd>') + label; pr.hidden = false; tu.hidden = !G.touch;
     if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
@@ -144,8 +146,12 @@ function updateTriggers(dt) {
       rm.spawned = true; let k = 0;
       const grp = []; for (const [type, n] of Object.entries(rm.en)) for (let i = 0; i < n; i++) { const [x, z] = freeSpot(rm.wx, rm.wz, (rm.r || Math.min(rm.w, rm.h)) * T * .7); grp.push(spawnEnemy(type, x, z, k++ * .12)); }
       grp.forEach(e => e.room = rm);
-      if (rm.alpha && grp.length) { const e = grp[0]; makeElite(e); e.alpha = true; e.elite.name = ENAME[e.type] + ' Alfa'; e.hp = e.maxHp = Math.round(e.maxHp * 1.5); }
-      else if (grp.length && Math.random() < (RG.wild ? .1 : G.rift ? .65 : .35) + .05 * (G.save.diff || 0)) makeElite(pick(grp));
+      if (rm.alpha && grp.length) {   // Alfa (e, no covil, o Alfa com nome do bioma: maior e bem mais forte)
+        const e = (rm.lair && grp.find(x => x.type === rm.lair[0])) || grp[0]; makeElite(e); e.alpha = true;
+        e.elite.name = rm.lair ? rm.lair[1] : ENAME[e.type] + ' Alfa'; e.hp = e.maxHp = Math.round(e.maxHp * (rm.lair ? 4 : 1.5));
+        if (rm.lair) { e.lair = true; e.scale *= 1.55; }
+      }
+      else if (grp.length && Math.random() < (RG.wild ? (G.bloodT > 0 ? .45 : .1) + (rm.zone === 7 ? .15 : 0) : G.rift ? .65 : .35) + .05 * (G.save.diff || 0)) makeElite(pick(grp));   // Ermos: Lua de Sangue e Ermo Profundo têm mais elites
       if (grp.length >= 5 && (G.save.diff || 0) >= 3 && Math.random() < .35) makeElite(pick(grp.filter(e => !e.elite)));
       if (!RG.thiefDone && rm.kind !== 'boss' && Math.random() < .14) { RG.thiefDone = true; spawnThief(rm); }
     }
@@ -157,6 +163,8 @@ function interact() {
   const it = nearInter;
   if (it.kind === 'revive') { coopStartSew(it.id); return; }
   if (it.kind === 'npc') { const n = it.npc; n.talkT = 4; G.save.met['t_' + n.id] = true; const lines = questLines(n.id) || DIALOG[n.id](); say(lines, () => updateObjective()); }
+  else if (it.kind === 'obelisk') useObelisk(it);
+  else if (it.kind === 'cave') enterCave(it);
   else if (it.kind === 'shrine') {
     P.hp = P.maxHp; G.save.potions = stats().maxPot; G.save.cp = { region: RG.key, x: P.x, z: P.z }; writeSave();
     sfx('heal'); toast('Você descansou. Progresso salvo.');
@@ -181,7 +189,7 @@ function interact() {
   } else if (it.kind === 'board') { openMenu('board');
   } else if (it.kind === 'riftportal') { if (!it.lit) { toast('A Fenda abre depois de recuperar o Fio Verde.'); return; } openMenu('riftm');
   } else if (it.kind === 'portal') {
-    if (it.to !== 'hub') { const [lit, lock] = portalState(it.to); it.lit = lit; it.lock = lock; }
+    if (it.to !== 'hub' && !it.exit) { const [lit, lock] = portalState(it.to); it.lit = lit; it.lock = lock; }
     if (!it.lit) { toast(it.lock || 'O portal está apagado.'); return; }
     travel(it.to);
   }
@@ -210,7 +218,7 @@ function travel(to) {
 }
 function loadRegion(key, atCp) {
   if (boss) endBossFight(false);
-  G.rematch = false; G.wzone = null;
+  G.rematch = false; G.wzone = null; G.amb = null;
   if (key !== 'rift') G.rift = null;
   RG = genRegion(key); RG.gateSet = new Set(RG.gates.map(g => g[0] + ',' + g[1]));
   if (key === 'rift' || key === 'home') { if (WORLDS[key]) WORLDS[key].chunks.forEach(freeVAO); WORLDS[key] = buildWorld(key, RG); }
@@ -234,14 +242,17 @@ function loadRegion(key, atCp) {
     setupHome();
   } else {
     const st = RG.start;
-    inter.push({ kind: 'portal', to: 'hub', x: st.wx, z: st.wz - 3.2, r: 2.2, lit: true, model: getModel('portal'), anim: newAnim(getModel('portal')), yaw: 0 });
+    inter.push({ kind: 'portal', to: G.rift && G.rift.cave ? 'wilds' : 'hub', exit: !!(G.rift && G.rift.cave), x: st.wx, z: st.wz - 3.2, r: 2.2, lit: true, model: getModel('portal'), anim: newAnim(getModel('portal')), yaw: 0 });
     RG.rooms.forEach((rm, i) => {
       if (rm.kind === 'shrine') inter.push({ kind: 'shrine', x: rm.wx, z: rm.wz, r: 2, model: getModel('shrine'), anim: newAnim(getModel('shrine')), yaw: 0 });
+      if (rm.kind === 'obelisk') inter.push({ kind: 'obelisk', zone: rm.ob, x: rm.wx, z: rm.wz, r: 2, model: getModel('pylon'), anim: newAnim(getModel('pylon')), yaw: 0 });
+      if (rm.kind === 'cave') inter.push({ kind: 'cave', zone: rm.zone, ring: rm.ring, ri: i, x: rm.wx, z: rm.wz, r: 2.2, model: getModel('portal'), anim: newAnim(getModel('portal')), lit: false, yaw: 0 });
       if (rm.chest) { const id = key + '-c' + i, open = G.save.chests.includes(id); inter.push({ kind: 'chest', id, x: rm.wx + (rm.frag !== undefined ? 2 : 0), z: rm.wz - 1, r: 1.8, open, openT: open ? 9 : 0, model: getModel('chest'), anim: newAnim(getModel('chest')), yaw: 0 }); }
       if (rm.frag !== undefined && !G.save.frags.includes(rm.frag)) inter.push({ kind: 'frag', idx: rm.frag, x: rm.wx, z: rm.wz, model: getModel('frag'), anim: newAnim(getModel('frag')), yaw: 0 });
       if (rm.kind === 'boss' && G.save.bosses[key]) { const calm = key === 'peaks' && G.save.dragonCalm && !G.save.ended; inter.push({ kind: 'portal', to: 'hub', x: rm.wx + (calm ? 6 : 0), z: rm.wz + (calm ? 5 : 0), r: 2, lit: true, model: getModel('portal'), anim: newAnim(getModel('portal')), yaw: 0 }); if (calm) inter.push(calmDragonInter(rm)); if (key !== 'peaks' || G.save.ended) inter.push({ kind: 'altar', x: rm.wx - 4.5, z: rm.wz + 3.5, r: 1.9, model: getModel('pedestal'), anim: newAnim(getModel('pedestal')), yaw: 0 }); }
     });
-    ({ wilds: ['javali', 'lobo', 'urso', 'gosmo', 'wisp', 'imp', 'bat', 'beetle', 'fantasma'], forest: ['gosmo', 'wisp', 'golem'], crypt: ['skel', 'bat', 'skull'], peaks: ['imp', 'beetle', 'dragon'], swamp: ['sapo', 'afogado', 'hydra'], glass: ['sentinela', 'fantasma', 'reflexo'] })[key === 'rift' ? G.rift.base : key].forEach(k => getModel(DEF[k] ? DEF[k].model : k));
+    if (RG.wild) for (const rm of RG.rooms) if (rm.zone === 2 && rm.en) for (let k = 0; k < 3; k++) { const a = k * 2.1 + rm.i, d = 3.2 + (k % 2) * 1.4; G.zones.push({ x: rm.wx + Math.cos(a) * d, z: rm.wz + Math.sin(a) * d, r: 1.5, t: 0, dur: 1e9, team: 'e', mat: 152, web: true }); }   // teias que deixam lento
+    ({ wilds: ['javali', 'lobo', 'urso', 'gosmo', 'wisp', 'imp', 'bat', 'beetle', 'fantasma', 'aranha', 'skel', 'sapo', 'afogado'], forest: ['gosmo', 'wisp', 'golem'], crypt: ['skel', 'bat', 'skull'], peaks: ['imp', 'beetle', 'dragon'], swamp: ['sapo', 'afogado', 'hydra'], glass: ['sentinela', 'fantasma', 'reflexo'] })[key === 'rift' ? G.rift.base : key].forEach(k => getModel(DEF[k] ? DEF[k].model : k));
     if (key === 'rift') { getModel(G.rift.boss); if (G.rift.boss === 'spider') getModel('spiderling'); }
     { const fights = RG.rooms.filter(r => r.en && r.kind !== 'boss'), np = RG.wild ? 6 : Math.random() < .5 ? 2 : 1;
       for (let i = 0; i < np && fights.length; i++) { const rm = fights.splice(Math.floor(Math.random() * fights.length), 1)[0], [x, z] = freeSpot(rm.wx, rm.wz, (rm.r || Math.min(rm.w, rm.h)) * T * .6); inter.push({ kind: 'pylon', bt: pick(['furia', 'rapidez', 'fortuna', 'protecao']), x, z, r: 1.6, model: getModel('pylon'), anim: newAnim(getModel('pylon')), yaw: 0 }); } }
@@ -253,8 +264,9 @@ function loadRegion(key, atCp) {
     }
   }
   let sx, sz;
-  const cp = G.save.cp;
-  if (atCp && cp && cp.region === key) { sx = cp.x; sz = cp.z; }
+  const cp = G.save.cp, arr = G.arrive; if (key !== 'rift') G.arrive = null;   // arrive: voltar na boca da caverna
+  if (arr && arr.region === key) { sx = arr.x; sz = arr.z; G.save.cp = { region: key, x: sx, z: sz }; }
+  else if (atCp && cp && cp.region === key) { sx = cp.x; sz = cp.z; }
   else if (key === 'hub') { [sx, sz] = HUB.spawn; }
   else if (key === 'home') { sx = 16; sz = 17.6; }
   else { sx = RG.start.wx; sz = RG.start.wz + 1.5; G.save.cp = { region: key, x: sx, z: sz }; }
@@ -266,7 +278,7 @@ function loadRegion(key, atCp) {
   const rq = key === 'hub' && requiredTalk(); if (rq && G.save.met.ysolde) setTimeout(() => toast(NPCS.find(n => n.id === rq).name + ' quer falar com você', false, 'SIGA O ! DOURADO'), 2800);
   if (key === 'hub' && G.save.met.ysolde && !G.save.met.houseTip && G.save.met.wildTip) { G.save.met.houseTip = true; setTimeout(() => toast('CASA À VENDA', true, 'a leste da forja · baú, correio e mobília com bônus'), 4200); }
   if (key === 'hub' && G.save.met.ysolde && !G.save.met.wildTip) { G.save.met.wildTip = true; setTimeout(() => toast('NOVO: OS ERMOS', true, 'o portão ao sul da vila leva às terras selvagens · bichos para upar'), 4200); }
-  if (key === 'wilds') setTimeout(() => toast('Quanto mais longe da vila, mais perigoso', false, 'CAMPINA → MATA → COLINAS → ERMO PROFUNDO'), 3200);
+  if (key === 'wilds') setTimeout(() => toast('Quanto mais longe da vila, mais perigoso', false, 'OITO BIOMAS · DESPERTE OS OBELISCOS PARA VIAJAR'), 3200);
   if (key === 'hub' && G.save.met.ysolde && !G.save.met.diffTip) { G.save.met.diffTip = true; setTimeout(() => toast('Quer mais desafio?', false, 'A DIFICULDADE FICA NO MENU (ESC)'), 5600); }
   updateDiffHud();
 }
@@ -283,9 +295,10 @@ function setupHome() {
 }
 function homeRebuild() { if (RG && RG.key === 'home') { if (WORLDS.home) WORLDS.home.chunks.forEach(freeVAO); WORLDS.home = buildWorld('home', RG); WD = WORLDS.home; emitAcc = {}; setupHome(); } }
 function rebuildHub() { if (!WORLDS.hub) return; WORLDS.hub.chunks.forEach(freeVAO); if (RG && RG.key === 'hub') { WORLDS.hub = buildWorld('hub', RG); WD = WORLDS.hub; emitAcc = {}; } else delete WORLDS.hub; }
+const MMW = 96, MMH = 80;   // tamanho da janela do minimapa nos Ermos (em ladrilhos)
 function setupMinimap() {
   const cv = $('#mmap'), show = RG && RG.key !== 'hub' && RG.key !== 'home'; cv.hidden = !show; $('#mmapZ').hidden = !show; if (!show) { MM.key = null; return; }
-  const W = RG.W, H = RG.H; cv.width = W; cv.height = H; MM.key = RG; MM.seen = new Uint8Array(W * H); MM.base = new Uint8ClampedArray(W * H * 4);
+  const W = RG.W, H = RG.H; cv.width = RG.wild ? MMW : W; cv.height = RG.wild ? MMH : H; MM.key = RG; MM.seen = new Uint8Array(W * H); MM.base = new Uint8ClampedArray(W * H * 4);   // Ermos: o canvas é uma janela em volta do herói
   const pal = curPal || REGPAL.hub, row = (m, i) => { const r = pal.rows[m]; return r ? r[i] : [90, 90, 90]; };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = RG.grid[y][x], o = (y * W + x) * 4; let col;
@@ -302,12 +315,13 @@ function updateMinimap(dt) {
   const W = RG.W, H = RG.H, tx = Math.floor(P.x / T), tz = Math.floor(P.z / T), rad = RG.wild ? 9 : 7;
   for (let y = tz - rad; y <= tz + rad; y++) for (let x = tx - rad; x <= tx + rad; x++) if (x >= 0 && y >= 0 && x < W && y < H && (x - tx) ** 2 + (y - tz) ** 2 <= rad * rad) MM.seen[y * W + x] = 1;
   MM.t -= dt; if (MM.t > 0) return; MM.t = .2;
-  const cv = $('#mmap'), cx = cv.getContext('2d'), img = cx.createImageData(W, H), d = img.data;
-  for (let i = 0; i < W * H; i++) { const o = i * 4; if (MM.seen[i]) { d[o] = MM.base[o]; d[o + 1] = MM.base[o + 1]; d[o + 2] = MM.base[o + 2]; } else { d[o] = 8; d[o + 1] = 6; d[o + 2] = 14; } d[o + 3] = 255; }
+  const VW = RG.wild ? MMW : W, VH = RG.wild ? MMH : H, ox = RG.wild ? clamp(tx - (MMW >> 1), 0, W - MMW) : 0, oy = RG.wild ? clamp(tz - (MMH >> 1), 0, H - MMH) : 0;
+  const cv = $('#mmap'), cx = cv.getContext('2d'), img = cx.createImageData(VW, VH), d = img.data;
+  for (let yy = 0; yy < VH; yy++) for (let xx = 0; xx < VW; xx++) { const i = (yy + oy) * W + xx + ox, o = (yy * VW + xx) * 4; if (MM.seen[i]) { d[o] = MM.base[i * 4]; d[o + 1] = MM.base[i * 4 + 1]; d[o + 2] = MM.base[i * 4 + 2]; } else { d[o] = 8; d[o + 1] = 6; d[o + 2] = 14; } d[o + 3] = 255; }
   cx.putImageData(img, 0, 0);
-  const dot = (x, z, col, s = 1) => { cx.fillStyle = col; cx.fillRect(Math.floor(x / T) - (s >> 1), Math.floor(z / T) - (s >> 1), s, s); };
+  const dot = (x, z, col, s = 1) => { cx.fillStyle = col; cx.fillRect(Math.floor(x / T) - ox - (s >> 1), Math.floor(z / T) - oy - (s >> 1), s, s); };
   const seenAt = (x, z) => MM.seen[Math.floor(z / T) * W + Math.floor(x / T)];
-  for (const it of inter) { if (!seenAt(it.x, it.z)) continue; if (it.kind === 'portal' || it.kind === 'riftportal') dot(it.x, it.z, '#5ff0ff', 2); else if (it.kind === 'shrine') dot(it.x, it.z, '#6fff9a', 2); else if (it.kind === 'chest' && !it.open) dot(it.x, it.z, '#ffd23d', 2); else if (it.kind === 'altar') dot(it.x, it.z, '#d07bff', 2); else if (it.kind === 'pylon' && !it.used) dot(it.x, it.z, '#fff08a', 1); }
+  for (const it of inter) { if (!seenAt(it.x, it.z)) continue; if (it.kind === 'portal' || it.kind === 'riftportal') dot(it.x, it.z, '#5ff0ff', 2); else if (it.kind === 'shrine') dot(it.x, it.z, '#6fff9a', 2); else if (it.kind === 'obelisk') dot(it.x, it.z, (G.save.obel || []).includes(it.zone) ? '#9ff6ff' : '#4a7a88', 3); else if (it.kind === 'cave') dot(it.x, it.z, '#c08a4a', 3); else if (it.kind === 'chest' && !it.open) dot(it.x, it.z, '#ffd23d', 2); else if (it.kind === 'altar') dot(it.x, it.z, '#d07bff', 2); else if (it.kind === 'pylon' && !it.used) dot(it.x, it.z, '#fff08a', 1); }
   for (const rm of RG.rooms) { if (rm.kind === 'boss' && seenAt(rm.wx, rm.wz)) dot(rm.wx, rm.wz, '#ff3a3a', 3); if (RG.wild && rm.alpha && !rm.spawned && seenAt(rm.wx, rm.wz)) dot(rm.wx, rm.wz, '#d07bff', 2); }
   for (const e of enemies) if (e.dieT < 0 && seenAt(e.x, e.z)) dot(e.x, e.z, e.elite ? '#d07bff' : '#ff5a4a', 1);
   if (boss) dot(boss.x, boss.z, '#ff2020', 3);
@@ -352,3 +366,58 @@ $('#eRewind').onclick = () => { $('#ending').hidden = true; G.mode = 'play'; G.m
 $('#eTitleBtn').onclick = () => { $('#ending').hidden = true; writeSave(); toTitle(); };
 
 
+
+// ---------- Ermos: eventos, perigos, obeliscos e covis ----------
+/** Uma vez por segundo nos Ermos: Lua de Sangue, emboscadas e os perigos de cada bioma. */
+function wildsEvents(b) {
+  if (coopIsGuest()) return;   // no grupo, quem simula é o anfitrião
+  const ring = wRing(P.x / T, P.z / T);
+  // Lua de Sangue: de tempos em tempos, 75 s com muito mais elites e +50% de XP
+  G.bloodCD = (G.bloodCD ?? 360 + rr(0, 240)) - 1;
+  if (G.bloodT > 0) { G.bloodT -= 1; if (G.bloodT <= 0) toast('A lua volta ao normal', false, 'FIM DA LUA DE SANGUE'); }
+  else if (G.bloodCD <= 0) { G.bloodT = 75; G.bloodCD = 540 + rr(0, 300); toast('LUA DE SANGUE', true, 'MAIS ELITES E +50% DE XP POR 75 SEGUNDOS', '#ff4a5a'); sfx('roar'); G.shake = Math.max(G.shake, .3); }
+  // Emboscada (fora da Campina): monstros do bioma cercam o herói; vencer dá recompensa
+  const A = G.amb;
+  if (A) {
+    if (A.list.every(e => e.dieT >= 0 || e.dead)) { G.amb = null; dropGold(P.x, P.z, 20 + 12 * A.ring); dropItem(P.x + 1, P.z, rollRar(A.ring >= 2 ? 2 : 1)); toast('EMBOSCADA VENCIDA', true, 'OS SAQUEADORES DEIXARAM O QUE CARREGAVAM', '#ffbf3d'); sfx('lvl'); }
+    else if (Math.hypot(P.x - A.x, P.z - A.z) > 40) G.amb = null;
+  } else {
+    G.ambCD = (G.ambCD ?? 120 + rr(0, 90)) - 1;
+    if (G.ambCD <= 0 && ring >= 1 && !enemies.some(e => e.dieT < 0 && Math.hypot(e.x - P.x, e.z - P.z) < 16)) {
+      G.ambCD = 150 + rr(0, 120);
+      const pool = WPOOL[b], n = 3 + ring + (G.bloodT > 0 ? 2 : 0), list = [];
+      for (let i = 0; i < n; i++) { const a = i / n * 6.283 + rr(-.3, .3), [x, z] = freeSpot(P.x + Math.cos(a) * 9, P.z + Math.sin(a) * 9, 2.5); list.push(spawnEnemy(pick(pool), x, z, .4 + i * .15)); }
+      if (Math.random() < .5) makeElite(pick(list));
+      G.amb = { list, x: P.x, z: P.z, ring }; toast('EMBOSCADA!', true, WZ[b].n.toUpperCase(), '#ff8a5a'); sfx('roar');
+    }
+  }
+  // Perigos de cada bioma (círculos marcados no chão antes de acertar)
+  if (b === 4 && Math.random() < .18) wildsHazard(P.x + rr(-2.5, 2.5), P.z + rr(-2.5, 2.5), 1.5, 1.1, 23, 10 + WZ[4].lv * .8, 'PEDRAS DESABANDO');
+  if (b === 6 && Math.random() < .3) wildsHazard(P.x + rr(-3, 3), P.z + rr(-3, 3), 1.1, .9, 21, 8 + WZ[6].lv * .7, 'CHUVA DE BRASAS');
+}
+function wildsHazard(x, z, r, dur, mat, dmg, warn) {
+  if (warn && G.hazWarn !== warn) { G.hazWarn = warn; toast(warn, false, 'FIQUE FORA DOS CÍRCULOS'); }
+  tels.push({ kind: 'circle', x, z, r, t: 0, dur, fn: () => { sfx('boom'); burst(x, .4, z, 26, mat, 4, .5, .16); if (P && Math.hypot(P.x - x, P.z - z) < r + .3) hurtPlayer(dmg, x, z); } });
+}
+/** Obelisco: desperta (uma vez) e leva a outros obeliscos despertos, ou ao portão da vila. */
+function useObelisk(it) {
+  const s = G.save, ob = s.obel = s.obel || [];
+  if (!ob.includes(it.zone)) { ob.push(it.zone); writeSave(); sfx('lvl'); burst(it.x, 1.5, it.z, 40, 7, 4, .6, .1); toast('OBELISCO DESPERTO', true, WZ[it.zone].n.toUpperCase() + ' · VIAGEM RÁPIDA LIBERADA', '#9ff6ff'); }
+  const dests = RG.rooms.filter(r => r.kind === 'obelisk' && r.ob !== it.zone && ob.includes(r.ob));
+  const choices = dests.map(r => ({ t: WZ[r.ob].n + ' · Nv ' + WZ[r.ob].lv, fn: () => obeliskJump(r.wx + 1.6, r.wz + 1.6, WZ[r.ob].n) }));
+  choices.push({ t: 'Portão da Vila Brasa', fn: () => obeliskJump(RG.start.wx, RG.start.wz + 1.5, 'Portão da Vila') });
+  choices.push({ t: 'Ficar aqui' });
+  say([{ who: 'Obelisco', text: dests.length ? 'Os fios do obelisco vibram. Para onde?' : 'Os fios vibram, mas nenhum outro obelisco desperto responde. Desperte mais deles pelos Ermos.', choices }], () => { });
+}
+function obeliskJump(x, z, name) {
+  fadeTo(1, .3, () => { P.x = x; P.z = z; P.vx = P.vz = P.kx = P.kz = 0; G.save.cp = { region: RG.key, x, z }; G.wzone = null; fadeTo(0, .5); toast(name.toUpperCase(), false, 'VIAGEM PELO OBELISCO'); });
+}
+/** Covil: uma caverna com mapa fixo (mesma semente sempre), no nível do bioma, com guardião; volta para a boca da caverna. */
+const CAVE_BOSS = [null, 'spider', 'spider', 'eye', 'knight', 'knight', 'eye', 'eye'];
+function enterCave(it) {
+  const b = WZ[it.zone], L = clamp(b.lv - (G.save.lvl || 1), 1, 30);
+  G.riftRoll = { base: b.cave, boss: CAVE_BOSS[it.zone] || 'spider', aff: [] };
+  G.arrive = { region: 'wilds', x: it.x, z: it.z + 2.6 };
+  withSeed(70001 + it.ri * 131, () => startRift(L));
+  G.rift.cave = { zone: it.zone }; REG.rift.name = 'Covil · ' + b.n; REG.rift.sub = 'uma caverna sob os Ermos';
+}
