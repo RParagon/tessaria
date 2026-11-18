@@ -261,6 +261,46 @@ for (const kind of STORES) {
       a.c.close(); b.c.close();
     });
 
+    test('Ermos do grupo: mesmo mapa (sem semente), sala Ermos, mapa grande e loot no nível do bioma', async () => {
+      const A = await account(baseSave({ lvl: 20 })), B = await account(baseSave({ lvl: 20 }));
+      const a = await connect(A), b = await connect(B);
+      a.c.send({ t: 'pinvite', name: B.account.name });
+      await b.c.waitFor(m => m.t === 'pinvite'); b.c.send({ t: 'paccept', from: A.account.name });
+      await a.c.waitFor(m => m.t === 'party' && m.party?.members.length === 2);
+      a.c.send({ t: 'iopen', kind: 'wilds' });
+      const ea = await a.c.waitFor(m => m.t === 'ienter');
+      assert.equal(ea.kind, 'wilds'); assert.equal(ea.rift, null);
+      const rd = await b.c.waitFor(m => m.t === 'iready');
+      assert.equal(rd.kind, 'wilds');
+      b.c.send({ t: 'ijoin', inst: rd.inst }); assert.equal((await b.c.waitFor(m => m.t === 'ienter')).kind, 'wilds');
+      a.c.send({ t: 'where', r: 'wilds', i: ea.inst }); b.c.send({ t: 'where', r: 'wilds', i: ea.inst });
+      const wb = await b.c.waitFor(m => m.t === 'welcome' && m.room === 'Ermos');
+      a.c.send({ t: 'pos', x: 550, z: 480, yaw: 0, m: 0, a: '' }); b.c.send({ t: 'pos', x: 551, z: 481, yaw: 0, m: 0, a: '' });
+      await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === wb.id && q[1] === 551));
+      a.c.send({ t: 'ikill', n: 5, el: 1, th: 0, x: 550, z: 480, b: 7 });
+      const L7 = await b.c.waitFor(m => m.t === 'loot');
+      assert.ok(L7.items[0].tier > 5.4, `tier ${L7.items[0].tier}`);   // Ermo Profundo: 1 + 4 + (20-3)*0,05
+      a.c.send({ t: 'ikill', n: 6, el: 1, th: 0, x: 550, z: 480, b: 99 });   // bioma inválido: vale a Campina
+      const L0 = await b.c.waitFor(m => m.t === 'loot' && m !== L7);
+      assert.ok(L0.items[0].tier < 3, `tier ${L0.items[0].tier}`);
+      a.c.close(); b.c.close();
+    });
+
+    test('dificuldade do grupo: a do líder, limitada à que todos desbloquearam; o Pronto? leva a dificuldade e o nível do líder', async () => {
+      const A = await account(baseSave({ lvl: 20, diff: 3 })), B = await account(baseSave({ lvl: 5 }));
+      const a = await connect(A), b = await connect(B);
+      a.c.send({ t: 'pinvite', name: B.account.name });
+      await b.c.waitFor(m => m.t === 'pinvite'); b.c.send({ t: 'paccept', from: A.account.name });
+      await a.c.waitFor(m => m.t === 'party' && m.party?.members.length === 2);
+      a.c.send({ t: 'iopen', kind: 'rift', L: 2, base: 'forest', aff: [], boss: 'spider' });
+      const sys = await a.c.waitFor(m => m.t === 'sys' && /Dificuldade do grupo/.test(m.text));
+      assert.match(sys.text, /Difícil/); assert.match(sys.text, new RegExp(B.account.name)); assert.match(sys.text, /Mestre/);
+      const ea = await a.c.waitFor(m => m.t === 'ienter');
+      assert.equal(ea.diff, 1); assert.equal(ea.lvl, 20);
+      assert.equal((await b.c.waitFor(m => m.t === 'iready')).diff, 1);
+      a.c.close(); b.c.close();
+    });
+
     test('comando /amigo pelo chat', async () => {
       const A = await account(), B = await account();
       const a = await connect(A), b = await connect(B);

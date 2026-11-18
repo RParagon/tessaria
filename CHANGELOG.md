@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.16.0 · Ermos em grupo, dificuldade do grupo e Fio de Elo
+- **Ermos do grupo:** em grupo, o líder que entra no portal dos Ermos abre os Ermos para todos (aviso **Pronto?**). Mesmo mapa, mesmos monstros, Costurar, escala por jogador e loot sorteado pelo servidor no nível de cada bioma. A Lua de Sangue do líder vale para todos
+- **Dificuldade do grupo:** vale a do líder, limitada à maior que todos já desbloquearam; o líder recebe o motivo quando ela cai ("Lume ainda não desbloqueou o Expert"). Cada um volta para a própria ao sair
+- **Fio de Elo** (Fenda do grupo): quem está mais de 3 níveis abaixo do líder conta como "líder − 3" na vida e no dano; quem está mais de 5 acima conta como "líder + 5" e tem o equipamento limitado. O HUD mostra "1 → 9 ELO" ou "MENTOR"
+- **Bônus de mentor:** quem está limitado ganha +25% de Centelhas e +10% de chance de item
+- Correção: o nível de item nos Ermos passou a seguir o nível do bioma (até 5 no Ermo Profundo); antes, os biomas novos podiam gerar itens acima do teto aceito pelo servidor
+
 ## 0.15.0 · Ermos 2.0
 - **Ermos cerca de 10× maiores** (300×260), montados em blocos sob demanda: cada pedaço do mapa é criado quando você chega perto e descartado quando fica longe, então o mapa grande não pesa no celular (entrar leva cerca de 1 s)
 - **Oito biomas**, por distância e direção da vila, com cores, monstros e perigos próprios:

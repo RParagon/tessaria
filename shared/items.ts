@@ -114,10 +114,16 @@ export const DIFF_FIND = [1, 1.12, 1.28, 1.45, 1.65, 1.85, 2.1];
 export function riftTier(base: string, L: number, diff: number, lvl: number): number {
   return (REGION_TIER[base] ?? 1) + L * .5 + (DIFF_TIER[diff] ?? 0) + Math.max(0, lvl - (REGBASE[base] ?? 1) - 2) * .05;
 }
-export interface DropContext { base: string; L: number; diff: number; lvl: number; cls: string; sorte: boolean }
+export interface DropContext { base: string; L: number; diff: number; lvl: number; cls: string; sorte: boolean; tier?: number }
+/** Níveis dos biomas dos Ermos (WZ em src/game/core/state.js). */
+export const BIOME_LV = [2, 8, 12, 15, 17, 20, 24, 28];
+/** Nível de item de um drop nos Ermos (regionTier + wildTierBase no jogo). */
+export function wildsTier(biome: number, diff: number, lvl: number): number {
+  return 1 + Math.min(4, (BIOME_LV[biome] ?? 2) / 7) + (DIFF_TIER[diff] ?? 0) + Math.max(0, lvl - 3) * .05;
+}
 /** Itens que um monstro derrotado deixa para um jogador (sem as Centelhas, que seguem no jogo). */
 export function monsterDrops(ctx: DropContext, kind: { elite: boolean; thief: boolean }, rng: Rng, id: () => string): Item[] {
-  const find = DIFF_FIND[ctx.diff] ?? 1, tier = riftTier(ctx.base, ctx.L, ctx.diff, ctx.lvl), itemFind = ctx.sorte ? 1.3 : 1, out: Item[] = [];
+  const find = DIFF_FIND[ctx.diff] ?? 1, tier = ctx.tier ?? riftTier(ctx.base, ctx.L, ctx.diff, ctx.lvl), itemFind = ctx.sorte ? 1.3 : 1, out: Item[] = [];
   const add = (rar: number) => out.push(makeItem(pickR(rng, SLOTS), tier, rar, ctx.cls, rng, false, id()));
   if (rng() < .08 * itemFind) add(rollRar(rng, find, ctx.L >= 4 ? 1 : 0));
   if (kind.thief) for (let i = 0; i < 3; i++) add(rollRar(rng, find, 2));

@@ -20,7 +20,7 @@ export const RIFT_BASES = ['forest', 'crypt', 'peaks', 'swamp', 'glass'] as cons
 export const INST_CAP = 4;                 // jogadores por instância
 export const INST_READY_MS = 20_000;       // tempo do aviso "Pronto?"
 export const INST_EMPTY_MS = 60_000;       // instância vazia fecha depois disso
-export const INST_BOUNDS = { x0: 0, x1: 400, z0: 0, z1: 400 };
+export const INST_BOUNDS = { x0: 0, x1: 700, z0: 0, z1: 700 };   // cabe a Fenda e os Ermos (600x520 unidades)
 /** Tudo o que define uma Fenda: com os mesmos dados (e a mesma semente), todo jogo gera o mesmo mapa. */
 export const RELAY_PER_SEC = 60;          // mensagens de combate por segundo por jogador (snapshots 10/s + eventos)
 export const RELAY_MAX_BYTES = 24_000;
@@ -71,8 +71,9 @@ export type ClientMsg =
   | { t: 'look'; look: Look }
   | { t: 'time'; c: number }
   | { t: 'iopen'; kind: 'rift'; L: number; base: string; aff: string[]; boss: string }   // líder abre a Fenda para o grupo
+  | { t: 'iopen'; kind: 'wilds' }   // líder abre os Ermos para o grupo (o mapa é sempre o mesmo)
   | { t: 'ijoin'; inst: number }   // entrar na instância do grupo
-  | { t: 'ikill'; n: number; el: 0 | 1; th: 0 | 1; x: number; z: number }   // anfitrião: monstro derrotado (loot pelo servidor)
+  | { t: 'ikill'; n: number; el: 0 | 1; th: 0 | 1; x: number; z: number; b?: number }   // b: bioma (Ermos)   // anfitrião: monstro derrotado (loot pelo servidor)
   | { t: 'hx'; d: unknown }                // anfitrião → todos da instância (estado dos inimigos, mortes, projéteis)
   | { t: 'gx'; d: unknown }                // jogador → anfitrião (acertos)
   | { t: 'hto'; to: number; d: unknown }   // anfitrião → um jogador (dano recebido)
@@ -90,8 +91,8 @@ export type ClientMsg =
 export type ServerMsg =
   | { t: 'welcome'; id: number; room: string; players: PublicPlayer[]; v: number; now?: number }
   | { t: 'time'; c: number; s: number }
-  | { t: 'iready'; inst: number; kind: 'rift'; L: number; by: string; ms: number }   // aviso "Pronto?" para o grupo
-  | { t: 'ienter'; inst: number; kind: 'rift'; rift: RiftParams }   // pode entrar: dados para gerar o mesmo mapa
+  | { t: 'iready'; inst: number; kind: 'rift' | 'wilds'; L: number; by: string; ms: number; diff: number }   // diff: dificuldade do grupo   // aviso "Pronto?" para o grupo
+  | { t: 'ienter'; inst: number; kind: 'rift' | 'wilds'; rift: RiftParams | null; diff: number; lvl: number }   // lvl: nível do líder (Fio de Elo)   // pode entrar: dados para gerar o mesmo mapa
   | { t: 'iclosed'; inst: number }
   | { t: 'ihost'; id: number }
   | { t: 'loot'; x: number; z: number; items: any[] }   // itens sorteados pelo servidor para este jogador   // quem simula o combate na instância

@@ -21,12 +21,25 @@ function newSave() {
 const SKEY = 'fios-de-tessaria-v1';
 function writeSave() { try { G.save.char = { ...G.char }; localStorage.setItem(SKEY, JSON.stringify(G.save)); } catch (e) { } netSaveChanged(); }
 function readSave() { try { const s = localStorage.getItem(SKEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
-function eqSum(s) { const o = { dmg: 0, hp: 0, crit: 0, spd: 0, cdr: 0, ls: 0, dr: 0, gold: 0 }; const eq = s.eq || {}; for (const k in eq) { const it = eq[k]; if (it) for (const st in it.st) o[st] = (o[st] || 0) + it.st[st]; } return o; }
+// ---------- Fio de Elo e dificuldade do grupo (docs/ONLINE.md) ----------
+// ELO é preenchido pelo co-op ao entrar numa instância do grupo: { diff, ref (nível do líder), kind }.
+let ELO = null;
+/** Nível que vale para vida e dano: na Fenda do grupo, quem está muito abaixo sobe (líder − 3) e quem está muito acima desce (líder + 5). */
+const eloLvl = s => { if (!ELO || ELO.kind !== 'rift' || !ELO.ref) return s.lvl; return s.lvl < ELO.ref - 3 ? ELO.ref - 3 : s.lvl > ELO.ref + 5 ? ELO.ref + 5 : s.lvl; };
+/** Limitado pelo Fio de Elo (mais forte que o grupo): ganha o bônus de mentor. */
+const eloMentor = () => !!(ELO && ELO.kind === 'rift' && ELO.ref && G.save && G.save.lvl > ELO.ref + 5);
+/** Teto de nível de item do equipamento de quem está limitado: nível de item da Fenda + 8. */
+const eloCap = () => eloMentor() ? regionTier() + 8 : 0;
+function eqSum(s, cap = 0) {
+  const o = { dmg: 0, hp: 0, crit: 0, spd: 0, cdr: 0, ls: 0, dr: 0, gold: 0 }; const eq = s.eq || {};
+  for (const k in eq) { const it = eq[k]; if (!it) continue; const f = cap && it.tier > cap ? (.7 + cap * .35) / (.7 + it.tier * .35) : 1; for (const st in it.st) o[st] = (o[st] || 0) + it.st[st] * f; }
+  return o;
+}
 let stats = function () {
-  const s = G.save || newSave(), c = CLS[G.char.cls], e = eqSum(s), tal = new Set(s.talents || []), pg = s.pgp || {}, pk = s.perks || {};
+  const s = G.save || newSave(), c = CLS[G.char.cls], e = eqSum(s, eloCap()), lv = eloLvl(s), tal = new Set(s.talents || []), pg = s.pgp || {}, pk = s.perks || {};
   return {
-    maxHp: Math.round(c.hp + 18 * s.up.vig + 10 * (s.lvl - 1) + e.hp + (pg.hp || 0) * 5 + (pk.mel ? 20 : 0)),
-    dmg: c.dmg * (1 + .15 * s.up.pow) * (1 + .07 * (s.lvl - 1)) * (1 + e.dmg / 100) * (1 + (pg.dmg || 0) / 100) * (pk.lio ? 1.1 : 1),
+    maxHp: Math.round(c.hp + 18 * s.up.vig + 10 * (lv - 1) + e.hp + (pg.hp || 0) * 5 + (pk.mel ? 20 : 0)),
+    dmg: c.dmg * (1 + .15 * s.up.pow) * (1 + .07 * (lv - 1)) * (1 + e.dmg / 100) * (1 + (pg.dmg || 0) / 100) * (pk.lio ? 1.1 : 1),
     spd: c.spd * (1 + .05 * s.up.agi) * (1 + Math.min(40, e.spd) / 100) * (tal.has('vento') ? 1.08 : 1),
     dashCd: .9 * (1 - .1 * s.up.agi) * (tal.has('vento') ? .7 : 1),
     skillCd: c.skillCd * (1 - .1 * s.up.foc) * (1 - Math.min(50, e.cdr + (pg.cdr || 0)) / 100) * (tal.has('brasa') ? .8 : 1),
@@ -63,6 +76,7 @@ stats = function () {
   if (bless('protecao')) st.dr = Math.min(.8, st.dr + .4);
   if (G.rift && G.rift.aff && G.rift.aff.includes('dourada')) st.gold *= 2;
   if (G.save) { const D = curDiff(); st.gold *= D.gold; st.itemFind *= D.find; }
+  if (eloMentor()) { st.gold *= 1.25; st.itemFind *= 1.1; }   // bônus de mentor
   if (hasF('lareira')) st.gold *= 1.05; if (hasF('mapa')) st.itemFind *= 1.1; if (hasF('jardim')) st.maxPot += 1;
   if (hasF('estante')) st.dmg *= 1 + .02 * ['forest', 'crypt', 'peaks', 'swamp', 'glass'].filter(k => G.save.bosses[k]).length;
   return st;
@@ -115,9 +129,9 @@ const WREMAP = [null, null,
   null];
 const wildLv = (x, z) => WZ[wZone(x / T, z / T)].lv;
 const REGBASE = { hub: 1, forest: 1, crypt: 4, peaks: 8, swamp: 13, glass: 16 };
-const curDiff = () => DIFFS[(G.save && G.save.diff) || 0] || DIFFS[0];
+const curDiff = () => DIFFS[ELO && Number.isInteger(ELO.diff) ? ELO.diff : (G.save && G.save.diff) || 0] || DIFFS[0];   // na instância do grupo vale a dificuldade do grupo
 const diffOk = d => !!G.save && G.save.lvl >= d.lvl && (!d.act2 || !!G.save.bosses.glass);
-const monLevel = () => { if (!G.save) return 1; if (RG && RG.wild && P) return wildLv(P.x, P.z); if (G.rift) return G.save.lvl + G.rift.L; return Math.max(REGBASE[RG ? RG.key : 'hub'] || 1, G.save.lvl); };
+const monLevel = () => { if (!G.save) return 1; if (RG && RG.wild && P) return wildLv(P.x, P.z); if (G.rift) return (ELO && ELO.ref ? ELO.ref : G.save.lvl) + G.rift.L; return Math.max(REGBASE[RG ? RG.key : 'hub'] || 1, G.save.lvl); };
 function monsterScale() {
   const D = curDiff();
   if (RG && RG.wild) { const zl = P ? wildLv(P.x, P.z) : 2; return { hp: D.hp * (1 + .1 * (zl - 1)), dmg: D.dmg * (1 + .06 * (zl - 1)), xp: D.xp * (1 + .08 * (zl - 1)) * (G.bloodT > 0 ? 1.5 : 1) }; }   // Lua de Sangue: +50% de XP

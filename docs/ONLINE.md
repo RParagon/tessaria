@@ -383,7 +383,7 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 | 2.2b | inimigos e chefe simulados pelo líder: cópias nos outros, acertos repassados ao líder, alvo substituto na IA, projéteis e áreas marcadas como eventos, mortes repassadas | feito (0.12.0) |
 | 2.2c | escala por número de jogadores, Caído/Costurar, grupo inteiro caído, XP por proximidade | feito (0.13.0) |
 | 2.2d | gerador de itens único em `shared/` (jogo e servidor); na Fenda do grupo, loot dos monstros sorteado pelo servidor com conferência de plausibilidade e registro (`item_grants`) | feito (0.14.0) |
-| 2.3 | Dificuldade do grupo e Fio de Elo | |
+| 2.3 | Dificuldade do grupo e Fio de Elo; Ermos do grupo | feito (0.16.0) |
 | 2.4 | Portais da história em grupo (na etapa, Eco, Antes), escolhas pessoais, Reflexo e Hidra em grupo, Marca do Tear | |
 | 2.5 | Nível de item visível e teto de NI no correio; correio com Centelhas e bloqueio | |
 | 2.6 | Armário do Tecelão e Espelho da vila | |

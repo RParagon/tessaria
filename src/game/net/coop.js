@@ -21,7 +21,7 @@ const COOP_F = ['x', 'z', 'y', 'yaw', 'hp', 'maxHp', 'state', 'act', 'actT', 'ho
 const cr2 = v => (typeof v === 'number' ? Math.round(v * 100) / 100 : typeof v === 'boolean' ? (v ? 1 : 0) : v === undefined ? null : v);
 
 /** Rede da instância, só dentro da Fenda do grupo. */
-function coopNet() { const n = NETON(); return n && n.inst && n.room && RG && RG.key === 'rift' && G.rift ? n : null; }
+function coopNet() { const n = NETON(); return n && n.inst && n.room && RG && RG.key === n.instKind && (RG.key !== 'rift' || G.rift) ? n : null; }   // Fenda ou Ermos do grupo
 function coopIsHost() { const n = coopNet(); return !!(n && n.isHost); }
 /** Na Fenda do grupo e sem simular: não cria inimigos nem chefe; desenha o que o anfitrião manda. */
 function coopIsGuest() { const n = coopNet(); return !!(n && !n.isHost); }
@@ -106,12 +106,12 @@ function coopTick(dt) {
   if (shots.length || tl.length) n.hx({ k: 'fx', p: shots, t: tl });
   COOP.acc += dt; if (COOP.acc < .1) return; COOP.acc = 0;
   n.hx({
-    k: 's', pr: cr2(G.rift.prog), bu: G.rift.bossUp ? 1 : 0,
+    k: 's', pr: G.rift ? cr2(G.rift.prog) : 0, bu: G.rift && G.rift.bossUp ? 1 : 0, bm: G.bloodT > 0 ? 1 : 0,
     e: enemies.filter(e => !e.dead && e.nid).map(e => [e.nid, e.type, e.elite ? (e.elite.aff || []).join(',') + '|' + (e.elite.name || '') : '', e.thief ? 1 : 0, coopPack(e)]),
     b: boss ? [boss.type, coopPack(boss)] : null,
   });
 }
-function coopKilled(e) { const n = coopNet(); if (n && n.isHost && e.nid) { n.hx({ k: 'k', nid: e.nid }); n.ikill(e.nid, !!e.elite, !!e.thief, e.x, e.z); } }
+function coopKilled(e) { const n = coopNet(); if (n && n.isHost && e.nid) { n.hx({ k: 'k', nid: e.nid }); n.ikill(e.nid, !!e.elite, !!e.thief, e.x, e.z, RG.wild ? wZone(e.x / T, e.z / T) : undefined); } }
 function coopBossStart(rm) {
   const n = coopNet(); if (!n || !n.isHost) return;
   const m = CO_HP[coopCount()] || 1; if (boss && m > 1) { boss.hp = Math.round(boss.hp * m); boss.maxHp = Math.round(boss.maxHp * m); updateBossBar(); }
@@ -157,7 +157,8 @@ function coopSnap(d) {
   }
   for (const e of enemies) if (e.proxy && !seen.has(e.nid) && e.dieT < 0) e.gone = true;
   if (d.b && boss && boss.proxy) coopApply(boss, d.b[1], false);
-  G.rift.prog = d.pr; if (d.bu) G.rift.bossUp = true;
+  if (G.rift) { G.rift.prog = d.pr; if (d.bu) G.rift.bossUp = true; }
+  const bm = !!d.bm; if (bm !== (G.bloodT > 0)) { G.bloodT = bm ? 75 : 0; if (bm) toast('LUA DE SANGUE', true, 'MAIS ELITES E +50% DE XP', '#ff4a5a'); }   // Ermos: Lua de Sangue do anfitrião
 }
 function coopHitEnemy(e, dmg, dx, dz, crit, kbm) {
   const n = coopNet(); if (!n || e.dieT >= 0 || e.spawnT > 0) return;

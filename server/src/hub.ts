@@ -5,7 +5,8 @@ import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABE
 import type { Account, Store } from './store/types';
 import { inc, gauge } from './metrics';
 import { randomBytes, randomInt } from 'node:crypto';
-import { monsterDrops, type Item } from '../../shared/items';
+import { monsterDrops, wildsTier, type Item } from '../../shared/items';
+import { DIFF_LEVEL } from '../../shared/save';
 import { requestFriend } from './social';
 
 const CLS_LABEL: Record<string, string> = { lamina: 'Lâmina', arcano: 'Arcano', arco: 'Arco' };
@@ -26,7 +27,7 @@ export function titleFromSave(save: any): string {
 
 interface Player {
   id: number; account: Account; ws: WebSocket; room: Room | null;   // room null: conectado fora da vila (só amigos e grupo)
-  where: string; whereN: number; lvl: number; left: boolean; diff: number; sorte: boolean;   // diff/sorte: do save (loot da Fenda do grupo)
+  where: string; whereN: number; lvl: number; left: boolean; diff: number; sorte: boolean; act2: boolean;   // diff/sorte: do save (loot da Fenda do grupo)
   friends: Set<string>; blocks: Set<string>; lastInvite: number;   // blocks: contas que ESTE jogador bloqueou
   look: Look; title: string;
   x: number; z: number; yaw: number; m: number; a: string;
@@ -47,7 +48,7 @@ class Room {
 
 interface Party { id: number; leader: string; members: string[]; info: Map<string, { name: string; cls: string; lvl: number }>; gone: Map<string, NodeJS.Timeout>; inst?: Instance | null }
 /** Instância do grupo (Fenda): uma sala própria, com os dados que geram o mesmo mapa para todos. */
-interface Instance { kills: Set<number>; killTokens: number; killRefill: number; host: number; id: number; party: Party; kind: 'rift'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
+interface Instance { diff: number; lvl: number; kills: Set<number>; killTokens: number; killRefill: number; host: number; id: number; party: Party; kind: 'rift' | 'wilds'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
 export interface HubOptions { inviteMs?: number; graceMs?: number; instEmptyMs?: number }
 const lvlOf = (save: any) => (Number.isInteger(save?.lvl) ? save.lvl : 1);
 
@@ -60,7 +61,10 @@ const KILL_MAX = 600, KILL_RATE = 12, KILL_BURST = 30, KILL_SHARE = 34;
 const rng = () => randomInt(0, 2 ** 32) / 2 ** 32;
 const grantId = () => 'g' + randomBytes(6).toString('hex');
 /** Dificuldade e talento Sorte do save: entram no sorteio do loot. */
-const ctxOf = (save: any) => ({ diff: Number.isInteger(save?.diff) ? Math.max(0, Math.min(6, save.diff)) : 0, sorte: Array.isArray(save?.talents) && save.talents.includes('sorte') });
+const ctxOf = (save: any) => ({ diff: Number.isInteger(save?.diff) ? Math.max(0, Math.min(6, save.diff)) : 0, sorte: Array.isArray(save?.talents) && save.talents.includes('sorte'), act2: !!save?.bosses?.glass });
+/** Maior dificuldade que o jogador desbloqueou (nível mínimo e, nos Tormentos, o Ato II): a mesma regra de diffOk no jogo. */
+const maxDiff = (q: { lvl: number; act2: boolean }) => { let d = 0; for (let i = 0; i < DIFF_LEVEL.length; i++) if (q.lvl >= DIFF_LEVEL[i] && (i < 4 || q.act2)) d = i; return d; };
+const DIFF_NAME = ['Normal', 'Difícil', 'Expert', 'Mestre', 'Tormento I', 'Tormento II', 'Tormento III'];
 
 export class Hub {
   private rooms = new Map<string, Room>();
@@ -323,7 +327,7 @@ export class Hub {
     if (typeof r !== 'string' || !WHERE_LABEL[r]) return;
     const whereN = r === 'rift' && Number.isInteger(n) && (n as number) > 0 && (n as number) < 1000 ? (n as number) : 0;
     // Na Fenda do grupo, a sala é a da instância; na vila, uma sala da vila; no resto, nenhuma.
-    const inst = r === 'rift' && Number.isInteger(i) ? this.partyOf.get(p.account.id)?.inst : null;
+    const inst0 = Number.isInteger(i) ? this.partyOf.get(p.account.id)?.inst : null, inst = inst0 && inst0.kind === r ? inst0 : null;
     const target: Room | 'vila' | null = inst && inst.id === i && (inst.room.players.has(p.id) || inst.room.players.size < INST_CAP) ? inst.room : r === 'hub' ? 'vila' : null;
     const same = target === 'vila' ? !!p.room && !p.room.inst : target === p.room;
     p.where = r; p.whereN = whereN;
@@ -331,7 +335,7 @@ export class Hub {
       if (p.room) this.leaveRoom(p);
       if (target === 'vila') this.enterRoom(p);
       else if (target) { this.enterRoom(p, target); this.sendParty(target.inst!.party); }
-      else if (r === 'rift' && Number.isInteger(i)) send(p, { t: 'iclosed', inst: i as number });
+      else if (Number.isInteger(i)) send(p, { t: 'iclosed', inst: i as number });
     }
     const party = this.partyOf.get(p.account.id); if (party) this.sendParty(party);
   }
@@ -342,15 +346,20 @@ export class Hub {
     if (!pt) return send(p, { t: 'sys', text: 'Você precisa estar num grupo para abrir a Fenda para o grupo.' });
     if (pt.leader !== p.account.id) return send(p, { t: 'sys', text: 'Só o líder abre a Fenda para o grupo.' });
     const word = (v: unknown) => typeof v === 'string' && /^[a-z]{1,14}$/.test(v);
-    const L = m.L, aff = Array.isArray(m.aff) ? m.aff : null;
-    if (!Number.isInteger(L) || L < 1 || L > 200 || !RIFT_BASES.includes(m.base) || !word(m.boss) || !aff || aff.length > 4 || !aff.every(word)) return;
+    const kind: 'rift' | 'wilds' = m.kind === 'wilds' ? 'wilds' : 'rift';
+    const L = kind === 'wilds' ? 0 : m.L, aff = kind === 'wilds' ? [] : Array.isArray(m.aff) ? m.aff : null;
+    if (kind === 'rift' && (!Number.isInteger(L) || L < 1 || L > 200 || !RIFT_BASES.includes(m.base) || !word(m.boss) || !aff || aff.length > 4 || !aff.every(word))) return;
     if (pt.inst && pt.inst.room.players.size && !(pt.inst.room.players.size === 1 && pt.inst.room.players.has(p.id))) return send(p, { t: 'sys', text: 'O grupo ainda está numa Fenda.' });
     if (pt.inst) this.closeInst(pt.inst);
-    const id = ++this.instSeq, room = new Room('inst-' + id, `Fenda ${L}`);
-    const inst: Instance = { kills: new Set(), killTokens: KILL_BURST, killRefill: Date.now(), host: 0, id, party: pt, kind: 'rift', L, base: m.base, aff: aff.slice(), boss: m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
+    const id = ++this.instSeq, room = new Room('inst-' + id, kind === 'wilds' ? 'Ermos' : `Fenda ${L}`);
+    // Dificuldade do grupo: a do líder, limitada à maior que todos os membros online desbloquearam.
+    let diff = p.diff, limit = '';
+    for (const mid of pt.members) { const q = this.byAccount.get(mid); if (!q) continue; const md = maxDiff(q); if (md < diff) { diff = md; limit = q.account.name; } }
+    if (limit) send(p, { t: 'sys', text: `Dificuldade do grupo: ${DIFF_NAME[diff]} (${limit} ainda não desbloqueou a ${DIFF_NAME[p.diff]}).` });
+    const inst: Instance = { diff, lvl: p.lvl, kills: new Set(), killTokens: KILL_BURST, killRefill: Date.now(), host: 0, id, party: pt, kind, L, base: kind === 'wilds' ? 'wilds' : m.base, aff: aff!.slice(), boss: kind === 'wilds' ? '' : m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
     room.bounds = INST_BOUNDS; room.inst = inst; pt.inst = inst; this.instances.set(id, inst);
     send(p, this.enterMsg(inst));
-    for (const mid of pt.members) if (mid !== p.account.id) this.notify(mid, { t: 'iready', inst: id, kind: 'rift', L, by: p.account.name, ms: INST_READY_MS });
+    for (const mid of pt.members) if (mid !== p.account.id) this.notify(mid, { t: 'iready', inst: id, kind, L, by: p.account.name, ms: INST_READY_MS, diff });
     this.scheduleClose(inst);   // se ninguém entrar, fecha sozinha
     this.sendParty(pt);
     inc('hub_inst_open');
@@ -401,7 +410,9 @@ export class Hub {
     const kind = { elite: m.el === 1, thief: m.th === 1 };
     for (const q of inst.room.players.values()) {
       if (Math.hypot(q.x - x, q.z - z) > KILL_SHARE) continue;
-      const items: Item[] = monsterDrops({ base: inst.base, L: inst.L, diff: q.diff, lvl: q.lvl, cls: q.look.cls, sorte: q.sorte }, kind, rng, grantId);
+      const biome = Number.isInteger(m.b) && m.b >= 0 && m.b <= 7 ? m.b : 0;   // Ermos: bioma informado pelo anfitrião (o teto é o Ermo Profundo)
+      const tier = inst.kind === 'wilds' ? wildsTier(biome, inst.diff, q.lvl) : undefined;   // dentro da instância vale a dificuldade do grupo
+      const items: Item[] = monsterDrops({ base: inst.base, L: inst.L, diff: inst.diff, lvl: q.lvl, cls: q.look.cls, sorte: q.sorte, tier }, kind, rng, grantId);
       if (!items.length) continue;
       for (const it of items) (it as any).g = 1;
       try { await this.store.grantItems(q.account.id, items.map(i => i.id), 'fenda'); } catch (e) { this.log.warn({ err: String(e) }, 'loot: falha ao registrar'); continue; }
@@ -409,7 +420,7 @@ export class Hub {
       inc('hub_loot_items', items.length);
     }
   }
-  private enterMsg(i: Instance): ServerMsg { return { t: 'ienter', inst: i.id, kind: 'rift', rift: { L: i.L, base: i.base, aff: i.aff, boss: i.boss, seed: i.seed } }; }
+  private enterMsg(i: Instance): ServerMsg { return { t: 'ienter', inst: i.id, kind: i.kind, rift: i.kind === 'rift' ? { L: i.L, base: i.base, aff: i.aff, boss: i.boss, seed: i.seed } : null, diff: i.diff, lvl: i.lvl }; }
   private scheduleClose(inst: Instance) {
     if (inst.closeT) clearTimeout(inst.closeT);
     inst.closeT = setTimeout(() => { if (!inst.room.players.size) this.closeInst(inst); else inst.closeT = null; }, this.instEmptyMs);

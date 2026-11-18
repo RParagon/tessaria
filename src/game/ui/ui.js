@@ -20,7 +20,7 @@ function setTxt(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textC
 function updateHud() {
   if (!P) return;
   const s = G.save, st = stats();
-  setTxt('#hName', G.char.name); setTxt('#hLv', s.lvl);
+  setTxt('#hName', G.char.name); setTxt('#hLv', eloLvl(s) !== s.lvl ? s.lvl + ' → ' + eloLvl(s) + ' ELO' : eloMentor() ? s.lvl + ' MENTOR' : s.lvl);
   $('#hHp').style.width = clamp(P.hp / P.maxHp, 0, 1) * 100 + '%'; setTxt('#hHpT', `${Math.ceil(P.hp)} / ${P.maxHp}`);
   $('#hXp').style.width = clamp(s.xp / xpNeed(s.lvl), 0, 1) * 100 + '%';
   setTxt('#hGold', s.gold); setTxt('#hPot', s.potions + '/' + st.maxPot); setTxt('#hFrag', s.frags.length + '/9');

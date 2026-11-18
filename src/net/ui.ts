@@ -270,7 +270,7 @@ export function mountOnlineUI(net: Net) {
     }
     // Fenda aberta pelo grupo: quem não está nela pode entrar (aparece no início)
     const ins = pt!.inst;
-    if (ins && net.inst !== ins.id) partyBox.append(h('button', { class: 'px gold net-pjoin', text: `Entrar na Fenda ${ins.L} do grupo (${ins.n}/4)`, onclick: () => { game()?.sfx('ui'); net.joinInst(ins.id); } }));
+    if (ins && net.inst !== ins.id) partyBox.append(h('button', { class: 'px gold net-pjoin', text: ins.kind === 'wilds' ? `Entrar nos Ermos do grupo (${ins.n}/4)` : `Entrar na Fenda ${ins.L} do grupo (${ins.n}/4)`, onclick: () => { game()?.sfx('ui'); net.joinInst(ins.id); } }));
   }
   function partyMenu(name: string, me: boolean, e: MouseEvent) {
     const items: Array<[string, () => void]> = [];
@@ -324,7 +324,7 @@ export function mountOnlineUI(net: Net) {
       const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, r.until - now) + 'ms';
       invBox.append(h('div', { class: 'net-invite net-ready panel', role: 'alertdialog', 'aria-label': 'Pronto?' },
         h('b', { text: 'Pronto?' }),
-        h('span', { text: `${r.by} abriu a Fenda do Tear · Nível ${r.L} para o grupo` }),
+        h('span', { text: r.kind === 'wilds' ? `${r.by} abriu os Ermos de Tessária para o grupo` : `${r.by} abriu a Fenda do Tear · Nível ${r.L} para o grupo` }),
         h('div', { class: 'act' },
           h('button', { class: 'px gold', text: 'Entrar', onclick: () => { game()?.sfx('ui'); net.joinInst(r.inst); renderInvites(); } }),
           h('button', { class: 'px', text: 'Agora não', onclick: () => { net.declineReady(); renderInvites(); } })),
@@ -344,7 +344,7 @@ export function mountOnlineUI(net: Net) {
   net.on((ev, data) => {
     if (ev === 'pinvite') { game()?.sfx('ui'); renderInvites(); }
     if (ev === 'iready') { if (data) game()?.sfx('ui'); renderInvites(); }
-    if (ev === 'iclosed') game()?.toast('A Fenda do grupo fechou', false, 'VOCÊ CONTINUA SOZINHO NESTA FENDA');
+    if (ev === 'iclosed') game()?.toast(net.instKind === 'wilds' ? 'Os Ermos do grupo fecharam' : 'A Fenda do grupo fechou', false, 'VOCÊ CONTINUA SOZINHO AQUI');
     if (ev === 'party') { if (!data) renderInvites(); updateChip(); }
     if (ev === 'friends') renderSoon();
     if (ev === 'social') {
@@ -364,7 +364,7 @@ export function mountOnlineUI(net: Net) {
     log.scrollTop = log.scrollHeight;
     setTimeout(() => row.classList.add('old'), 12000);
   }
-  net.on((ev, data) => { if (ev === 'chat') addLine(data); if (ev === 'hub' && data?.joined) addLine({ kind: 'sys', text: net.inst ? `${data.joined} entrou na Fenda.` : `${data.joined} chegou à vila.`, ts: Date.now() }); });
+  net.on((ev, data) => { if (ev === 'chat') addLine(data); if (ev === 'hub' && data?.joined) addLine({ kind: 'sys', text: net.inst ? (net.instKind === 'wilds' ? `${data.joined} chegou aos Ermos.` : `${data.joined} entrou na Fenda.`) : `${data.joined} chegou à vila.`, ts: Date.now() }); });
   setInterval(updateChip, 500);
 
   // salvar ao sair da aba

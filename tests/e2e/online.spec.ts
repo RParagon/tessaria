@@ -270,7 +270,8 @@ test('Fenda do grupo: monstros mais fortes em dupla, Caído, Costurar e grupo in
   await ev(A.page, '(r => { P.x = r.x + .8; P.z = r.z; })(TessNet.players()[0])');
   await A.page.waitForFunction(() => (window as any).__T.nearInter?.kind === 'revive', null, { timeout: 5000 });
   await A.page.keyboard.press('e');
-  await B.page.waitForFunction(() => (window as any).__T.ev('!(P.down > 0)'), null, { timeout: 8000 });
+  // 3 s de jogo; com dois navegadores sem GPU o relógio do jogo anda mais devagar que o real
+  await B.page.waitForFunction(() => (window as any).__T.ev('!(P.down > 0)'), null, { timeout: 25_000 });
   const [hp, max] = await ev(B.page, '[P.hp, P.maxHp]');
   expect(hp).toBe(Math.max(1, Math.round(max * .3)));
   await A.page.waitForFunction(() => !(window as any).TessNet.players()[0].down, null, { timeout: 5000 });
@@ -306,6 +307,60 @@ test('Fenda do grupo: o servidor sorteia o loot de cada um e o item pego é acei
   await ev(B.page, 'writeSave()');
   await B.page.waitForFunction(() => (window as any).TessNet.sync === 'salvo', null, { timeout: 15_000 });
   expect(await B.page.evaluate(() => (window as any).TessNet.sync)).toBe('salvo');
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
+test('Ermos do grupo: o líder abre, os dois chegam ao mesmo mapa e o golpe do amigo dá loot do servidor aos dois', async ({ browser }) => {
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
+  await A.page.evaluate(n => (window as any).TessNet.invite(n), B.name);
+  await B.page.click('.net-invite button:has-text("Aceitar")');
+  await A.page.waitForFunction(() => (window as any).TessNet.party?.members.length === 2, null, { timeout: 10_000 });
+  const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
+  expect(await ev(A.page, 'netGroupWilds()')).toBe(true);
+  await expect(B.page.locator('.net-ready')).toContainText('abriu os Ermos de Tessária');
+  await B.page.locator('.net-ready button:has-text("Entrar")').click();
+  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.RG?.key === 'wilds' && (window as any).TessNet.room === 'Ermos', null, { timeout: 30_000 });
+  await A.page.waitForFunction(() => (window as any).TessNet.isHost, null, { timeout: 10_000 });
+  const mapa = (pg: Page) => ev(pg, 'JSON.stringify(RG.rooms.slice(0, 40).map(r => [Math.round(r.wx), Math.round(r.wz), r.kind || "", r.zone]))');
+  expect(await mapa(B.page)).toBe(await mapa(A.page));
+  await A.page.waitForFunction(n => (window as any).TessNet.players().some((p: any) => p.name === n), B.name, { timeout: 10_000 });
+  // elite entre os dois; o amigo derruba e os dois recebem item do servidor
+  // espera o líder ver o amigo perto (a posição do amigo chega depois da viagem)
+  await A.page.waitForFunction(() => (window as any).__T.ev('(r => !!r && r.x !== undefined && Math.hypot(r.x - P.x, r.z - P.z) < 6)(TessNet.players()[0])'), null, { timeout: 10_000 });
+  await ev(A.page, "(() => { const e = spawnEnemy('lobo', P.x + 2, P.z + 2); e.spawnT = 0; makeElite(e); e.def = Object.assign({}, e.def, { dmg: 0 }); window.__w = e; })()");
+  await A.page.waitForFunction(() => (window as any).__T.ev('__w.nid > 0'), null, { timeout: 5000 });
+  const nid = await ev(A.page, '__w.nid');
+  await B.page.waitForFunction(id => (window as any).__T.ev(`enemies.some(e => e.proxy && e.nid === ${id})`), nid, { timeout: 5000 });
+  await ev(B.page, `hurtEnemy(enemies.find(e => e.nid === ${nid}), 99999, 1, 0, false)`);
+  const loot = (pg: Page) => pg.waitForFunction(() => (window as any).__T.ev("pickups.some(p => p.kind === 'item' && p.item.g === 1)"), null, { timeout: 8000 });
+  await Promise.all([loot(A.page), loot(B.page)]);
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
+test('Fio de Elo: o amigo de nível baixo sobe para perto do líder e o grupo joga na dificuldade que os dois têm', async ({ browser }) => {
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
+  const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
+  // líder nível 12 no Expert; o amigo fica no nível 1 (só tem o Difícil)
+  await ev(A.page, 'G.save.lvl = 12; G.save.diff = 2; writeSave()');
+  await waitSync(A.page); await waitSync(B.page);
+  const hpAntes = await ev(B.page, 'stats().maxHp');
+  await A.page.evaluate(n => (window as any).TessNet.invite(n), B.name);
+  await B.page.click('.net-invite button:has-text("Aceitar")');
+  await A.page.waitForFunction(() => (window as any).TessNet.party?.members.length === 2, null, { timeout: 10_000 });
+  await ev(A.page, 'netGroupRift(1)');
+  await B.page.locator('.net-ready button:has-text("Entrar")').click();
+  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.RG?.key === 'rift' && (window as any).TessNet.room, null, { timeout: 20_000 });
+  expect(await ev(A.page, 'curDiff().n')).toBe('Difícil');
+  expect(await ev(B.page, 'curDiff().n')).toBe('Difícil');
+  expect(await ev(B.page, 'eloLvl(G.save)')).toBe(9);
+  expect(await ev(B.page, 'stats().maxHp')).toBe(hpAntes + 80);   // +10 de vida por nível
+  await expect(B.page.locator('#hLv')).toHaveText('1 → 9 ELO');
+  // de volta à vila, cada um com a própria dificuldade
+  await ev(A.page, "travel('hub')");
+  await A.page.waitForFunction(() => (window as any).__T.RG?.key === 'hub', null, { timeout: 20_000 });
+  expect(await ev(A.page, 'curDiff().n')).toBe('Expert');
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
   await A.ctx.close(); await B.ctx.close();
 });

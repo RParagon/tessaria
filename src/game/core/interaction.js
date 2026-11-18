@@ -191,6 +191,7 @@ function interact() {
   } else if (it.kind === 'portal') {
     if (it.to !== 'hub' && !it.exit) { const [lit, lock] = portalState(it.to); it.lit = lit; it.lock = lock; }
     if (!it.lit) { toast(it.lock || 'O portal está apagado.'); return; }
+    if (it.to === 'wilds' && RG.key === 'hub' && netGroupWilds()) return;   // co-op: o líder abre os Ermos para o grupo
     travel(it.to);
   }
 }

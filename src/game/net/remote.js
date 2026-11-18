@@ -27,18 +27,35 @@ function netGroupRift(L) {
   toast('Abrindo a Fenda para o grupo', false, 'OS OUTROS RECEBEM O AVISO');
   return true;
 }
+/** Portal dos Ermos na vila: em grupo e líder, os Ermos abrem para o grupo (o servidor responde com ienter). */
+function netGroupWilds() {
+  const n = NETON(); if (!n || !n.groupRift) return false;
+  n.openWilds(); toast('Abrindo os Ermos para o grupo', false, 'OS OUTROS RECEBEM O AVISO');
+  return true;
+}
+/** Entrar nos Ermos do grupo: o mapa dos Ermos é sempre o mesmo, basta viajar com a instância. */
+function startGroupWilds(inst, diff) {
+  const n = NETON(); if (!n || !P || G.mode === 'title' || G.mode === 'create') return;
+  if (G.menu) closeMenus();
+  if (G.mode === 'dialog') { DLG.q = []; DLG.cur = null; G.mode = 'play'; $('#dialog').hidden = true; }
+  n.enteringInst(inst, 'wilds');
+  ELO = { diff: diff ?? null, ref: 0, kind: 'wilds' };   // Ermos: vale a dificuldade do grupo (sem Fio de Elo)
+  travel('wilds');
+  setTimeout(() => toast('ERMOS DO GRUPO', false, 'MESMOS MONSTROS PARA TODOS · CADA UM COM O PRÓPRIO LOOT'), 1800);
+}
 /** Servidor mandou entrar: gera a Fenda com os dados e a semente do grupo e viaja. */
-function startGroupRift(inst, prm) {
+function startGroupRift(inst, prm, diff, lvl) {
   const n = NETON(); if (!n || !P || G.mode === 'title' || G.mode === 'create') return;
   if (G.menu) closeMenus();
   if (G.mode === 'dialog') { DLG.q = []; DLG.cur = null; G.mode = 'play'; $('#dialog').hidden = true; }
   G.riftRoll = { base: prm.base, boss: prm.boss, aff: prm.aff.slice() };
-  n.enteringInst(inst);
+  n.enteringInst(inst, 'rift');
+  ELO = { diff: diff ?? null, ref: lvl || 0, kind: 'rift' };   // dificuldade do grupo e Fio de Elo
   withSeed(prm.seed, () => startRift(prm.L));
   setTimeout(() => toast('FENDA DO GRUPO', false, 'MESMO MAPA E MESMOS MONSTROS · O JOGO DO LÍDER COMANDA OS INIMIGOS'), 1800);
 }
 
-function netRegion(key) { coopReset(); const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : 0); if (key !== 'hub') clearRemoteMarks(); }
+function netRegion(key) { coopReset(); const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : 0); if (!n || !n.inst) ELO = null; if (key !== 'hub') clearRemoteMarks(); }
 function netLook() { const n = NETON(); if (n) n.setLook(lookOfPlayer()); }
 let netPosAcc = 0, netAct = null, netActT = 0;
 const NET_ACTS = ['swing', 'cast', 'shoot', 'spin', 'nova', 'dash'];
@@ -282,6 +299,8 @@ window.TessGame = {
   sfx: k => sfx(k),
   look: () => lookOfPlayer(),
   startGroupRift,
+  startGroupWilds,
+  coopClosed: () => { ELO = null; if (P) { P.maxHp = stats().maxHp; P.hp = Math.min(P.hp, P.maxHp); } updateDiffHud(); },
   remoteEmote: (id, e) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.emote = e; r.emoteT = 0; } },
   remoteAct: (id, a, c, yaw) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) startRemoteAct(r, a, c, yaw); },
   remoteChat: (id, text) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.chat = text; r.chatT = 0; } },
