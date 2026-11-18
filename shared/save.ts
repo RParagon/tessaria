@@ -21,6 +21,8 @@ export const HOUSE_FURNITURE = ['cama', 'guarda', 'lareira', 'jardim', 'estante'
 export const RARE_COSMETICS = ['flor', 'oculos', 'orelhas', 'aureola', 'cartola', 'trancas', 'placas', 'escamas', 'tabardo'];
 export const DIFF_LEVEL = [1, 1, 6, 12, 16, 20, 24];
 export const INV_MAX = 20;
+/** Bolsa ampliada (save.bagCap: 20 a 40, de 5 em 5). */
+export const invMax = (s: AnySave | null | undefined) => { const c = Number(s?.bagCap) || 20; return c >= 20 && c <= 40 && c % 5 === 0 ? c : 20; };
 
 export interface SaveCheck { errors: string[]; flags: string[] }
 type AnySave = Record<string, any>;
@@ -70,7 +72,9 @@ export function validateSave(s: unknown, opts: { prev?: AnySave | null; elapsedM
   if (v.bosses && typeof v.bosses === 'object') for (const k of Object.keys(v.bosses)) if (!BOSSES.includes(k)) errors.push(`chefe desconhecido: ${k}`);
   if (diff >= 4 && !v.bosses?.glass) errors.push('Tormento sem concluir o Ato II');
 
-  if (v.inv !== undefined && (!Array.isArray(v.inv) || v.inv.length > INV_MAX)) errors.push('bolsa inválida');
+  if (v.bagCap !== undefined && (!isInt(v.bagCap, 20, 40) || v.bagCap % 5 !== 0)) errors.push('tamanho da bolsa inválido');
+  if (v.inv !== undefined && (!Array.isArray(v.inv) || v.inv.length > invMax(v))) errors.push('bolsa inválida');
+  if (v.bank !== undefined && !isInt(v.bank, 0, 2_000_000_000)) errors.push('banco inválido');
   if (v.eq && typeof v.eq === 'object') for (const k of ['weapon', 'armor', 'charm']) { const it = v.eq[k]; if (it && it.slot !== k) errors.push(`item no espaço errado: ${k}`); }
   if (v.house) {
     const h = v.house;
@@ -98,7 +102,7 @@ export function validateSave(s: unknown, opts: { prev?: AnySave | null; elapsedM
     if (dl < 0) errors.push('nível diminuiu');
     else if (dl > 12 + mins * 6) errors.push(`subiu ${dl} níveis em ${mins.toFixed(1)} min`);
     else if (dl > 4 + mins * 2) flags.push(`subiu ${dl} níveis em ${mins.toFixed(1)} min`);
-    const dg = v.gold + (v.spent ?? 0) - (prev.gold + (prev.spent ?? 0)), mult = 1 + (diff || 0);
+    const dg = v.gold + (v.bank ?? 0) + (v.spent ?? 0) - (prev.gold + (prev.bank ?? 0) + (prev.spent ?? 0)), mult = 1 + (diff || 0);   // banco conta como Centelhas
     if (dg > 50_000 + mins * 40_000 * mult) errors.push(`ganhou ${dg} Centelhas em ${mins.toFixed(1)} min`);
     else if (dg > 8_000 + mins * 6_000 * mult) flags.push(`ganhou ${dg} Centelhas em ${mins.toFixed(1)} min`);
     const prevChests = new Set(prev.chests ?? []);

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
-import { INV_MAX } from '../../../shared/save';
+import { invMax } from '../../../shared/save';
 
 /**
  * Armazenamento em memória: desenvolvimento sem banco e testes.
@@ -87,7 +87,7 @@ export class MemoryStore implements Store {
     if (m.claimedAt) return { ok: false, reason: 'ja-resgatado' };
     const s = this.saves.get(accountId); if (!s) return { ok: false, reason: 'sem-save' };
     s.data.inv = Array.isArray(s.data.inv) ? s.data.inv : [];
-    if (s.data.inv.length >= INV_MAX) return { ok: false, reason: 'bolsa-cheia' };
+    if (s.data.inv.length >= invMax(s.data)) return { ok: false, reason: 'bolsa-cheia' };
     s.data.inv.push(this.clone(m.item)); s.rev++; s.updatedAt = new Date();
     m.claimedAt = new Date();
     this.tombs.get(accountId)?.delete(m.item.id);

@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.29.0 · Cofre, espólio, bolsa maior e mapa com zoom
+- **Cofre do Tear (banco):** na praça da vila. Guarde e saque Centelhas; o que está no cofre nunca se perde
+- **Espólio nos Ermos:** morrer nos Ermos deixa no chão todas as Centelhas que você carrega e os itens da bolsa (os equipados e o cofre ficam). O espólio tem feixe dourado e a seta aponta para ele; você tem **5 minutos** para voltar e pegar, senão ele se desfaz. (Na próxima etapa, com os Ermos abertos para todos, outros jogadores também poderão pegar)
+- **Bolsa maior:** o Otto vende +5 espaços de cada vez, até 40
+- **Mais acampamentos e torres:** 2 acampamentos com obelisco em cada bioma do meio (1 na Campina, nenhum no Ermo Profundo), 13 no total, cada um com o seu Mercador Suspeito e estoque próprio. Obeliscos despertos antes continuam acesos
+- **Mapa grande:** sem rolagem lateral, com **zoom** (roda do mouse e botões + e −), **arrastar para mover** e um botão para centralizar em você; abre perto de onde você está
+- **Trilha que some:** os pontos dourados por onde você passou vão desbotando e somem em 8 minutos
+- **Emotes refeitos para o esqueleto novo:** acenar usa a mão livre (a direita no arqueiro), com a mão balançando e o cotovelo dobrado; sentado, a capa desce reta e a arma fica guardada
+
 ## 0.28.0 · Perfil do herói e grupo equilibrado
 - **HUD:** o nível agora fica num selo no canto do retrato e o nome tem a linha toda (nomes longos e a dificuldade não se sobrepõem mais)
 - **Perfil:** clique no retrato do HUD para ver o seu herói em tamanho grande, atributos, XP, equipamento e a jornada (tempo de jogo, monstros, quedas, feitos, Fenda máxima, peixes)

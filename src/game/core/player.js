@@ -236,7 +236,13 @@ function hurtPlayer(dmg, sx, sz, kb = 7) {
   return true;
 }
 /** Morte de verdade: custo da dificuldade e volta no ponto seguro. */
-function playerDie() { P.hp = 0; P.dieT = 0; G.save.deaths++; toast('Você se desfez em fios…', true, 'o Tear vai costurar você de volta'); const dv = G.save.diff || 0; if (dv > 0) { const lost = Math.floor(G.save.gold * Math.min(.2, .04 * dv)); if (lost > 0) { G.save.gold -= lost; setTimeout(() => toast('-' + lost + ' Centelhas', false, 'O PREÇO DA ' + curDiff().n.toUpperCase(), '#ff8a6a'), 1100); } } }
+function playerDie() { P.hp = 0; P.dieT = 0; G.save.deaths++; toast('Você se desfez em fios…', true, 'o Tear vai costurar você de volta');
+  if (RG && RG.wild) {   // Ermos: tudo o que você carrega fica no chão por 5 min (equipados e banco ficam)
+    const s = G.save, old = s.wloot && Date.now() - s.wloot.t < LOOT_MS ? s.wloot : null, items = s.inv.splice(0);
+    s.wloot = { x: Math.round(P.x * 10) / 10, z: Math.round(P.z * 10) / 10, gold: s.gold + (old ? old.gold : 0), items: (old ? old.items : []).concat(items).slice(0, 40), t: Date.now() }; s.gold = 0; writeSave();
+    setTimeout(() => toast('ESPÓLIO NOS ERMOS', true, `${s.wloot.gold} CENTELHAS E ${s.wloot.items.length} ITENS NO CHÃO · 5 MIN PARA VOLTAR`, '#ff8a6a'), 1200); return;
+  }
+  const dv = G.save.diff || 0; if (dv > 0) { const lost = Math.floor(G.save.gold * Math.min(.2, .04 * dv)); if (lost > 0) { G.save.gold -= lost; setTimeout(() => toast('-' + lost + ' Centelhas', false, 'O PREÇO DA ' + curDiff().n.toUpperCase(), '#ff8a6a'), 1100); } } }
 function respawn() {
   G.respawning = true;
   fadeTo(1, .5, () => {

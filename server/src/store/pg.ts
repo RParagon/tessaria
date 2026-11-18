@@ -1,7 +1,7 @@
 import postgres from 'postgres';
 import { MIGRATIONS } from './migrations';
 import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
-import { INV_MAX } from '../../../shared/save';
+import { invMax } from '../../../shared/save';
 
 type Row = Record<string, any>;
 const toAccount = (r: Row): Account => ({
@@ -120,7 +120,7 @@ export class PgStore implements Store {
       const [s] = await tx`SELECT rev, data FROM saves WHERE account_id = ${accountId} FOR UPDATE`;
       if (!s) return { ok: false, reason: 'sem-save' } as const;
       const data = s.data; data.inv = Array.isArray(data.inv) ? data.inv : [];
-      if (data.inv.length >= INV_MAX) return { ok: false, reason: 'bolsa-cheia' } as const;
+      if (data.inv.length >= invMax(data)) return { ok: false, reason: 'bolsa-cheia' } as const;
       data.inv.push(m.item);
       const [u] = await tx`UPDATE saves SET data = ${tx.json(data)}, rev = rev + 1, updated_at = now() WHERE account_id = ${accountId} RETURNING rev`;
       await tx`UPDATE mail SET claimed_at = now() WHERE id = ${mailId}`;

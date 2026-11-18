@@ -198,6 +198,15 @@
     </div>
   </section>
 
+  <section id="bank" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Cofre do Tear</h2>
+      <p class="sub" id="bkSub"></p>
+      <div class="crow" id="bkBtns" style="flex-wrap:wrap"></div>
+      <button class="px" id="bkClose">Fechar</button>
+    </div>
+  </section>
+
   <section id="profile" class="screen modal" hidden>
     <div class="mbox panel">
       <div class="prof-top"><div class="prof-img"><img id="pfImg" alt="Seu herói"></div><div><h2 id="pfName">—</h2><p class="sub" id="pfSub"></p><div class="bar xp" style="margin-top:6px"><i id="pfXp"></i></div><small id="pfXpT" class="sub"></small></div></div>
@@ -224,7 +233,7 @@
     <div class="mbox panel wmbox">
       <h2 id="wmTitle">Mapa dos Ermos</h2>
       <p class="sub" id="wmSub"></p>
-      <div class="wmwrap"><canvas id="wmCv"></canvas><div id="wmPins"></div></div>
+      <div class="wmwrap"><div id="wmInner"><canvas id="wmCv"></canvas><div id="wmPins"></div></div><div class="wmzoom"><button class="px" id="wmZin" aria-label="Aproximar">+</button><button class="px" id="wmZout" aria-label="Afastar">−</button><button class="px" id="wmMe" aria-label="Centralizar em você">◎</button></div></div>
       <div id="wmList" class="wmlist"></div>
       <button class="px" id="wmClose">Fechar</button>
     </div>

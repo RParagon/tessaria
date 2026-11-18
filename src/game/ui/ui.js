@@ -57,7 +57,7 @@ function refreshHudVis() {
   $('#keys').hidden = G.touch; $('#abar').hidden = G.touch;
   { const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); $('#poseBar').hidden = !pv; if (!pv) { G.pvPose = null; G.pvZoom = 1; document.querySelectorAll('#poseBar button').forEach(x => x.classList.remove('on')); } }
 }
-function showOnly(id) { for (const s of ['#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap']) $(s).hidden = s !== id; }
+function showOnly(id) { for (const s of ['#bank', '#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap']) $(s).hidden = s !== id; }
 function openMenu(which) {
   if (G.mode !== 'play' && !(G.mode === 'dialog' && (which === 'forge' || which === 'shop'))) return;
   $('#dialog').hidden = true; DLG.q = []; DLG.cur = null;
@@ -66,7 +66,7 @@ function openMenu(which) {
   if (which === 'skills') renderSkills(); if (which === 'board') renderBoard(); if (which === 'riftm') renderRiftMenu();
   if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; renderShop(); }
   if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; resetMailOnline(); renderMail(); }
-  if (which === 'profile') renderProfile();
+  if (which === 'profile') renderProfile(); if (which === 'bank') renderBank();
   if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap();
   if (which === 'forge') renderForge(); if (which === 'journal') renderJournal(); if (which === 'pause') renderPause();
   showOnly('#' + which); refreshHudVis();
@@ -99,10 +99,10 @@ function renderDetail(box, sel, ctx, after) {
   const row = document.createElement('div'); row.className = 'irow';
   const btn = (label, cls, fn, dis) => { const b = document.createElement('button'); b.className = 'px ' + cls; b.textContent = label; b.disabled = !!dis; b.onclick = () => { fn(); after(); }; row.appendChild(b); };
   if (ctx === 'inv') {
-    if (isEq) btn('Guardar na bolsa', '', () => { if (s.inv.length >= 20) { toast('Bolsa cheia.'); return; } s.inv.push(it); s.eq[it.slot] = null; invSel = null; afterEquip(); }, s.inv.length >= 20);
+    if (isEq) btn('Guardar na bolsa', '', () => { if (s.inv.length >= BAG()) { toast('Bolsa cheia.'); return; } s.inv.push(it); s.eq[it.slot] = null; invSel = null; afterEquip(); }, s.inv.length >= BAG());
     else { btn('Equipar', 'gold', () => { const prev = s.eq[it.slot]; s.eq[it.slot] = it; s.inv.splice(s.inv.indexOf(it), 1); if (prev) s.inv.push(prev); invSel = { it, eq: it.slot }; afterEquip(); }); btn(`Desmontar (+${scrapVal(it)} Centelhas)`, '', () => { s.gold += scrapVal(it); s.inv.splice(s.inv.indexOf(it), 1); invSel = null; sfx('pick'); writeSave(); }); }
   } else if (ctx === 'buy') {
-    const pr = itemPrice(it); btn(`Comprar (${pr} Centelhas)`, 'gold', () => { spend(pr); s.shop.items.splice(s.shop.items.indexOf(it), 1); invSel = null; if (!takeItem(it)) s.inv.push(it); writeSave(); }, s.gold < pr || s.inv.length >= 20);
+    const pr = itemPrice(it); btn(`Comprar (${pr} Centelhas)`, 'gold', () => { spend(pr); s.shop.items.splice(s.shop.items.indexOf(it), 1); invSel = null; if (!takeItem(it)) s.inv.push(it); writeSave(); }, s.gold < pr || s.inv.length >= BAG());
   } else if (ctx === 'sell') {
     btn(`Vender (+${scrapVal(it)} Centelhas)`, 'gold', () => { s.gold += scrapVal(it); s.inv.splice(s.inv.indexOf(it), 1); invSel = null; sfx('pick'); writeSave(); });
   }
@@ -120,8 +120,8 @@ function renderInv() {
   $('#iStats').innerHTML = [['Vida', P.maxHp], ['Dano', Math.round(st.dmg)], ['Crítico', Math.round(st.crit * 100) + '%'], ['Defesa', Math.round(st.dr * 100) + '%'], ['Vampirismo', Math.round(st.ls * 100) + '%'], ['Recarga', st.skillCd.toFixed(1) + 's']].map(([a, b]) => `<div>${a}<b>${b}</b></div>`).join('');
   const bag = $('#iBag'); bag.innerHTML = '';
   s.inv.forEach(it => bag.appendChild(slotBtn(it, () => { invSel = { it }; renderInv(); }, invSel && invSel.it === it)));
-  for (let i = s.inv.length; i < 20; i++) { const e = document.createElement('div'); e.className = 'slot empty'; bag.appendChild(e); }
-  $('#iCount').textContent = `${s.inv.length}/20`;
+  for (let i = s.inv.length; i < BAG(); i++) { const e = document.createElement('div'); e.className = 'slot empty'; bag.appendChild(e); }
+  $('#iCount').textContent = `${s.inv.length}/${BAG()}`;
   renderDetail($('#iDet'), invSel, 'inv', renderInv);
 }
 function ensureShop() {
@@ -130,11 +130,12 @@ function ensureShop() {
 }
 /* ---- Ermos: mercador suspeito (estoque e preços mudam a cada hora, iguais para todos) e mapa de viagem ---- */
 let wsZone = 0, wsSel = null;
-function openWShop(zone) { wsZone = zone; wsSel = null; openMenu('wshop'); }
+let wsId = 0;
+function openWShop(id) { wsId = id; wsZone = Math.floor(id / 10); wsSel = null; openMenu('wshop'); }
 function wsStock(zone) {
-  const hour = Math.floor(villageTime() / 3600), key = zone + ':' + hour;
+  const hour = Math.floor(villageTime() / 3600), key = wsId + ':' + hour;
   if (G.wsCache && G.wsCache.key === key) return G.wsCache;
-  const tb = Math.max(1, Math.round(wildTierBase(zone))), items = withSeed(9001 + zone * 97 + hour * 7919, () => {
+  const tb = Math.max(1, Math.round(wildTierBase(zone))), items = withSeed(9001 + wsId * 97 + hour * 7919, () => {
     const out = [];
     for (let i = 0; i < 5; i++) {
       const r = Math.random(), rar = r < .35 ? 1 : r < .7 ? 2 : r < .93 ? 3 : 4, slot = ['weapon', 'armor', 'charm'][Math.floor(Math.random() * 3)];
@@ -160,7 +161,7 @@ function renderWShop() {
     const row = document.createElement('div'), sold = bought.includes(i); row.className = 'shoprow';
     row.appendChild(slotBtn(o.it, () => { wsSel = i; renderWShop(); }, wsSel === i));
     const nm = document.createElement('div'); nm.className = 'nm'; nm.innerHTML = `<span style="color:${RAR[o.it.rar].c}">${o.it.name}</span><small>${o.mood < .8 ? 'uma pechincha, ele jura' : o.mood > 1.35 ? 'caro, mas ele "não negocia"' : 'preço de mercado… do mercado dele'}</small>`; row.appendChild(nm);
-    const b = document.createElement('button'); b.className = 'px' + (!sold && s.gold >= o.price ? ' gold' : ''); b.textContent = sold ? 'Vendido' : o.price + ' ✦'; b.disabled = sold || s.gold < o.price || s.inv.length >= 20;
+    const b = document.createElement('button'); b.className = 'px' + (!sold && s.gold >= o.price ? ' gold' : ''); b.textContent = sold ? 'Vendido' : o.price + ' ✦'; b.disabled = sold || s.gold < o.price || s.inv.length >= BAG();
     b.onclick = () => { spend(o.price); const it = JSON.parse(JSON.stringify(o.it)); it.id = it.id + '-' + Date.now().toString(36); takeItem(it); (s.wbuy[S2.key] = s.wbuy[S2.key] || []).push(i); const ks = Object.keys(s.wbuy); if (ks.length > 12) delete s.wbuy[ks[0]]; sfx('lvl'); writeSave(); renderWShop(); };
     row.appendChild(b); list.appendChild(row);
   });
@@ -179,25 +180,41 @@ function renderWMap() {
   const cx = cv.getContext('2d'), img = cx.createImageData(W, H), d = img.data;
   for (let i = 0; i < W * H; i++) { const o = i * 4; if (seenArr[i] && MM.base) { d[o] = MM.base[o]; d[o + 1] = MM.base[o + 1]; d[o + 2] = MM.base[o + 2]; } else { d[o] = 10; d[o + 1] = 8; d[o + 2] = 18; } d[o + 3] = 255; }
   cx.putImageData(img, 0, 0);
-  const travel = G.wmTravel !== undefined && G.wmTravel !== null, ob = G.save.obel || [], pins = $('#wmPins'), list = $('#wmList'); pins.innerHTML = ''; list.innerHTML = '';
+  const travel = G.wmTravel !== undefined && G.wmTravel !== null, ob = obelList(), pins = $('#wmPins'), list = $('#wmList'); pins.innerHTML = ''; list.innerHTML = '';
   $('#wmSub').textContent = travel ? (mapOk ? 'Toque num obelisco aceso para viajar. Os apagados ainda precisam ser despertos.' : 'Sem o Mapa do Cartógrafo você não vê o mapa, mas o obelisco ainda leva aos outros obeliscos acesos.') : RG.wild ? 'O que você já explorou e a sua trilha. Obeliscos acesos permitem viagem rápida (use um obelisco).' : 'O que você já explorou e a sua trilha (pontos dourados). M abre e fecha.';
-  { const tr = G.save.trail && G.save.trail[RG.key]; if (tr) { cx.fillStyle = 'rgba(242,184,75,.8)'; for (const [x, z] of tr) cx.fillRect(Math.floor(x / T), Math.floor(z / T), 1, 1); } }
+  { const tr = G.save.trail && G.save.trail[RG.key]; if (tr) for (const p of tr) { const a = 1 - trailAge(p); if (a <= 0) continue; cx.fillStyle = `rgba(242,184,75,${(.9 * a).toFixed(2)})`; cx.fillRect(Math.floor(p[0] / T), Math.floor(p[1] / T), 1, 1); } }   // trilha que vai sumindo
   const pin = (x, z, cls, label, fn) => { const b = document.createElement(fn ? 'button' : 'div'); b.className = 'wpin ' + cls; b.style.left = (x / T / W * 100) + '%'; b.style.top = (z / T / H * 100) + '%'; if (label) { const s2 = document.createElement('span'); s2.textContent = label; b.appendChild(s2); } if (fn) { b.onclick = fn; b.setAttribute('aria-label', label); } pins.appendChild(b); return b; };
   const go = (x, z, name) => { G.wmTravel = null; closeMenus(); obeliskJump(x, z, name); };
   for (const rm of RG.rooms) {
     if (rm.kind !== 'obelisk') continue;
-    const on = ob.includes(rm.ob), seen = seenArr[Math.floor(rm.wz / T) * W + Math.floor(rm.wx / T)];
+    const id = rm.obId ?? rm.ob * 10, on = ob.includes(id), seen = seenArr[Math.floor(rm.wz / T) * W + Math.floor(rm.wx / T)];
     if (!on && !seen) continue;
-    const here = travel && rm.ob === G.wmTravel, fn = travel && on && !here ? () => go(rm.wx + 1.6, rm.wz + 1.6, WZ[rm.ob].n) : null;
-    pin(rm.wx, rm.wz, (on ? 'on' : '') + (here ? ' here' : ''), WZ[rm.ob].n, fn);
-    if (fn) { const b = document.createElement('button'); b.className = 'px gold'; b.textContent = WZ[rm.ob].n + ' · Nv ' + WZ[rm.ob].lv; b.onclick = fn; list.appendChild(b); }
+    const here = travel && id === G.wmTravel, fn = travel && on && !here ? () => go(rm.wx + 1.6, rm.wz + 1.6, obName(id)) : null;
+    pin(rm.wx, rm.wz, (on ? 'on' : '') + (here ? ' here' : ''), obName(id), fn);
+    if (fn) { const b = document.createElement('button'); b.className = 'px gold'; b.textContent = obName(id) + ' · Nv ' + WZ[rm.ob].lv; b.onclick = fn; list.appendChild(b); }
   }
   if (travel) { const b = document.createElement('button'); b.className = 'px'; b.textContent = 'Portão da Vila Brasa'; b.onclick = () => go(RG.start.wx, RG.start.wz + 1.5, 'Portão da Vila'); list.appendChild(b); }
   if (RG.wild) pin(RG.start.wx, RG.start.wz, 'camp', 'Vila', null);
   if (!RG.wild) for (const it of inter) if ((it.kind === 'portal' || it.kind === 'riftportal') && seenArr[Math.floor(it.z / T) * W + Math.floor(it.x / T)]) pin(it.x, it.z, 'on', it.kind === 'riftportal' ? 'Fenda' : it.to === 'hub' ? 'Vila' : (REG[it.to] ? REG[it.to].name : ''), null);
   if (P) pin(P.x, P.z, 'me', 'você', null);
+  requestAnimationFrame(() => wmCenterMe(RG.wild ? 3 : 1.4));   // abre perto de você
 }
 $('#wmClose').onclick = () => { G.wmTravel = null; closeMenus(); };
+/* zoom (roda, + e −) e arrastar no mapa grande */
+const WMV = { s: 1, x: 0, y: 0 };
+function wmApply() {
+  const wr = $('.wmwrap'), w = wr.clientWidth, h = wr.clientHeight;
+  WMV.s = clamp(WMV.s, 1, 8); WMV.x = clamp(WMV.x, w * (1 - WMV.s), 0); WMV.y = clamp(WMV.y, h * (1 - WMV.s), 0);
+  $('#wmInner').style.transform = `translate(${WMV.x}px,${WMV.y}px) scale(${WMV.s})`; $('#wmInner').style.setProperty('--inv', (1 / WMV.s).toFixed(3));
+}
+function wmZoom(f, px, py) { const wr = $('.wmwrap'); if (px === undefined) { px = wr.clientWidth / 2; py = wr.clientHeight / 2; } const s2 = clamp(WMV.s * f, 1, 8); WMV.x = px - (px - WMV.x) * s2 / WMV.s; WMV.y = py - (py - WMV.y) * s2 / WMV.s; WMV.s = s2; wmApply(); }
+function wmCenterMe(s) { if (!P || !RG) return; const wr = $('.wmwrap'), w = wr.clientWidth, h = wr.clientHeight; WMV.s = s || WMV.s; WMV.x = w / 2 - P.x / T / RG.W * w * WMV.s; WMV.y = h / 2 - P.z / T / RG.H * h * WMV.s; wmApply(); }
+{ const wr = $('.wmwrap'); let drag = null;
+  wr.addEventListener('wheel', e => { e.preventDefault(); const r = wr.getBoundingClientRect(); wmZoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  wr.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; drag = { x: e.clientX, y: e.clientY, ox: WMV.x, oy: WMV.y }; wr.classList.add('drag'); wr.setPointerCapture(e.pointerId); });
+  wr.addEventListener('pointermove', e => { if (!drag) return; WMV.x = drag.ox + e.clientX - drag.x; WMV.y = drag.oy + e.clientY - drag.y; wmApply(); });
+  const end = () => { drag = null; wr.classList.remove('drag'); }; wr.addEventListener('pointerup', end); wr.addEventListener('pointercancel', end);
+  $('#wmZin').onclick = () => wmZoom(1.35); $('#wmZout').onclick = () => wmZoom(1 / 1.35); $('#wmMe').onclick = () => wmCenterMe(Math.max(WMV.s, 2.5)); }
 function buyMap(price, after) { if (G.save.gold < price) return; spend(price); G.save.map = true; writeSave(); sfx('legend'); toast('MAPA DO CARTÓGRAFO', true, 'MINIMAPA LIGADO · TECLA M ABRE O MAPA', '#ffbf3d'); MM.key = null; setupMinimap(); after(); }
 function renderShop() {
   ensureShop();
@@ -207,11 +224,13 @@ function renderShop() {
   potRow.innerHTML = `<div class="slot" style="--rc:#d9433a"><img src="${icon('potion')}" alt=""></div><div class="nm">Poção de cura<small>Recupera 45% da vida · você tem ${s.potions}/${st.maxPot}</small></div>`;
   const pb = document.createElement('button'); pb.className = 'px gold'; pb.textContent = '20 Centelhas'; pb.disabled = s.gold < 20 || s.potions >= st.maxPot;
   pb.onclick = () => { spend(20); s.potions++; sfx('pick'); writeSave(); renderShop(); }; potRow.appendChild(pb); list.appendChild(potRow);
+  { const lv = (BAG() - 20) / 5, c = BAG_UP[lv]; if (c) { const br = document.createElement('div'); br.className = 'shoprow'; br.innerHTML = `<div class="slot" style="--rc:#c08a4a"><img src="${icon('bag')}" alt=""></div><div class="nm">Bolsa maior<small>+5 espaços (hoje ${BAG()}, máximo 40)</small></div>`;
+    const bb = document.createElement('button'); bb.className = 'px gold'; bb.textContent = c + ' Centelhas'; bb.disabled = s.gold < c; bb.onclick = () => { spend(c); s.bagCap = BAG() + 5; sfx('lvl'); toast('BOLSA MAIOR', true, BAG() + ' ESPAÇOS'); writeSave(); renderShop(); }; br.appendChild(bb); list.appendChild(br); } }
   if (!hasMap()) { const mr = document.createElement('div'); mr.className = 'shoprow'; mr.innerHTML = `<div class="slot" style="--rc:#f2b84b"><img src="${icon('book')}" alt=""></div><div class="nm">Mapa do Cartógrafo<small>Minimapa e mapa grande (tecla M) em todo lugar; guarda o que você explorou e a sua trilha</small></div>`;
     const mb = document.createElement('button'); mb.className = 'px gold'; mb.textContent = MAP_PRICE.otto + ' Centelhas'; mb.disabled = s.gold < MAP_PRICE.otto; mb.onclick = () => buyMap(MAP_PRICE.otto, renderShop); mr.appendChild(mb); list.appendChild(mr); }
   { const gc = gambleCost(), gr = document.createElement('div'); gr.className = 'shoprow'; gr.innerHTML = `<div class="slot" style="--rc:#c07bff"><img src="${icon('bag')}" alt=""></div><div class="nm">Embrulho misterioso<small>${gc} Centelhas · item surpresa, nunca comum · 13% épico · 2% lendário</small></div>`;
     const bx = document.createElement('div'); bx.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end';
-    for (const [sl, lb] of [['weapon', 'Arma'], ['armor', 'Armadura'], ['charm', 'Amuleto']]) { const b = document.createElement('button'); b.className = 'px' + (s.gold >= gc && s.inv.length < 20 ? ' gold' : ''); b.textContent = lb; b.disabled = s.gold < gc || s.inv.length >= 20; b.onclick = () => { sfx('ui'); gamble(sl); renderShop(); }; bx.appendChild(b); }
+    for (const [sl, lb] of [['weapon', 'Arma'], ['armor', 'Armadura'], ['charm', 'Amuleto']]) { const b = document.createElement('button'); b.className = 'px' + (s.gold >= gc && s.inv.length < BAG() ? ' gold' : ''); b.textContent = lb; b.disabled = s.gold < gc || s.inv.length >= BAG(); b.onclick = () => { sfx('ui'); gamble(sl); renderShop(); }; bx.appendChild(b); }
     gr.appendChild(bx); list.appendChild(gr); }
   for (const it of s.shop.items) {
     const row = document.createElement('div'); row.className = 'shoprow';
@@ -278,7 +297,7 @@ function renderHome() {
 }
 let stSel = null;
 function renderStash() {
-  const s = G.save, h = H(); $('#stCount').textContent = `${h.stash.length}/${h.cap}`; $('#stBagN').textContent = `${s.inv.length}/20`;
+  const s = G.save, h = H(); $('#stCount').textContent = `${h.stash.length}/${h.cap}`; $('#stBagN').textContent = `${s.inv.length}/${BAG()}`;
   const bag = $('#stBag'); bag.innerHTML = ''; s.inv.forEach(it => bag.appendChild(slotBtn(it, () => { stSel = { it, from: 'bag' }; renderStash(); }, stSel && stSel.it === it)));
   if (!s.inv.length) bag.innerHTML = '<p class="sub" style="grid-column:1/-1">Bolsa vazia.</p>';
   $('#stAll').disabled = !s.inv.length || h.stash.length >= h.cap;
@@ -289,7 +308,7 @@ function renderStash() {
   const it = stSel.it; det.innerHTML = `<h3 style="color:${RAR[it.rar].c}">${it.name}</h3>${it.power ? `<div class="legp">✦ ${POWERS[it.power]}</div>` : ''}<div class="meta">${SLOTN[it.slot]} · ${RAR[it.rar].n} · Poder ${itemScore(it)}</div><ul>${itemLinesHTML(it, s.eq[it.slot])}</ul>`;
   const r = document.createElement('div'); r.className = 'irow'; const b = document.createElement('button'); b.className = 'px gold';
   if (stSel.from === 'bag') { b.textContent = h.stash.length >= h.cap ? 'Baú cheio' : 'Guardar no baú'; b.disabled = h.stash.length >= h.cap; b.onclick = () => { s.inv.splice(s.inv.indexOf(it), 1); h.stash.push(it); stSel = null; sfx('open'); writeSave(); renderStash(); }; }
-  else { b.textContent = s.inv.length >= 20 ? 'Bolsa cheia' : 'Pegar para a bolsa'; b.disabled = s.inv.length >= 20; b.onclick = () => { h.stash.splice(h.stash.indexOf(it), 1); s.inv.push(it); stSel = null; sfx('open'); writeSave(); renderStash(); }; }
+  else { b.textContent = s.inv.length >= BAG() ? 'Bolsa cheia' : 'Pegar para a bolsa'; b.disabled = s.inv.length >= BAG(); b.onclick = () => { h.stash.splice(h.stash.indexOf(it), 1); s.inv.push(it); stSel = null; sfx('open'); writeSave(); renderStash(); }; }
   r.appendChild(b); det.appendChild(r);
 }
 $('#stAll').onclick = () => { const s = G.save, h = H(); while (s.inv.length && h.stash.length < h.cap) h.stash.push(s.inv.shift()); stSel = null; sfx('open'); writeSave(); renderStash(); };
@@ -332,7 +351,7 @@ $('#mlGet').onclick = () => {
   const it = readCode($('#mlIn').value), h = H(), s = G.save;
   if (!it) { toast('Código inválido ou danificado', false, 'CORREIO DO TEAR', '#ff8a6a'); sfx('hurt'); return; }
   if (h.seen.includes(it.srcId)) { toast('Esse pacote já foi aberto', false, 'CORREIO DO TEAR', '#ff8a6a'); return; }
-  if (s.inv.length >= 20) { toast('Bolsa cheia. Abra espaço para receber.'); return; }
+  if (s.inv.length >= BAG()) { toast('Bolsa cheia. Abra espaço para receber.'); return; }
   h.seen.push(it.srcId); const from = it.from, ad = it.adapted; delete it.srcId; delete it.from; delete it.adapted; s.inv.push(it); $('#mlIn').value = ''; writeSave(); sfx('legend');
   toast(it.name, true, 'PACOTE DE ' + from.toUpperCase() + (ad ? ' · ADAPTADO À SUA CLASSE' : ''), RAR[it.rar].c); renderMail();
 };
@@ -347,13 +366,25 @@ function upgradeItem(it) {
 }
 const gambleCost = () => { const nb = ['forest', 'crypt', 'peaks', 'swamp', 'glass'].filter(k => G.save.bosses[k]).length; return Math.round(100 * (1 + nb) * (1 + .4 * (G.save.diff || 0))); };
 function gamble(slot) {
-  const s = G.save, c = gambleCost(); if (s.gold < c || s.inv.length >= 20) return; spend(c);
+  const s = G.save, c = gambleCost(); if (s.gold < c || s.inv.length >= BAG()) return; spend(c);
   const r = Math.random(), d = s.diff || 0, rar = r < .02 + .006 * d ? 4 : r < .15 ? 3 : r < .45 ? 2 : 1;
   const nb = ['forest', 'crypt', 'peaks', 'swamp', 'glass'].filter(k => s.bosses[k]).length, it = makeItem(slot, Math.min(5, nb + 1) + curDiff().tier * .6, rar);
   const st2 = s.st = s.st || {}; st2.gambles = (st2.gambles || 0) + 1; if (rar === 4) st2.legs = (st2.legs || 0) + 1;
   s.inv.push(it); writeSave(); toast(it.name, rar >= 3, 'DO EMBRULHO · ' + RAR[rar].n.toUpperCase(), RAR[rar].c); sfx(rar === 4 ? 'legend' : rar === 3 ? 'epic' : 'open'); if (rar === 4) hitStop(.08);
 }
 /** Perfil do herói (clicar no retrato do HUD): retrato grande, atributos, equipamento e jornada. */
+/** Cofre do Tear: o que está no banco não se perde ao morrer nos Ermos. */
+function renderBank() {
+  const s = G.save; s.bank = s.bank || 0;
+  $('#bkSub').innerHTML = `Com você: <b style="color:var(--gold)">${s.gold}</b> Centelhas · No cofre: <b style="color:#9ff6ff">${s.bank}</b>. O que fica no cofre não cai no chão quando você morre nos Ermos.`;
+  const box = $('#bkBtns'); box.innerHTML = '';
+  const mk = (label, ok, fn, gold) => { const b = document.createElement('button'); b.className = 'px' + (ok && gold ? ' gold' : ''); b.textContent = label; b.disabled = !ok; b.onclick = () => { fn(); sfx('pick'); writeSave(); renderBank(); }; box.appendChild(b); };
+  for (const n of [100, 1000, 10000]) mk('Guardar ' + n, s.gold >= n, () => { s.gold -= n; s.bank += n; }, true);
+  mk('Guardar tudo', s.gold > 0, () => { s.bank += s.gold; s.gold = 0; }, true);
+  for (const n of [100, 1000, 10000]) mk('Sacar ' + n, s.bank >= n, () => { s.bank -= n; s.gold += n; });
+  mk('Sacar tudo', s.bank > 0, () => { s.gold += s.bank; s.bank = 0; });
+}
+$('#bkClose').onclick = () => closeMenus();
 function renderProfile() {
   const s = G.save, st = stats(), m = Math.floor((s.time || 0) / 60);
   try { const A = newAnim(playerModel); $('#pfImg').src = bakeModel(playerModel, A, 96, [.9, 1.6, 4.4], [0, 1.05, 0], .35, 30); } catch (e) { }
@@ -362,7 +393,7 @@ function renderProfile() {
   const need = xpNeed(s.lvl), pct = Math.min(100, Math.round((s.xp / need) * 100)); $('#pfXp').style.width = pct + '%'; $('#pfXpT').textContent = `XP ${Math.floor(s.xp)} / ${need} (${pct}%)`;
   $('#pfStats').innerHTML = [['Vida', P ? P.maxHp : st.maxHp], ['Dano', Math.round(st.dmg)], ['Crítico', Math.round((st.crit || 0) * 100) + '%'], ['Defesa', Math.round((st.def || 0) * 100) + '%'], ['Vampirismo', Math.round((st.leech || 0) * 100) + '%'], ['Poções', s.potions + '/' + st.maxPot]].map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('');
   $('#pfEq').innerHTML = ['weapon', 'armor', 'charm'].map(k => { const it = s.eq[k]; return `<div class="row"><img src="${icon(k === 'weapon' ? CLSICON[G.char.cls] : k)}" alt="" style="width:24px;height:24px;image-rendering:pixelated"><span style="color:${it ? RAR[it.rar].c : 'var(--dim)'}">${it ? it.name : 'Vazio'}</span><small>${it ? RAR[it.rar].n + ' · Poder ' + itemScore(it) : SLOTN[k]}</small></div>`; }).join('');
-  $('#pfJourney').innerHTML = [['Tempo de jogo', m + ' min'], ['Monstros', s.kills || 0], ['Quedas', s.deaths || 0], ['Centelhas', s.gold], ['Feitos', (s.feats || []).length + '/' + FEITOS.length], ['Fenda máx.', s.riftMax || 0], ['Peixes', (s.st && s.st.fish) || 0], ['Mapa', hasMap() ? 'Sim' : 'Não']].map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('');
+  $('#pfJourney').innerHTML = [['Tempo de jogo', m + ' min'], ['Monstros', s.kills || 0], ['Quedas', s.deaths || 0], ['Centelhas', s.gold], ['No cofre', s.bank || 0], ['Feitos', (s.feats || []).length + '/' + FEITOS.length], ['Fenda máx.', s.riftMax || 0], ['Peixes', (s.st && s.st.fish) || 0], ['Mapa', hasMap() ? 'Sim' : 'Não']].map(([a, b]) => `<div><small>${a}</small><b>${b}</b></div>`).join('');
   $('#pfWard').hidden = !(G.save.house && G.save.house.owned && G.save.house.f.guarda);
 }
 $('#hPortraitB').onclick = () => openMenu('profile');

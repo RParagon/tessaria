@@ -90,3 +90,29 @@ test('guarda-roupa: móvel da casa troca o visual e vende estilos raros uma vez 
   expect(await T(page, () => [__T.G.mode, __T.G.save.char.acc, __T.G.save.cos, __T.G.save.char.armorStyle])).toEqual(['play', 'cartola', ['cartola'], 'couro']);
   expect(errors).toEqual([]);
 });
+
+test('banco e espólio: o cofre guarda Centelhas, morrer nos Ermos deixa o resto no chão e dá para recuperar; bolsa maior', async ({ page }) => {
+  const errors = await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  await ev('G.save.gold = 5000; P.x = 62; P.z = 37.8');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'bank', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await page.getByRole('button', { name: 'Guardar 1000', exact: true }).click();
+  expect(await ev('[G.save.gold, G.save.bank]')).toEqual([4000, 1000]);
+  await page.click('#bkClose');
+  // Otto vende +5 espaços na bolsa
+  await ev('G.save.gold = 6000; buyMap; openMenu("shop")');
+  await page.locator('#sList .shoprow', { hasText: 'Bolsa maior' }).locator('button').click();
+  expect(await ev('BAG()')).toBe(25);
+  await page.keyboard.press('Escape');
+  // Ermos: morrer derruba o que você carrega; o banco fica
+  await ev("G.save.gold = 700; G.save.inv.push(makeItem('armor', 1, 2))");
+  await travel(page, 'wilds');
+  await ev('P.x += 9; P.z += 4; playerDie()');   // longe do ponto onde renasce
+  expect(await ev('[G.save.gold, G.save.inv.length, G.save.wloot.gold, G.save.wloot.items.length, G.save.bank]')).toEqual([0, 0, 700, 1, 1000]);
+  await page.waitForFunction(() => window.__T.ev('P.dieT < 0 && !G.respawning'), null, { timeout: 20_000 });
+  await ev('P.x = G.save.wloot.x; P.z = G.save.wloot.z');
+  await page.waitForFunction(() => window.__T.ev('!G.save.wloot'), null, { timeout: 5000 });
+  expect(await ev('[G.save.gold, G.save.inv.length]')).toEqual([700, 1]);
+  expect(errors).toEqual([]);
+});

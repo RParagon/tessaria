@@ -66,6 +66,9 @@ const STASH_UP = [800, 2000, 4500, 9000, 18000];
 const UPCH = [1, 1, 1, 1, 1, .9, .75, .6, .45, .3];
 const H = () => { const s = G.save; s.house = s.house || { owned: false, f: {}, stash: [], cap: 20, seen: [] }; s.house.seen = s.house.seen || []; return s.house; };
 const gsave = () => G.save;
+/** Espaços da bolsa (20, ampliável no Otto até 40). */
+const BAG = () => Math.min(40, Math.max(20, (G.save && G.save.bagCap) || 20));
+const BAG_UP = [1500, 4000, 9000, 18000];   // preço de cada +5 espaços
 const hasF = id => !!(G.save && G.save.house && G.save.house.owned && G.save.house.f[id]);
 function spend(n) { G.save.gold -= n; G.save.spent = (G.save.spent || 0) + n; }
 const stats0 = stats;
@@ -132,6 +135,9 @@ const WREMAP = [null, null,
 const wildLv = (x, z) => { const b = wZone(x / T, z / T), lv = WZ[b].lv; return b === 7 ? lv + Math.min(30, Math.floor(Math.max(0, wDist(x / T, z / T) - 96) * .4)) : lv; };
 /** Acampamentos (zona segura em volta de cada obelisco dos Ermos). */
 const CAMP_R = 10;
+/** Obeliscos despertos (ids z*10+k). Saves antigos guardavam o bioma: viram o primeiro obelisco dele. */
+function obelList() { const s = G.save; s.obel = s.obel || []; if (s.obelV !== 2) { s.obel = s.obel.map(z => z < 10 ? z * 10 : z); s.obelV = 2; } return s.obel; }
+const obName = id => WZ[Math.floor(id / 10)].n + (id % 10 ? ' · ' + ['', 'II', 'III'][id % 10] : '');
 const inCamp = (x, z) => !!(RG && RG.wild && RG.camps && RG.camps.some(c => Math.hypot(c.x - x, c.z - z) < CAMP_R));
 const REGBASE = { hub: 1, forest: 1, crypt: 4, peaks: 8, swamp: 13, glass: 16 };
 const curDiff = () => DIFFS[ELO && Number.isInteger(ELO.diff) ? ELO.diff : (G.save && G.save.diff) || 0] || DIFFS[0];   // na instância do grupo vale a dificuldade do grupo

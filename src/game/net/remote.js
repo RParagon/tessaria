@@ -105,8 +105,13 @@ function assignRemoteSlots(list) {
 }
 
 /** Ajustes de pose dos emotes, aplicados depois de poseHuman (jogador local e remotos). */
-function applyEmote(A, em, t, k = 1) {   // k: 0→1 na entrada da pose (sentar desce suave)
-  if (em === 'acenar') { A[5].rz = -2.5 + .35 * Math.sin(t * 9); A[5].rx = -.2; A[3].rz = .08 * Math.sin(t * 4); }
+function applyEmote(A, em, t, k = 1, cls) {   // k: 0→1 na entrada da pose (sentar desce suave); cls: qual mão está livre
+  if (em === 'acenar') {   // acena com a mão livre: a esquerda (a direita segura a arma), ou a direita no arqueiro (o arco fica na esquerda)
+    const e = Math.min(1, k * 2), right = cls === 'arco', S = right ? -1 : 1, up = right ? 5 : 4, fa = right ? 11 : 10, sw = Math.sin(t * 8);
+    A[up].rz = lerp(A[up].rz, S * (2.35 + .22 * sw), e); A[up].rx = lerp(A[up].rx, -.15, e); A[up].ry = 0;
+    if (A[13]) A[fa].rx = lerp(A[fa].rx, -.35 - .15 * sw, e);
+    A[3].rz = S * .1 * e + .05 * Math.sin(t * 4); A[3].ry = S * .15 * e; A[2].rz = -S * .05 * e;
+  }
   else if (em === 'comemorar') { const k = .5 + .5 * Math.sin(t * 8); A[4].rx = A[5].rx = -2.5 - .3 * k; A[4].rz = .35; A[5].rz = -.35; A[1].ty = .12 * k; A[3].rx = -.25; if (A[13]) { A[10].rx = A[11].rx = -.25 - .3 * (1 - k); A[12].rx = A[13].rx = .35 * (1 - k); } }
   else if (em === 'dancar') { A[1].ry = Math.sin(t * 5) * .6; A[1].ty = Math.abs(Math.sin(t * 9)) * .12; A[4].rz = 1.2 + Math.sin(t * 9) * .6; A[5].rz = -1.2 + Math.sin(t * 9 + 1.5) * .6; A[6].rx = Math.sin(t * 9) * .4; A[7].rx = -Math.sin(t * 9) * .4; if (A[13]) { A[10].rx = -.9 - .4 * Math.sin(t * 9); A[11].rx = -.9 + .4 * Math.sin(t * 9); A[12].rx = .2 + .5 * Math.max(0, -Math.sin(t * 9)); A[13].rx = .2 + .5 * Math.max(0, Math.sin(t * 9)); } }
   else if (em === 'sentar') {
@@ -116,7 +121,8 @@ function applyEmote(A, em, t, k = 1) {   // k: 0→1 na entrada da pose (sentar 
     A[4].rx = lerp(A[4].rx, -.55, e); A[5].rx = lerp(A[5].rx, -.55, e); A[4].rz = lerp(A[4].rz, .05, e); A[5].rz = lerp(A[5].rz, -.05, e);   // mãos nos joelhos
     A[2].rx = lerp(A[2].rx, .06 + br, e); A[2].ry *= 1 - e; A[3].rx = lerp(A[3].rx, -.04, e);
     if (A[13]) { A[12].rx = lerp(A[12].rx, 1.5, e); A[13].rx = lerp(A[13].rx, 1.5, e); A[10].rx = lerp(A[10].rx, -.75, e); A[11].rx = lerp(A[11].rx, -.75, e); }
-    if (A[15]) { A[14].rx = lerp(A[14].rx, .55, e); A[15].rx = lerp(A[15].rx, .45, e); }   // a capa cai por trás do banco
+    if (A[15]) { A[14].rx = lerp(A[14].rx, .3, e); A[15].rx = lerp(A[15].rx, -.3, e); }   // a capa desce reta atrás do assento
+    if (A[8] && e > .5) A[8].sx = A[8].sy = A[8].sz = .001;   // sentado, a arma fica guardada
   }
 }
 // Duração de cada ação, igual à do jogador local (core/player.js).
@@ -190,7 +196,7 @@ function poseRemote(r, t) {
   poseHuman(A, e2, t);
   if (r.down) { coopDownPose(A, t); return; }
   if (r.emote && (r.m > .2 || r.act)) r.emote = null;   // andou ou atacou: a pose acaba (sentar não volta sozinho)
-  if (!r.act && r.emote && (r.emoteT < 6 || r.emote === 'sentar')) applyEmote(A, r.emote, t, Math.min(1, (r.emoteT || 0) / .4));
+  if (!r.act && r.emote && (r.emoteT < 6 || r.emote === 'sentar')) applyEmote(A, r.emote, t, Math.min(1, (r.emoteT || 0) / .4), r.look.cls);
 }
 /** Chamado no render da vila: suaviza posições, anima e desenha. */
 function drawRemotes(dt, t) {
@@ -285,7 +291,7 @@ function renderMailOnline() {
     nm.firstChild.textContent = m.item.name; nm.firstChild.style.color = (RAR[m.item.rar] || RAR[0]).c;
     nm.lastChild.textContent = 'De ' + m.from + (m.note ? ': "' + m.note + '"' : '');
     row.appendChild(nm);
-    const b = document.createElement('button'); b.className = 'px gold'; b.textContent = 'Receber'; b.disabled = s.inv.length >= 20;
+    const b = document.createElement('button'); b.className = 'px gold'; b.textContent = 'Receber'; b.disabled = s.inv.length >= BAG();
     b.onclick = async () => {
       if (mlBusy) return; mlBusy = true; b.disabled = true;
       const res = await n.claim(m.id); mlBusy = false;

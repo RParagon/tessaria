@@ -136,10 +136,10 @@ function updateTriggers(dt) {
   if (RG.key === 'hub') { const [fx, fz] = HUB.fountain, d = Math.hypot(fx - P.x, fz - P.z); if (d < 3.4 && d < bd) { bd = d; nearInter = { kind: 'shrine', x: fx, z: fz, hub: true }; } }
   const pr = $('#prompt'), tu = $('#tUse');
   if (nearInter && P.dieT < 0) {
-    const HL = { wardrobe: 'Abrir o guarda-roupa', bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar', obelisk: nearInter.kind === 'obelisk' ? ((G.save.obel || []).includes(nearInter.zone) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
+    const HL = { bank: 'Cofre do Tear (banco)', wardrobe: 'Abrir o guarda-roupa', bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar', obelisk: nearInter.kind === 'obelisk' ? (obelList().includes(nearInter.obId) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
     const label = HL[nearInter.kind] || (nearInter.kind === 'appletree' ? 'Deixar a maçã na macieira' : nearInter.kind === 'altar' ? 'Desafiar ' + BOSSDEF[REG[RG.key].boss].name.split(',')[0] + ' de novo · ' + curDiff().n : nearInter.kind === 'npc' ? 'Falar com ' + nearInter.npc.name : nearInter.kind === 'shrine' ? 'Descansar e salvar' : nearInter.kind === 'chest' ? 'Abrir baú' : nearInter.kind === 'portal' ? (nearInter.to === 'hub' ? 'Voltar à Vila Brasa' : 'Entrar: ' + REG[nearInter.to].name) : nearInter.kind === 'dragon' ? 'Falar com Varkhaz' : nearInter.kind === 'board' ? 'Ver contratos' : nearInter.kind === 'riftportal' ? 'Entrar na Fenda do Tear' : 'Usar');
     pr.innerHTML = (G.touch ? '' : '<kbd>E</kbd>') + label; pr.hidden = false; tu.hidden = !G.touch;
-    if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' || k === 'wardrobe' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
+    if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' || k === 'wardrobe' || k === 'bank' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
   } else { pr.hidden = true; tu.hidden = true; }
   if (!coopIsGuest()) for (const rm of RG.rooms) {   // co-op: só o anfitrião cria inimigos; a sala acorda com qualquer jogador perto
     if (rm.en && !rm.spawned && coopNear(rm.wx, rm.wz, ((rm.r || Math.max(rm.w, rm.h)) + 3) * T)) {
@@ -182,6 +182,7 @@ function interact() {
   } else if (it.kind === 'house') { if (H().owned) travel('home'); else openMenu('home');
   } else if (it.kind === 'catalog') { openMenu('home');
   } else if (it.kind === 'stash') { openMenu('stash');
+  } else if (it.kind === 'bank') { openMenu('bank');
   } else if (it.kind === 'wardrobe') { openWardrobe();
   } else if (it.kind === 'mail') { openMenu('mail');
   } else if (it.kind === 'bed') {
@@ -236,6 +237,7 @@ function loadRegion(key, atCp) {
   if (key === 'hub') {
     inter.push({ kind: 'board', x: 36, z: 12.9, r: 2.1 });
     inter.push({ kind: 'house', x: 68.4, z: 47.1, r: 2.1 });
+    inter.push({ kind: 'bank', x: 62, z: 36.5, r: 2, scale: 1.5, model: getModel('chest'), anim: newAnim(getModel('chest')), yaw: 0 });   // Cofre do Tear (banco)
     { const qb = G.save.q && G.save.q.brann; if (qb && qb.st === 'active' && !qb.p && G.save.ended) inter.push({ kind: 'appletree', x: 25, z: 51.4, r: 2.4 }); }
     { const [gx, gz] = HUB.sanct.gate; inter.push({ kind: 'riftportal', x: gx, z: gz, r: 3, y: .32, scale: .8, lit: !!G.save.bosses.forest, model: getModel('riftgate'), anim: newAnim(getModel('riftgate')), yaw: 0 }); }   // no Santuário da Fenda
     ensureContracts();
@@ -257,11 +259,11 @@ function loadRegion(key, atCp) {
     RG.rooms.forEach((rm, i) => {
       if (rm.kind === 'shrine') inter.push({ kind: 'shrine', x: rm.wx, z: rm.wz, r: 2, model: getModel('shrine'), anim: newAnim(getModel('shrine')), yaw: 0 });
       if (rm.kind === 'obelisk') {
-        inter.push({ kind: 'obelisk', zone: rm.ob, x: rm.wx, z: rm.wz, r: 2, model: getModel('pylon'), anim: newAnim(getModel('pylon')), yaw: 0 });
+        inter.push({ kind: 'obelisk', zone: rm.ob, obId: rm.obId ?? rm.ob * 10, x: rm.wx, z: rm.wz, r: 2, model: getModel('pylon'), anim: newAnim(getModel('pylon')), yaw: 0 });
         if (RG.wild) {   // acampamento seguro com mercador suspeito
-          (RG.camps = RG.camps || []).push({ x: rm.wx, z: rm.wz, zone: rm.ob });
+          (RG.camps = RG.camps || []).push({ x: rm.wx, z: rm.wz, zone: rm.ob, id: rm.obId });
           inter.push({ kind: 'camp', x: rm.wx, z: rm.wz + 3.4, r: .01, model: getModel('camp'), anim: newAnim(getModel('camp')), yaw: 0 });
-          const m = makeModel('npc-merc', () => buildHumanoid(MERC_CFG, 128)); npcs.push({ id: 'merc', merc: rm.ob, name: 'Mercador Suspeito', x: rm.wx + 3, z: rm.wz + 1.2, baseYaw: -.6, cfg: MERC_CFG, model: m, anim: newAnim(m), yaw: -.6, talkT: 0, visible: true });
+          const m = makeModel('npc-merc', () => buildHumanoid(MERC_CFG, 128)); npcs.push({ id: 'merc', merc: rm.obId ?? rm.ob * 10, name: 'Mercador Suspeito', x: rm.wx + 3, z: rm.wz + 1.2, baseYaw: -.6, cfg: MERC_CFG, model: m, anim: newAnim(m), yaw: -.6, talkT: 0, visible: true });
         }
       }
       if (rm.kind === 'cave') inter.push({ kind: 'cave', zone: rm.zone, ring: rm.ring, ri: i, x: rm.wx, z: rm.wz, r: 2.2, model: getModel('portal'), anim: newAnim(getModel('portal')), lit: false, yaw: 0 });
@@ -304,6 +306,8 @@ const MM = { key: null, base: null, seen: null, t: 0 };
 /** Mapa do Cartógrafo: sem ele não há minimapa nem mapa grande. Quem já explorava os Ermos antes dele existir ganha um. */
 const MAP_PRICE = { otto: 250, merc: 400 };
 function hasMap() { const s = G.save; if (!s) return false; if (!s.map && (s.wseen || (s.obel && s.obel.length))) s.map = true; return !!s.map; }
+const TRAIL_S = 8 * 60;   // a trilha some em 8 minutos
+const trailAge = p => p[2] ? (Date.now() / 1000 - p[2]) / TRAIL_S : 2;   // 0 nova, 1 sumiu
 const mapKeep = k => k && k !== 'rift' && k !== 'home';   // regiões fixas: o explorado e a trilha ficam salvos
 function mapStore() { const s = G.save; s.mseen = s.mseen || {}; if (s.wseen && !s.mseen.wilds) { s.mseen.wilds = s.wseen; } delete s.wseen; s.trail = s.trail || {}; return s; }
 function hexRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
@@ -342,7 +346,7 @@ function updateMinimap(dt) {
   if (!RG || RG.key === 'home' || !P || !hasMap()) return; if (MM.key !== RG) setupMinimap(); if (!MM.seen) return;
   {   // trilha: um ponto a cada 4 unidades, os últimos 300 por região
     const tr = mapKeep(RG.key) && (mapStore().trail[RG.key] = G.save.trail[RG.key] || []), l = tr && tr[tr.length - 1];
-    if (tr && (!l || Math.hypot(l[0] - P.x, l[1] - P.z) > 4)) { tr.push([Math.round(P.x), Math.round(P.z)]); if (tr.length > 300) tr.shift(); }
+    if (tr && (!l || Math.hypot(l[0] - P.x, l[1] - P.z) > 4)) { tr.push([Math.round(P.x), Math.round(P.z), Math.floor(Date.now() / 1000)]); while (tr.length > 300 || (tr.length && trailAge(tr[0]) > 1)) tr.shift(); }
   }
   const W = RG.W, H = RG.H, tx = Math.floor(P.x / T), tz = Math.floor(P.z / T), rad = RG.wild ? 9 : 7;
   for (let y = tz - rad; y <= tz + rad; y++) for (let x = tx - rad; x <= tx + rad; x++) if (x >= 0 && y >= 0 && x < W && y < H && (x - tx) ** 2 + (y - tz) ** 2 <= rad * rad && !MM.seen[y * W + x]) { MM.seen[y * W + x] = 1; MM.dirty = true; }
@@ -353,9 +357,9 @@ function updateMinimap(dt) {
   for (let yy = 0; yy < VH; yy++) for (let xx = 0; xx < VW; xx++) { const i = (yy + oy) * W + xx + ox, o = (yy * VW + xx) * 4; if (MM.seen[i]) { d[o] = MM.base[i * 4]; d[o + 1] = MM.base[i * 4 + 1]; d[o + 2] = MM.base[i * 4 + 2]; } else { d[o] = 8; d[o + 1] = 6; d[o + 2] = 14; } d[o + 3] = 255; }
   cx.putImageData(img, 0, 0);
   const dot = (x, z, col, s = 1) => { cx.fillStyle = col; cx.fillRect(Math.floor(x / T) - ox - (s >> 1), Math.floor(z / T) - oy - (s >> 1), s, s); };
-  if (G.save.trail && G.save.trail[RG.key]) for (const [x, z] of G.save.trail[RG.key]) dot(x, z, 'rgba(242,184,75,.55)', 1);   // trilha
+  if (G.save.trail && G.save.trail[RG.key]) for (const p of G.save.trail[RG.key]) { const a = 1 - trailAge(p); if (a > 0) dot(p[0], p[1], `rgba(242,184,75,${(.7 * a).toFixed(2)})`, 1); }   // trilha que vai sumindo
   const seenAt = (x, z) => MM.seen[Math.floor(z / T) * W + Math.floor(x / T)];
-  for (const it of inter) { if (!seenAt(it.x, it.z)) continue; if (it.kind === 'portal' || it.kind === 'riftportal') dot(it.x, it.z, '#5ff0ff', 2); else if (it.kind === 'shrine') dot(it.x, it.z, '#6fff9a', 2); else if (it.kind === 'obelisk') dot(it.x, it.z, (G.save.obel || []).includes(it.zone) ? '#9ff6ff' : '#4a7a88', 3); else if (it.kind === 'cave') dot(it.x, it.z, '#c08a4a', 3); else if (it.kind === 'chest' && !it.open) dot(it.x, it.z, '#ffd23d', 2); else if (it.kind === 'altar') dot(it.x, it.z, '#d07bff', 2); else if (it.kind === 'pylon' && !it.used) dot(it.x, it.z, '#fff08a', 1); }
+  for (const it of inter) { if (!seenAt(it.x, it.z)) continue; if (it.kind === 'portal' || it.kind === 'riftportal') dot(it.x, it.z, '#5ff0ff', 2); else if (it.kind === 'shrine') dot(it.x, it.z, '#6fff9a', 2); else if (it.kind === 'obelisk') dot(it.x, it.z, obelList().includes(it.obId) ? '#9ff6ff' : '#4a7a88', 3); else if (it.kind === 'cave') dot(it.x, it.z, '#c08a4a', 3); else if (it.kind === 'chest' && !it.open) dot(it.x, it.z, '#ffd23d', 2); else if (it.kind === 'altar') dot(it.x, it.z, '#d07bff', 2); else if (it.kind === 'pylon' && !it.used) dot(it.x, it.z, '#fff08a', 1); }
   for (const rm of RG.rooms) { if (rm.kind === 'boss' && seenAt(rm.wx, rm.wz)) dot(rm.wx, rm.wz, '#ff3a3a', 3); if (RG.wild && rm.alpha && !rm.spawned && seenAt(rm.wx, rm.wz)) dot(rm.wx, rm.wz, '#d07bff', 2); }
   for (const e of enemies) if (e.dieT < 0 && seenAt(e.x, e.z)) dot(e.x, e.z, e.elite ? '#d07bff' : '#ff5a4a', 1);
   if (boss) dot(boss.x, boss.z, '#ff2020', 3);
@@ -436,9 +440,9 @@ function wildsHazard(x, z, r, dur, mat, dmg, warn) {
 }
 /** Obelisco: desperta (uma vez) e leva a outros obeliscos despertos, ou ao portão da vila. */
 function useObelisk(it) {
-  const s = G.save, ob = s.obel = s.obel || [];
-  if (!ob.includes(it.zone)) { ob.push(it.zone); writeSave(); sfx('lvl'); burst(it.x, 1.5, it.z, 40, 7, 4, .6, .1); toast('OBELISCO DESPERTO', true, WZ[it.zone].n.toUpperCase() + ' · VIAGEM RÁPIDA LIBERADA', '#9ff6ff'); }
-  G.wmTravel = it.zone; openMenu('wmap'); return;   // mapa de viagem: escolha o destino no mapa
+  const ob = obelList();
+  if (!ob.includes(it.obId)) { ob.push(it.obId); writeSave(); sfx('lvl'); burst(it.x, 1.5, it.z, 40, 7, 4, .6, .1); toast('OBELISCO DESPERTO', true, obName(it.obId).toUpperCase() + ' · VIAGEM RÁPIDA LIBERADA', '#9ff6ff'); }
+  G.wmTravel = it.obId; openMenu('wmap'); return;   // mapa de viagem: escolha o destino no mapa
   const dests = RG.rooms.filter(r => r.kind === 'obelisk' && r.ob !== it.zone && ob.includes(r.ob));
   const choices = dests.map(r => ({ t: WZ[r.ob].n + ' · Nv ' + WZ[r.ob].lv, fn: () => obeliskJump(r.wx + 1.6, r.wz + 1.6, WZ[r.ob].n) }));
   choices.push({ t: 'Portão da Vila Brasa', fn: () => obeliskJump(RG.start.wx, RG.start.wz + 1.5, 'Portão da Vila') });
@@ -503,8 +507,18 @@ function updateWorms(dt) {
     if (Math.hypot(P.x - x, P.z - z) < 1.1) { st.got.push(i); st.p = st.got.length; sfx('frag'); burst(x, .2, z, 12, 21, 2, .4, .1); toast('MINHOCA-DE-BRASA', false, st.p + '/' + WORMS.length + ' · LEVE PARA O PESCADOR IVO'); writeSave(); }
   });
 }
+const LOOT_MS = 5 * 60 * 1000;   // o espólio fica no chão dos Ermos por 5 minutos
 function updateCamps(dt) {
   if (!RG || !RG.wild || !P) return;
+  const L = G.save.wloot;
+  if (L) {
+    if (Date.now() - L.t > LOOT_MS) { G.save.wloot = null; writeSave(); toast('O espólio se desfez', false, 'CENTELHAS E ITENS PERDIDOS NOS ERMOS', '#ff8a6a'); }
+    else if (P.dieT < 0 && Math.hypot(P.x - L.x, P.z - L.z) < 1.4) {
+      const s = G.save, room = Math.max(0, BAG() - s.inv.length), back = L.items.splice(0, room);
+      s.gold += L.gold; s.inv.push(...back); toast('ESPÓLIO RECUPERADO', true, `+${L.gold} CENTELHAS · ${back.length} ITENS` + (L.items.length ? ` · ${L.items.length} NÃO COUBERAM` : ''), '#ffbf3d'); sfx('legend');
+      L.gold = 0; if (!L.items.length) G.save.wloot = null; writeSave();
+    }
+  }
   const inside = inCamp(P.x, P.z);
   if (inside && !G.inCamp) { toast('ACAMPAMENTO', false, 'ZONA SEGURA · MERCADOR, FOGUEIRA E VIAGEM PELO OBELISCO'); sfx('ui'); }
   G.inCamp = inside;

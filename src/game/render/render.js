@@ -125,7 +125,7 @@ function render(dt) {
     if (pose === 'idle' || EMOTES_PV.includes(pose)) { P.act = null; P.actT = 0; }
     else if (pose === 'atk') { P.act = { lamina: 'swing', arcano: 'cast', arco: 'shoot' }[G.char.cls]; P.actT = (t % 1.2) * .25; }
     P.stance = P.act && P.cls !== 'lamina' ? 1 : 0; P.combo = Math.floor(t / 12) % 3;
-    poseHuman(P.anim, P, t); if (EMOTES_PV.includes(pose)) applyEmote(P.anim, pose, t, 1);
+    poseHuman(P.anim, P, t); if (EMOTES_PV.includes(pose)) applyEmote(P.anim, pose, t, 1, G.char.cls);
     drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
   } else {
     drawRemotes(dt, t);
@@ -166,7 +166,7 @@ function render(dt) {
       resetAnim(it.anim);
       if (it.kind === 'dragon') poseCalmDragon(it.anim, t, G.mode === 'dialog' && DLG.cur && DLG.cur.who === 'Varkhaz');
       if (it.kind === 'shrine') { it.anim[1].ry = t * 1.2; it.anim[1].ty = Math.sin(t * 2) * .08; }
-      if (it.kind === 'obelisk') { const on = (G.save.obel || []).includes(it.zone); it.anim[1].ry = t * (on ? 1.6 : .3); for (let k = 0; k < 10; k++) { const a = t * (on ? 1.2 : .3) + k / 10 * 6.283; dyn(it.x + Math.cos(a) * 1.25, .07, it.z + Math.sin(a) * 1.25, on ? .9 : .35, on ? 26 : 24, .15); } }   // obelisco: anel aceso se desperto
+      if (it.kind === 'obelisk') { const on = obelList().includes(it.obId); it.anim[1].ry = t * (on ? 1.6 : .3); for (let k = 0; k < 10; k++) { const a = t * (on ? 1.2 : .3) + k / 10 * 6.283; dyn(it.x + Math.cos(a) * 1.25, .07, it.z + Math.sin(a) * 1.25, on ? .9 : .35, on ? 26 : 24, .15); } }   // obelisco: anel aceso se desperto
       if (it.kind === 'cave') { if (Math.random() < .35) spawn({ x: it.x + rr(-.6, .6), y: rr(.2, 1.6), z: it.z + rr(-.3, .3), vy: rr(.2, .6), life: 1.2, s0: .2, s1: .5, b0: .25, b1: .02, mat: 29, drag: .5 }); }   // covil: fumaça escura
       if (it.kind === 'altar') { const D = curDiff(); for (let k = 0; k < 12; k++) { const a = t * -1.1 + k / 12 * 6.283; dyn(it.x + Math.cos(a) * 1.1, .07, it.z + Math.sin(a) * 1.1, .8, k % 2 ? 26 : 30, .16); } if (!boss && Math.random() < .3 + .05 * (G.save.diff || 0)) spawn({ x: it.x + rr(-.3, .3), y: 1.2, z: it.z + rr(-.3, .3), vy: rr(1, 2), life: .7, s0: .1, s1: .02, b0: 1, b1: .2, mat: D.n.startsWith('Tormento') ? 124 : 30 }); }
       if (it.kind === 'frag') { it.anim[1].ry = t * 2; it.anim[1].ty = Math.sin(t * 2.5) * .15; if (Math.random() < .3) spawn({ x: it.x + rr(-.5, .5), y: rr(.3, 1.8), z: it.z + rr(-.5, .5), vy: .5, life: .8, s0: .07, s1: .02, b0: 1, b1: .2, mat: 30 }); }
@@ -203,7 +203,7 @@ function render(dt) {
     if (P && playerModel) {
       resetAnim(P.anim); poseHuman(P.anim, P, t);
       if (P.down > 0) coopDownPose(P.anim, t);
-      else if (P.emote) { P.emoteT = (P.emoteT || 0) + dt; if ((P.emoteT > 6 && P.emote !== 'sentar') || (P.moveAmt || 0) > .2 || P.act) P.emote = null; else applyEmote(P.anim, P.emote, t, Math.min(1, P.emoteT / .4)); }
+      else if (P.emote) { P.emoteT = (P.emoteT || 0) + dt; if ((P.emoteT > 6 && P.emote !== 'sentar') || (P.moveAmt || 0) > .2 || P.act) P.emote = null; else applyEmote(P.anim, P.emote, t, Math.min(1, P.emoteT / .4), G.char.cls); }
       if (G.fishing || G.fishCatch) poseFishing(P.anim, t);
       if (P.ghosts) for (const g of P.ghosts) if (g.t < .18) drawModel(playerModel, P.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
       for (const k in G.buffs) if (G.buffs[k] > 0 && Math.random() < .35) spawn({ x: P.x + rr(-.45, .45), y: rr(.1, 1.8), z: P.z + rr(-.45, .45), vy: rr(.3, .8), life: .6, s0: .09, s1: .02, b0: 1, b1: .2, mat: BUFFS[k].mat });
@@ -264,6 +264,7 @@ function render(dt) {
 /** Itens de missão ainda no chão nesta região (minhocas da vara, itens das missões dos moradores). */
 function collectTargets() {
   const out = []; if (!G.save || !RG) return out;
+  { const L = G.save.wloot; if (RG.wild && L && Date.now() - L.t < LOOT_MS) out.push({ x: L.x, z: L.z, mat: 14 }); }   // espólio: feixe dourado e seta
   const vq = G.save.q && G.save.q.vara;
   if (RG.key === 'hub' && vq && vq.st === 'active') WORMS.forEach(([x, z], i) => { if (!(vq.got || []).includes(i)) out.push({ x, z, mat: 21, worm: true }); });
   for (const it of inter) if (it.kind === 'qitem' && !it.taken) out.push({ x: it.x, z: it.z, mat: it.mat });

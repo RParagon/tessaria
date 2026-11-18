@@ -86,7 +86,7 @@ function dropItem(x, z, rar, slot) { if (COOP.noItems) return;   // co-op: na Fe
 function takeItem(it) {
   const s = G.save; if (it.rar === 4) { s.st = s.st || {}; s.st.legs = (s.st.legs || 0) + 1; }
   if (!s.eq[it.slot]) { s.eq[it.slot] = it; afterEquip(); toast(it.name, false, 'EQUIPADO · ' + RAR[it.rar].n.toUpperCase(), RAR[it.rar].c); return true; }
-  if (s.inv.length >= 20) { if (!G.bagWarn || G.time - G.bagWarn > 3) { toast('Bolsa cheia. Desmonte ou venda itens.'); G.bagWarn = G.time; } return false; }
+  if (s.inv.length >= BAG()) { if (!G.bagWarn || G.time - G.bagWarn > 3) { toast('Bolsa cheia. Desmonte ou venda itens.'); G.bagWarn = G.time; } return false; }
   s.inv.push(it); sfx('open'); writeSave();
   toast(it.name, false, 'NOVO ITEM · ' + RAR[it.rar].n.toUpperCase() + (itemScore(it) > itemScore(s.eq[it.slot]) ? ' · MELHOR QUE O SEU' : ''), RAR[it.rar].c);
   return true;

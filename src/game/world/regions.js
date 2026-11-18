@@ -160,7 +160,7 @@ function genWilds(key, spec) {
     const zs = rooms.filter(r => r.zone === z && !r.kind); zs.sort(() => R() - .5);
     const take = n => zs.splice(0, Math.min(n, zs.length));
     take(z === 0 ? 1 : z === 7 ? 0 : 2).forEach(r => { delete r.en; r.kind = 'shrine'; });   // no Ermo Profundo não há santuário nem acampamento
-    if (z !== 7) take(1).forEach(r => { delete r.en; r.kind = 'obelisk'; r.ob = z; });
+    if (z !== 7) take(z === 0 ? 1 : 2).forEach((r, k) => { delete r.en; r.kind = 'obelisk'; r.ob = z; r.obId = z * 10 + k; });   // até 2 acampamentos com obelisco por bioma
     if (WZ[z].cave) take(1).forEach(r => { delete r.en; r.kind = 'cave'; });
     take(z === 0 ? 1 : z === 7 ? 5 : 2).forEach(r => { r.alpha = true; r.en[WPOOL[z][0]] = (r.en[WPOOL[z][0]] || 0) + 1; });
     take(1).forEach(r => { r.alpha = true; r.lair = WZ[z].lair; r.en[WZ[z].lair[0]] = (r.en[WZ[z].lair[0]] || 0) + 3; });
