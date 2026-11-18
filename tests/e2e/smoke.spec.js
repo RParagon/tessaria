@@ -62,7 +62,7 @@ test('Ermos 2.0: mapa grande com 8 biomas, obelisco, covil com volta na boca e e
   await page.waitForFunction(() => window.__T.nearInter?.kind === 'npc' && window.__T.nearInter.npc.merc === 0, null, { timeout: 5000 });
   await page.keyboard.press('e');
   await expect(page.locator('#wshop')).toBeVisible();
-  await expect(page.locator('#wsList .shoprow')).toHaveCount(6);
+  await expect(page.locator('#wsList .shoprow')).toHaveCount(7);   // poção, mapa (quem não tem) e 5 itens
   await page.click('#wsClose');
   // obelisco: desperta e abre o mapa de viagem; o portão da vila fica na lista
   await ev("(r => { P.x = r.wx + 1; P.z = r.wz + 1; })(RG.rooms.find(r => r.kind === 'obelisk' && r.ob === 0))");

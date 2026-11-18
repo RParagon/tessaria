@@ -153,6 +153,8 @@ function renderWShop() {
   pr.innerHTML = `<div class="slot" style="--rc:#d9433a"><img src="${icon('potion')}" alt=""></div><div class="nm">Poção de procedência duvidosa<small>Enche uma poção · você tem ${s.potions}/${st.maxPot}</small></div>`;
   const pb = document.createElement('button'); pb.className = 'px gold'; pb.textContent = S2.potPrice + ' Centelhas'; pb.disabled = s.gold < S2.potPrice || s.potions >= st.maxPot;
   pb.onclick = () => { spend(S2.potPrice); s.potions++; sfx('pick'); writeSave(); renderWShop(); }; pr.appendChild(pb); list.appendChild(pr);
+  if (!hasMap()) { const mr = document.createElement('div'); mr.className = 'shoprow'; mr.innerHTML = `<div class="slot" style="--rc:#f2b84b"><img src="${icon('book')}" alt=""></div><div class="nm">Mapa "achado" por aí<small>Funciona igual ao do Otto. Só é mais caro. E meio amassado.</small></div>`;
+    const mb = document.createElement('button'); mb.className = 'px gold'; mb.textContent = MAP_PRICE.merc + ' Centelhas'; mb.disabled = s.gold < MAP_PRICE.merc; mb.onclick = () => buyMap(MAP_PRICE.merc, renderWShop); mr.appendChild(mb); list.appendChild(mr); }
   S2.items.forEach((o, i) => {
     const row = document.createElement('div'), sold = bought.includes(i); row.className = 'shoprow';
     row.appendChild(slotBtn(o.it, () => { wsSel = i; renderWShop(); }, wsSel === i));
@@ -167,29 +169,35 @@ function renderWShop() {
 $('#wsClose').onclick = () => closeMenus();
 /** Mapa dos Ermos: o que você explorou, obeliscos e acampamentos. Num obelisco, toque num obelisco desperto para viajar. */
 function renderWMap() {
-  if (!RG || !RG.wild) { closeMenus(); return; }
-  if (MM.key !== RG) setupMinimap();
-  const W = RG.W, H = RG.H, cv = $('#wmCv'); cv.width = W; cv.height = H;
+  const travel0 = G.wmTravel !== undefined && G.wmTravel !== null, mapOk = hasMap();
+  if (!RG || RG.key === 'home' || (!mapOk && !travel0)) { closeMenus(); return; }
+  if (mapOk && MM.key !== RG) setupMinimap();
+  $('.wmwrap').hidden = !mapOk || !MM.seen;   // sem mapa, o obelisco ainda viaja pela lista
+  $('#wmTitle').textContent = RG.wild ? 'Mapa dos Ermos' : 'Mapa · ' + (RG.key === 'rift' ? 'Fenda' : REG[RG.key].name); $('.wmwrap').style.aspectRatio = RG.W + '/' + RG.H;
+  const W = RG.W, H = RG.H, cv = $('#wmCv'); cv.width = W; cv.height = H; const seenArr = MM.seen || new Uint8Array(W * H);
   const cx = cv.getContext('2d'), img = cx.createImageData(W, H), d = img.data;
-  for (let i = 0; i < W * H; i++) { const o = i * 4; if (MM.seen[i]) { d[o] = MM.base[o]; d[o + 1] = MM.base[o + 1]; d[o + 2] = MM.base[o + 2]; } else { d[o] = 10; d[o + 1] = 8; d[o + 2] = 18; } d[o + 3] = 255; }
+  for (let i = 0; i < W * H; i++) { const o = i * 4; if (seenArr[i] && MM.base) { d[o] = MM.base[o]; d[o + 1] = MM.base[o + 1]; d[o + 2] = MM.base[o + 2]; } else { d[o] = 10; d[o + 1] = 8; d[o + 2] = 18; } d[o + 3] = 255; }
   cx.putImageData(img, 0, 0);
   const travel = G.wmTravel !== undefined && G.wmTravel !== null, ob = G.save.obel || [], pins = $('#wmPins'), list = $('#wmList'); pins.innerHTML = ''; list.innerHTML = '';
-  $('#wmSub').textContent = travel ? 'Toque num obelisco aceso para viajar. Os apagados ainda precisam ser despertos.' : 'O que você já explorou. Obeliscos acesos permitem viagem rápida (use um obelisco). Tecla M abre este mapa.';
+  $('#wmSub').textContent = travel ? (mapOk ? 'Toque num obelisco aceso para viajar. Os apagados ainda precisam ser despertos.' : 'Sem o Mapa do Cartógrafo você não vê o mapa, mas o obelisco ainda leva aos outros obeliscos acesos.') : RG.wild ? 'O que você já explorou e a sua trilha. Obeliscos acesos permitem viagem rápida (use um obelisco).' : 'O que você já explorou e a sua trilha (pontos dourados). M abre e fecha.';
+  { const tr = G.save.trail && G.save.trail[RG.key]; if (tr) { cx.fillStyle = 'rgba(242,184,75,.8)'; for (const [x, z] of tr) cx.fillRect(Math.floor(x / T), Math.floor(z / T), 1, 1); } }
   const pin = (x, z, cls, label, fn) => { const b = document.createElement(fn ? 'button' : 'div'); b.className = 'wpin ' + cls; b.style.left = (x / T / W * 100) + '%'; b.style.top = (z / T / H * 100) + '%'; if (label) { const s2 = document.createElement('span'); s2.textContent = label; b.appendChild(s2); } if (fn) { b.onclick = fn; b.setAttribute('aria-label', label); } pins.appendChild(b); return b; };
   const go = (x, z, name) => { G.wmTravel = null; closeMenus(); obeliskJump(x, z, name); };
   for (const rm of RG.rooms) {
     if (rm.kind !== 'obelisk') continue;
-    const on = ob.includes(rm.ob), seen = MM.seen[Math.floor(rm.wz / T) * W + Math.floor(rm.wx / T)];
+    const on = ob.includes(rm.ob), seen = seenArr[Math.floor(rm.wz / T) * W + Math.floor(rm.wx / T)];
     if (!on && !seen) continue;
     const here = travel && rm.ob === G.wmTravel, fn = travel && on && !here ? () => go(rm.wx + 1.6, rm.wz + 1.6, WZ[rm.ob].n) : null;
     pin(rm.wx, rm.wz, (on ? 'on' : '') + (here ? ' here' : ''), WZ[rm.ob].n, fn);
     if (fn) { const b = document.createElement('button'); b.className = 'px gold'; b.textContent = WZ[rm.ob].n + ' · Nv ' + WZ[rm.ob].lv; b.onclick = fn; list.appendChild(b); }
   }
   if (travel) { const b = document.createElement('button'); b.className = 'px'; b.textContent = 'Portão da Vila Brasa'; b.onclick = () => go(RG.start.wx, RG.start.wz + 1.5, 'Portão da Vila'); list.appendChild(b); }
-  pin(RG.start.wx, RG.start.wz, 'camp', 'Vila', null);
+  if (RG.wild) pin(RG.start.wx, RG.start.wz, 'camp', 'Vila', null);
+  if (!RG.wild) for (const it of inter) if ((it.kind === 'portal' || it.kind === 'riftportal') && seenArr[Math.floor(it.z / T) * W + Math.floor(it.x / T)]) pin(it.x, it.z, 'on', it.kind === 'riftportal' ? 'Fenda' : it.to === 'hub' ? 'Vila' : (REG[it.to] ? REG[it.to].name : ''), null);
   if (P) pin(P.x, P.z, 'me', 'você', null);
 }
 $('#wmClose').onclick = () => { G.wmTravel = null; closeMenus(); };
+function buyMap(price, after) { if (G.save.gold < price) return; spend(price); G.save.map = true; writeSave(); sfx('legend'); toast('MAPA DO CARTÓGRAFO', true, 'MINIMAPA LIGADO · TECLA M ABRE O MAPA', '#ffbf3d'); MM.key = null; setupMinimap(); after(); }
 function renderShop() {
   ensureShop();
   const s = G.save, st = stats(); $('#sGold').textContent = s.gold;
@@ -198,6 +206,8 @@ function renderShop() {
   potRow.innerHTML = `<div class="slot" style="--rc:#d9433a"><img src="${icon('potion')}" alt=""></div><div class="nm">Poção de cura<small>Recupera 45% da vida · você tem ${s.potions}/${st.maxPot}</small></div>`;
   const pb = document.createElement('button'); pb.className = 'px gold'; pb.textContent = '20 Centelhas'; pb.disabled = s.gold < 20 || s.potions >= st.maxPot;
   pb.onclick = () => { spend(20); s.potions++; sfx('pick'); writeSave(); renderShop(); }; potRow.appendChild(pb); list.appendChild(potRow);
+  if (!hasMap()) { const mr = document.createElement('div'); mr.className = 'shoprow'; mr.innerHTML = `<div class="slot" style="--rc:#f2b84b"><img src="${icon('book')}" alt=""></div><div class="nm">Mapa do Cartógrafo<small>Minimapa e mapa grande (tecla M) em todo lugar; guarda o que você explorou e a sua trilha</small></div>`;
+    const mb = document.createElement('button'); mb.className = 'px gold'; mb.textContent = MAP_PRICE.otto + ' Centelhas'; mb.disabled = s.gold < MAP_PRICE.otto; mb.onclick = () => buyMap(MAP_PRICE.otto, renderShop); mr.appendChild(mb); list.appendChild(mr); }
   { const gc = gambleCost(), gr = document.createElement('div'); gr.className = 'shoprow'; gr.innerHTML = `<div class="slot" style="--rc:#c07bff"><img src="${icon('bag')}" alt=""></div><div class="nm">Embrulho misterioso<small>${gc} Centelhas · item surpresa, nunca comum · 13% épico · 2% lendário</small></div>`;
     const bx = document.createElement('div'); bx.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end';
     for (const [sl, lb] of [['weapon', 'Arma'], ['armor', 'Armadura'], ['charm', 'Amuleto']]) { const b = document.createElement('button'); b.className = 'px' + (s.gold >= gc && s.inv.length < 20 ? ' gold' : ''); b.textContent = lb; b.disabled = s.gold < gc || s.inv.length >= 20; b.onclick = () => { sfx('ui'); gamble(sl); renderShop(); }; bx.appendChild(b); }

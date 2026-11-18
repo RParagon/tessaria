@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.27.0 · Mapa do Cartógrafo
+- **O mapa agora é um item:** o **Mapa do Cartógrafo** é vendido pelo Mercador Otto (250 ✦) e, mais caro, pelo Mercador Suspeito dos Ermos (400 ✦). Sem ele não há minimapa; quem já explorava os Ermos ganhou o mapa
+- **Com o mapa:** minimapa em todos os lugares (agora também na vila) e a **tecla M abre o mapa grande** de onde você estiver, com os portais que você já viu
+- **Trilha e explorado salvos em cada região:** o mapa guarda por onde você passou (pontos dourados, os últimos 300 de cada região) e tudo o que você já viu, na vila, nas regiões da história e nos Ermos. A Fenda fica de fora, porque muda a cada vez
+- Os obeliscos dos Ermos continuam levando aos outros obeliscos acesos mesmo sem o mapa (pela lista)
+
 ## 0.26.0 · Ermos: acampamentos, mercador e mapa de viagem
 - **Acampamentos:** cada obelisco dos Ermos virou um acampamento com tendas, fogueira, estandarte e lanternas. É **zona segura**: monstros não entram, ninguém leva dano e a vida volta aos poucos. O minimapa mostra "SEGURO"
 - **Mercador Suspeito:** em cada acampamento, um vendedor encapuzado com 5 itens do nível do bioma e uma poção "de procedência duvidosa". O **estoque e os preços mudam a cada hora** (iguais para todos os jogadores), de pechincha a caro; o que você compra sai do estoque da hora

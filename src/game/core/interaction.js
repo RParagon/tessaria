@@ -301,6 +301,11 @@ function loadRegion(key, atCp) {
   updateDiffHud();
 }
 const MM = { key: null, base: null, seen: null, t: 0 };
+/** Mapa do Cartógrafo: sem ele não há minimapa nem mapa grande. Quem já explorava os Ermos antes dele existir ganha um. */
+const MAP_PRICE = { otto: 250, merc: 400 };
+function hasMap() { const s = G.save; if (!s) return false; if (!s.map && (s.wseen || (s.obel && s.obel.length))) s.map = true; return !!s.map; }
+const mapKeep = k => k && k !== 'rift' && k !== 'home';   // regiões fixas: o explorado e a trilha ficam salvos
+function mapStore() { const s = G.save; s.mseen = s.mseen || {}; if (s.wseen && !s.mseen.wilds) { s.mseen.wilds = s.wseen; } delete s.wseen; s.trail = s.trail || {}; return s; }
 function hexRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
 function setupHome() {
   const f = H().f; inter = [];
@@ -316,9 +321,9 @@ function homeRebuild() { if (RG && RG.key === 'home') { if (WORLDS.home) WORLDS.
 function rebuildHub() { if (!WORLDS.hub) return; WORLDS.hub.chunks.forEach(freeVAO); if (RG && RG.key === 'hub') { WORLDS.hub = buildWorld('hub', RG); WD = WORLDS.hub; emitAcc = {}; } else delete WORLDS.hub; }
 const MMW = 96, MMH = 80;   // tamanho da janela do minimapa nos Ermos (em ladrilhos)
 function setupMinimap() {
-  const cv = $('#mmap'), show = RG && RG.key !== 'hub' && RG.key !== 'home'; cv.hidden = !show; $('#mmapZ').hidden = !show; if (!show) { MM.key = null; return; }
+  const cv = $('#mmap'), show = RG && RG.key !== 'home' && hasMap(); cv.hidden = !show; $('#mmapZ').hidden = !show; if (!show) { MM.key = null; return; }
   const W = RG.W, H = RG.H; cv.width = RG.wild ? MMW : W; cv.height = RG.wild ? MMH : H; MM.key = RG; MM.seen = new Uint8Array(W * H); MM.base = new Uint8ClampedArray(W * H * 4);
-  if (RG.wild && G.save.wseen) seenDecode(G.save.wseen, MM.seen);   // o que você já explorou nos Ermos fica no mapa   // Ermos: o canvas é uma janela em volta do herói
+  { const st = mapStore(); if (mapKeep(RG.key) && st.mseen[RG.key]) seenDecode(st.mseen[RG.key], MM.seen); }   // o que você já explorou fica no mapa   // Ermos: o canvas é uma janela em volta do herói
   const pal = curPal || REGPAL.hub, row = (m, i) => { const r = pal.rows[m]; return r ? r[i] : [90, 90, 90]; };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = RG.grid[y][x], o = (y * W + x) * 4; let col;
@@ -334,16 +339,21 @@ function setupMinimap() {
 function seenEncode(a) { const out = []; let cur = 0, n = 0; for (let i = 0; i < a.length; i++) { if (a[i] === cur) n++; else { out.push(n.toString(36)); cur = a[i]; n = 1; } } out.push(n.toString(36)); return out.join(','); }
 function seenDecode(s, a) { let i = 0, v = 0; for (const t of String(s).split(',')) { const n = parseInt(t, 36) || 0; if (v) a.fill(1, i, Math.min(a.length, i + n)); i += n; v ^= 1; } }
 function updateMinimap(dt) {
-  if (!RG || RG.key === 'hub' || RG.key === 'home' || !P) return; if (MM.key !== RG) setupMinimap();
+  if (!RG || RG.key === 'home' || !P || !hasMap()) return; if (MM.key !== RG) setupMinimap(); if (!MM.seen) return;
+  {   // trilha: um ponto a cada 4 unidades, os últimos 300 por região
+    const tr = mapKeep(RG.key) && (mapStore().trail[RG.key] = G.save.trail[RG.key] || []), l = tr && tr[tr.length - 1];
+    if (tr && (!l || Math.hypot(l[0] - P.x, l[1] - P.z) > 4)) { tr.push([Math.round(P.x), Math.round(P.z)]); if (tr.length > 300) tr.shift(); }
+  }
   const W = RG.W, H = RG.H, tx = Math.floor(P.x / T), tz = Math.floor(P.z / T), rad = RG.wild ? 9 : 7;
   for (let y = tz - rad; y <= tz + rad; y++) for (let x = tx - rad; x <= tx + rad; x++) if (x >= 0 && y >= 0 && x < W && y < H && (x - tx) ** 2 + (y - tz) ** 2 <= rad * rad && !MM.seen[y * W + x]) { MM.seen[y * W + x] = 1; MM.dirty = true; }
-  if (RG.wild && MM.dirty && (MM.saveT = (MM.saveT || 0) - dt) <= 0) { MM.saveT = 4; MM.dirty = false; G.save.wseen = seenEncode(MM.seen); }
+  if (mapKeep(RG.key) && MM.dirty && (MM.saveT = (MM.saveT || 0) - dt) <= 0) { MM.saveT = 4; MM.dirty = false; mapStore().mseen[RG.key] = seenEncode(MM.seen); }
   MM.t -= dt; if (MM.t > 0) return; MM.t = .2;
   const VW = RG.wild ? MMW : W, VH = RG.wild ? MMH : H, ox = RG.wild ? clamp(tx - (MMW >> 1), 0, W - MMW) : 0, oy = RG.wild ? clamp(tz - (MMH >> 1), 0, H - MMH) : 0;
   const cv = $('#mmap'), cx = cv.getContext('2d'), img = cx.createImageData(VW, VH), d = img.data;
   for (let yy = 0; yy < VH; yy++) for (let xx = 0; xx < VW; xx++) { const i = (yy + oy) * W + xx + ox, o = (yy * VW + xx) * 4; if (MM.seen[i]) { d[o] = MM.base[i * 4]; d[o + 1] = MM.base[i * 4 + 1]; d[o + 2] = MM.base[i * 4 + 2]; } else { d[o] = 8; d[o + 1] = 6; d[o + 2] = 14; } d[o + 3] = 255; }
   cx.putImageData(img, 0, 0);
   const dot = (x, z, col, s = 1) => { cx.fillStyle = col; cx.fillRect(Math.floor(x / T) - ox - (s >> 1), Math.floor(z / T) - oy - (s >> 1), s, s); };
+  if (G.save.trail && G.save.trail[RG.key]) for (const [x, z] of G.save.trail[RG.key]) dot(x, z, 'rgba(242,184,75,.55)', 1);   // trilha
   const seenAt = (x, z) => MM.seen[Math.floor(z / T) * W + Math.floor(x / T)];
   for (const it of inter) { if (!seenAt(it.x, it.z)) continue; if (it.kind === 'portal' || it.kind === 'riftportal') dot(it.x, it.z, '#5ff0ff', 2); else if (it.kind === 'shrine') dot(it.x, it.z, '#6fff9a', 2); else if (it.kind === 'obelisk') dot(it.x, it.z, (G.save.obel || []).includes(it.zone) ? '#9ff6ff' : '#4a7a88', 3); else if (it.kind === 'cave') dot(it.x, it.z, '#c08a4a', 3); else if (it.kind === 'chest' && !it.open) dot(it.x, it.z, '#ffd23d', 2); else if (it.kind === 'altar') dot(it.x, it.z, '#d07bff', 2); else if (it.kind === 'pylon' && !it.used) dot(it.x, it.z, '#fff08a', 1); }
   for (const rm of RG.rooms) { if (rm.kind === 'boss' && seenAt(rm.wx, rm.wz)) dot(rm.wx, rm.wz, '#ff3a3a', 3); if (RG.wild && rm.alpha && !rm.spawned && seenAt(rm.wx, rm.wz)) dot(rm.wx, rm.wz, '#d07bff', 2); }

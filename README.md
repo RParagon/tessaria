@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.26.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.27.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -62,6 +62,7 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 | Q | botão de poção | poção |
 | E ou Enter | botão Usar | interagir, falar, costurar o amigo caído |
 | I · G · Tab | botões no topo | bolsa · grimório · diário |
+| M | menu → mapa | mapa grande (precisa do Mapa do Cartógrafo, vendido pelo Otto) |
 | roda do mouse ou + / − | menu → Zoom da câmera | aproximar e afastar a câmera (na bolsa, aproxima o espelho) |
 | H · Esc | | mostrar/esconder controles · menu |
 
