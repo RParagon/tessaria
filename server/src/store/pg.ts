@@ -81,6 +81,10 @@ export class PgStore implements Store {
     return r.map(x => x.item_id as string);
   }
 
+  async addTombstones(accountId: string, itemIds: string[]) {
+    if (!itemIds.length) return;
+    await this.sql`INSERT INTO tombstones ${this.sql(itemIds.map(id => ({ account_id: accountId, item_id: id })))} ON CONFLICT DO NOTHING`;
+  }
   async grantItems(accountId: string, itemIds: string[], source: string) {
     if (!itemIds.length) return;
     await this.sql`INSERT INTO item_grants ${this.sql(itemIds.map(id => ({ item_id: id, account_id: accountId, source })))} ON CONFLICT (item_id) DO NOTHING`;

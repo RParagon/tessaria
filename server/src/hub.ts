@@ -1,11 +1,12 @@
 import type { WebSocket } from 'ws';
-import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, WILDS_CAP, deepWilds, PVP_RANGE, PVP_RATE, LOOT_MS, LOOT_TAKE_R, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
 import type { Account, Store } from './store/types';
 import { inc, gauge } from './metrics';
 import { randomBytes, randomInt } from 'node:crypto';
-import { monsterDrops, wildsTier, type Item } from '../../shared/items';
+import { monsterDrops, wildsTier, itemProblems, type Item } from '../../shared/items';
+import { maxItemTier } from '../../shared/save';
 import { DIFF_LEVEL } from '../../shared/save';
 import { requestFriend } from './social';
 
@@ -32,14 +33,20 @@ interface Player {
   look: Look; title: string;
   x: number; z: number; yaw: number; m: number; a: string;
   lastPos: number; synced: boolean; dirty: boolean; alive: boolean;
-  actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number; timeReqs: number; relayTokens: number; relayRefill: number;
+  actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number; timeReqs: number; relayTokens: number; relayRefill: number; pvpTokens: number; pvpRefill: number; lastWarp: number;
 }
+
+/** Espólio de quem caiu nos Ermos: fica no chão da sala e qualquer um pega (o dono também). */
+interface Loot { id: string; owner: string; ownerName: string; ownerPid: number; at: number; x: number; z: number; gold: number; items: Item[]; exp: number }
 
 class Room {
   players = new Map<number, Player>();
   bounds = HUB_BOUNDS;
   inst: Instance | null = null;
-  constructor(public id: string, public label: string) {}
+  loots = new Map<string, Loot>();
+  /** vila: salas da vila · ermos: salas públicas dos Ermos · inst: instância do grupo */
+  constructor(public id: string, public label: string, public kind: 'vila' | 'ermos' | 'inst' = 'vila') { if (kind === 'ermos') this.bounds = INST_BOUNDS; }
+  get wilds() { return this.kind === 'ermos' || this.inst?.kind === 'wilds'; }
   broadcast(msg: ServerMsg, except?: Player) {
     const s = JSON.stringify(msg);
     for (const p of this.players.values()) if (p !== except && p.ws.readyState === 1) p.ws.send(s);
@@ -100,9 +107,12 @@ export class Hub {
   }
   get online() { return this.byAccount.size; }
 
-  private pickRoom(): Room {
-    for (const r of this.rooms.values()) if (r.players.size < HUB_CAP) return r;
-    const n = this.rooms.size + 1, r = new Room('vila-' + n, `Vila Brasa #${n}`);
+  /** Sala com vaga (vila ou Ermos abertos); cria a próxima se todas estiverem cheias. */
+  private pickRoom(kind: 'vila' | 'ermos' = 'vila'): Room {
+    const cap = kind === 'vila' ? HUB_CAP : WILDS_CAP;
+    for (const r of this.rooms.values()) if (r.kind === kind && r.players.size < cap) return r;
+    let n = 1; while (this.rooms.has(kind === 'vila' ? 'vila-' + n : 'ermos-' + n)) n++;
+    const r = kind === 'vila' ? new Room('vila-' + n, `Vila Brasa #${n}`) : new Room('ermos-' + n, `Ermos #${n}`, 'ermos');
     this.rooms.set(r.id, r); return r;
   }
 
@@ -117,12 +127,13 @@ export class Hub {
       friends: new Set(links.filter(l => l.state === 'amigo').map(l => l.otherId)), blocks: new Set(blocks.map(b => b.id)), lastInvite: 0,
       look: lookFromSave(save), title: titleFromSave(save),
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
-      actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0, relayTokens: RELAY_PER_SEC, relayRefill: Date.now(),
+      actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0, relayTokens: RELAY_PER_SEC, relayRefill: Date.now(), pvpTokens: PVP_RATE * 2, pvpRefill: Date.now(), lastWarp: 0,
     };
     const old = this.byAccount.get(account.id);
     this.byAccount.set(account.id, p);
     if (old) { send(old, { t: 'kick', reason: 'Sua conta entrou em outro lugar.' }); old.ws.close(4000, 'duplicada'); this.leave(old); }
     if (where === 'hub') this.enterRoom(p);
+    else if (where === 'wilds') this.enterRoom(p, this.pickRoom('ermos'));
     else send(p, { t: 'welcome', id: p.id, room: '', players: [], v: PROTOCOL_VERSION, now: Date.now() });
     inc('hub_joins');
     ws.on('message', (raw, isBinary) => { if (isBinary) return; this.onMessage(p, raw.toString()); });
@@ -133,6 +144,9 @@ export class Hub {
     const party = this.partyOf.get(account.id);
     if (party) { const t = party.gone.get(account.id); if (t) { clearTimeout(t); party.gone.delete(account.id); } party.info.set(account.id, { name: account.name, cls: p.look.cls, lvl: p.lvl }); this.sendParty(party); }
     if (!old) this.notifyFriends(p, 'online');
+    // Espólio pego por outro enquanto o dono estava fora: avisa ao voltar.
+    const gone = this.lootGone.get(account.id);
+    if (gone) { this.lootGone.delete(account.id); if (Date.now() - gone.when < LOOT_MS * 2) send(p, { t: 'lgone', id: gone.id, by: gone.by, at: gone.at }); }
   }
 
   private enterRoom(p: Player, room: Room = this.pickRoom()) {
@@ -142,6 +156,7 @@ export class Hub {
     send(p, { t: 'welcome', id: p.id, room: room.label, players: [...room.players.values()].filter(o => o !== p).map(pub), v: PROTOCOL_VERSION, now: Date.now() });
     room.broadcast({ t: 'join', p: pub(p) }, p);
     if (room.inst) this.pickHost(room.inst);
+    if (room.wilds) { this.expireLoot(room); for (const L of room.loots.values()) send(p, this.lootMsg(L)); }
   }
   private leaveRoom(p: Player) {
     const room = p.room; if (!room) return;
@@ -149,7 +164,7 @@ export class Hub {
     if (!room.players.delete(p.id)) return;
     room.broadcast({ t: 'leave', id: p.id });
     if (room.inst) { if (!room.players.size) this.scheduleClose(room.inst); else { this.pickHost(room.inst); this.sendParty(room.inst.party); } }
-    else if (!room.players.size && this.rooms.size > 1) this.rooms.delete(room.id);
+    else if (!room.players.size && (room.kind === 'ermos' || [...this.rooms.values()].filter(r => r.kind === 'vila').length > 1)) this.rooms.delete(room.id);
   }
 
   private leave(p: Player) {
@@ -183,6 +198,9 @@ export class Hub {
       case 'iopen': return this.openInst(p, msg);
       case 'ikill': return void this.onKill(p, msg);
       case 'hx': case 'gx': case 'hto': case 'px': return this.relay(p, msg, raw.length);
+      case 'pvp': return this.onPvp(p, msg);
+      case 'ldrop': return void this.onLootDrop(p, msg);
+      case 'ltake': return void this.onLootTake(p, msg);
       case 'ijoin': return this.joinInst(p, msg.inst);
       case 'pinvite': return void this.invite(p, msg.name);
       case 'paccept': return this.accept(p, msg.from);
@@ -199,6 +217,8 @@ export class Hub {
     const B = p.room!.bounds; x = Math.min(B.x1, Math.max(B.x0, x)); z = Math.min(B.z1, Math.max(B.z0, z));
     const now = Date.now(), dt = Math.max(.05, (now - p.lastPos) / 1000), dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz), lim = MAX_SPEED * dt + 1.5;
     // A primeira posição depois de entrar vale direto (o jogador pode estar voltando de um portal).
+    // Teleporte dentro da mesma região (obelisco dos Ermos, renascer): também vale direto, no máximo a cada 3 s.
+    if (m.w === 1 && now - p.lastWarp > 3000) { p.lastWarp = now; p.synced = false; inc('hub_warps'); }
     if (p.synced && d > lim) { x = p.x + dx / d * lim; z = p.z + dz / d * lim; inc('hub_speed_clamps'); }
     p.synced = true;
     p.x = x; p.z = z; p.yaw = yaw % 6.2832; p.m = Math.min(1, Math.max(0, mv)); p.a = typeof m.a === 'string' ? m.a.slice(0, 8) : ''; p.lastPos = now; p.dirty = true;
@@ -247,7 +267,7 @@ export class Hub {
     const sys = (text: string) => send(p, { t: 'sys', text });
     switch (cmd) {
       case '/quem': return p.room ? sys(`${p.room.label}: ${[...p.room.players.values()].map(o => o.account.name).join(', ')}`) : sys('Você não está na vila.');
-      case '/sala': return p.room ? sys(`Você está em ${p.room.label} (${p.room.players.size}/${HUB_CAP}).`) : sys('Você não está na vila.');
+      case '/sala': return p.room ? sys(`Você está em ${p.room.label} (${p.room.players.size}/${p.room.kind === 'ermos' ? WILDS_CAP : p.room.kind === 'inst' ? INST_CAP : HUB_CAP}).`) : sys('Você não está na vila.');
       case '/g': case '/grupo': return arg ? void this.partyChat(p, arg) : sys('Use /g mensagem para falar com o grupo.');
       case '/convidar': return arg ? void this.invite(p, arg) : sys('Use /convidar Nome.');
       case '/sair': return void (this.leaveParty(p.account.id, 'saiu') || sys('Você não está em um grupo.'));
@@ -322,18 +342,73 @@ export class Hub {
     send(p, { t: 'sys', text: `Pedido de amizade enviado para ${r.other.name}.` });
   }
 
+  // ---------- Ermos abertos: PvP e espólio ----------
+  private lootGone = new Map<string, { id: string; by: string; at: number; when: number }>();   // dono fora da sala quando o espólio foi pego
+  private lootMsg(L: Loot): ServerMsg { return { t: 'ldrop', id: L.id, x: L.x, z: L.z, by: L.ownerPid, name: L.ownerName, gold: L.gold, n: L.items.length, ms: Math.max(0, L.exp - Date.now()) }; }
+  private expireLoot(room: Room) { const now = Date.now(); for (const L of [...room.loots.values()]) if (L.exp <= now) { room.loots.delete(L.id); room.broadcast({ t: 'lgone', id: L.id }); } }
+  /** Grupo ou amizade: sem fogo amigo. */
+  private allies(a: Player, b: Player) { if (a.friends.has(b.account.id) || b.friends.has(a.account.id)) return true; const pa = this.partyOf.get(a.account.id); return !!pa && pa === this.partyOf.get(b.account.id); }
+
+  /** Acerto num jogador: só nas salas públicas dos Ermos, os dois no Ermo Profundo, perto e sem ser amigo nem do grupo. O jogo da vítima confere de novo (bioma exato e acampamento). */
+  private onPvp(p: Player, m: any) {
+    const room = p.room; if (!room || room.kind !== 'ermos') return;
+    const v = room.players.get(m.to), dmg = num(m.dmg); if (!v || v === p || dmg === null || dmg <= 0) return;
+    const now = Date.now(); p.pvpTokens = Math.min(PVP_RATE * 2, p.pvpTokens + (now - p.pvpRefill) / 1000 * PVP_RATE); p.pvpRefill = now;
+    if (p.pvpTokens < 1) { inc('hub_pvp_limited'); return; }
+    if (this.allies(p, v) || !deepWilds(p.x, p.z) || !deepWilds(v.x, v.z) || Math.hypot(p.x - v.x, p.z - v.z) > PVP_RANGE) { inc('hub_pvp_refused'); return; }
+    p.pvpTokens -= 1; inc('hub_pvp_hits');
+    send(v, { t: 'pvp', from: p.id, name: p.account.name, dmg: Math.min(1e6, Math.round(dmg)) });
+  }
+
+  /** Quem caiu nos Ermos larga o espólio (Centelhas e itens da bolsa): fica 5 min no chão da sala. */
+  private async onLootDrop(p: Player, m: any) {
+    const room = p.room; if (!room || !room.wilds) return;
+    const x = num(m.x), z = num(m.z), gold = num(m.gold), at = num(m.at);
+    if (x === null || z === null || gold === null || at === null || !Array.isArray(m.items) || m.items.length > 40) return;
+    const save = (await this.store.getSave(p.account.id))?.data, tier = maxItemTier(save ?? {});
+    const items = (m.items as Item[]).filter(it => it && typeof it === 'object' && typeof it.id === 'string' && !itemProblems(it, tier).length);
+    if (p.room !== room) return;
+    for (const L of room.loots.values()) if (L.owner === p.account.id) { room.loots.delete(L.id); room.broadcast({ t: 'lgone', id: L.id }); }   // o jogo junta o espólio velho no novo
+    const L: Loot = { id: 'l' + randomBytes(5).toString('hex'), owner: p.account.id, ownerName: p.account.name, ownerPid: p.id, at, x: Math.min(room.bounds.x1, Math.max(room.bounds.x0, x)), z: Math.min(room.bounds.z1, Math.max(room.bounds.z0, z)), gold: Math.max(0, Math.min(2_000_000_000, Math.floor(gold))), items, exp: Date.now() + LOOT_MS };
+    room.loots.set(L.id, L); inc('hub_loot_drops');
+    room.broadcast(this.lootMsg(L));
+  }
+
+  /** Pegar um espólio: o primeiro que chega leva. Se não é do dono, os itens ganham lápide na conta do dono (não voltam pelo save dele). */
+  private async onLootTake(p: Player, m: any) {
+    const room = p.room; if (!room || !room.wilds || typeof m.id !== 'string') return;
+    this.expireLoot(room);
+    const L = room.loots.get(m.id); if (!L) return send(p, { t: 'lgone', id: m.id });
+    if (Math.hypot(p.x - L.x, p.z - L.z) > LOOT_TAKE_R) return;
+    const own = L.owner === p.account.id, free = Math.max(0, Math.min(40, Number.isInteger(m.free) ? m.free : 0));
+    const got = L.items.slice(0, free), rest = L.items.slice(free), gold = L.gold;
+    L.items = rest; L.gold = 0;
+    if (!rest.length) room.loots.delete(L.id);
+    inc('hub_loot_takes');
+    send(p, { t: 'lgot', id: L.id, gold, items: got, own, left: rest.length });
+    if (!own && (gold || got.length)) {
+      await this.store.addTombstones(L.owner, got.map(it => it.id)).catch(() => {});
+      const o = this.byAccount.get(L.owner);
+      if (o) send(o, { t: 'lgone', id: L.id, by: p.account.name, at: L.at });
+      else this.lootGone.set(L.owner, { id: L.id, by: p.account.name, at: L.at, when: Date.now() });
+    }
+    if (rest.length) room.broadcast(this.lootMsg(L)); else room.broadcast({ t: 'lgone', id: L.id });
+  }
+
   // ---------- onde o jogador está ----------
   private onWhere(p: Player, r: unknown, n: unknown, i?: unknown) {
     if (typeof r !== 'string' || !WHERE_LABEL[r]) return;
     const whereN = r === 'rift' && Number.isInteger(n) && (n as number) > 0 && (n as number) < 1000 ? (n as number) : 0;
     // Na Fenda do grupo, a sala é a da instância; na vila, uma sala da vila; no resto, nenhuma.
     const inst0 = Number.isInteger(i) ? this.partyOf.get(p.account.id)?.inst : null, inst = inst0 && inst0.kind === r ? inst0 : null;
-    const target: Room | 'vila' | null = inst && inst.id === i && (inst.room.players.has(p.id) || inst.room.players.size < INST_CAP) ? inst.room : r === 'hub' ? 'vila' : null;
-    const same = target === 'vila' ? !!p.room && !p.room.inst : target === p.room;
+    // Nos Ermos sem o grupo: uma sala pública dos Ermos (todos se veem; cada jogo simula os próprios monstros).
+    const target: Room | 'vila' | 'ermos' | null = inst && inst.id === i && (inst.room.players.has(p.id) || inst.room.players.size < INST_CAP) ? inst.room : r === 'hub' ? 'vila' : r === 'wilds' ? 'ermos' : null;
+    const same = target === 'vila' || target === 'ermos' ? p.room?.kind === target : target === p.room;
     p.where = r; p.whereN = whereN;
     if (!same) {
       if (p.room) this.leaveRoom(p);
       if (target === 'vila') this.enterRoom(p);
+      else if (target === 'ermos') this.enterRoom(p, this.pickRoom('ermos'));
       else if (target) { this.enterRoom(p, target); this.sendParty(target.inst!.party); }
       else if (Number.isInteger(i)) send(p, { t: 'iclosed', inst: i as number });
     }
@@ -351,7 +426,7 @@ export class Hub {
     if (kind === 'rift' && (!Number.isInteger(L) || L < 1 || L > 200 || !RIFT_BASES.includes(m.base) || !word(m.boss) || !aff || aff.length > 4 || !aff.every(word))) return;
     if (pt.inst && pt.inst.room.players.size && !(pt.inst.room.players.size === 1 && pt.inst.room.players.has(p.id))) return send(p, { t: 'sys', text: 'O grupo ainda está numa Fenda.' });
     if (pt.inst) this.closeInst(pt.inst);
-    const id = ++this.instSeq, room = new Room('inst-' + id, kind === 'wilds' ? 'Ermos' : `Fenda ${L}`);
+    const id = ++this.instSeq, room = new Room('inst-' + id, kind === 'wilds' ? 'Ermos do grupo' : `Fenda ${L}`, 'inst');
     // Dificuldade do grupo: a do líder, limitada à maior que todos os membros online desbloquearam.
     let diff = p.diff, limit = '';
     for (const mid of pt.members) { const q = this.byAccount.get(mid); if (!q) continue; const md = maxDiff(q); if (md < diff) { diff = md; limit = q.account.name; } }
@@ -590,6 +665,7 @@ export class Hub {
   }
 
   private heartbeat() {
+    for (const r of [...this.rooms.values(), ...[...this.instances.values()].map(i => i.room)]) if (r.loots.size) this.expireLoot(r);
     for (const p of this.byAccount.values()) {
       if (!p.alive) { p.ws.terminate(); this.leave(p); continue; }
       p.alive = false; try { p.ws.ping(); } catch { /* fechado */ }

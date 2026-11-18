@@ -75,7 +75,7 @@ function netTick(dt) {
   }
   netAct = P.act; netActT = P.actT;
   netPosAcc += dt; if (netPosAcc < .1) return; netPosAcc = 0;
-  n.sendPos(P.x, P.z, P.yaw, P.moveAmt || 0, P.act || '');
+  n.sendPos(P.x, P.z, P.yaw, P.moveAmt || 0, P.act || '', P.warp ? 1 : 0); P.warp = false;
 }
 
 // ---------- jogadores remotos ----------
@@ -121,8 +121,8 @@ function applyEmote(A, em, t, k = 1, cls) {   // k: 0→1 na entrada da pose (se
     A[4].rx = lerp(A[4].rx, -.55, e); A[5].rx = lerp(A[5].rx, -.55, e); A[4].rz = lerp(A[4].rz, .05, e); A[5].rz = lerp(A[5].rz, -.05, e);   // mãos nos joelhos
     A[2].rx = lerp(A[2].rx, .06 + br, e); A[2].ry *= 1 - e; A[3].rx = lerp(A[3].rx, -.04, e);
     if (A[13]) { A[12].rx = lerp(A[12].rx, 1.5, e); A[13].rx = lerp(A[13].rx, 1.5, e); A[10].rx = lerp(A[10].rx, -.75, e); A[11].rx = lerp(A[11].rx, -.75, e); }
+    if (cls === 'arcano' && A[8] && A[11]) { A[5].rx = lerp(A[5].rx, -.3, e); A[5].rz = lerp(A[5].rz, -.12, e); A[11].rx = lerp(A[11].rx, -1.05, e); A[8].rx = lerp(A[8].rx, -(A[1].rx + A[2].rx + A[5].rx + A[11].rx), e); A[8].rz = lerp(A[8].rz, -A[5].rz, e); }   /* o cajado fica de pé ao lado, apoiado no chão */
     if (A[15]) { A[14].rx = lerp(A[14].rx, .3, e); A[15].rx = lerp(A[15].rx, -.3, e); }   // a capa desce reta atrás do assento
-    if (A[8] && e > .5) A[8].sx = A[8].sy = A[8].sz = .001;   // sentado, a arma fica guardada
   }
 }
 // Duração de cada ação, igual à do jogador local (core/player.js).
@@ -248,6 +248,7 @@ function updateRemoteMarks() {
     el.style.left = sc[0] + 'px'; el.style.top = y + 'px';
     const ally = !!(n.party && n.party.members.some(m => m.name === r.name));
     if (el.classList.contains('ally') !== ally) el.classList.toggle('ally', ally);
+    const foe = pvpFoe(r, n); if (el.classList.contains('foe') !== foe) el.classList.toggle('foe', foe);   // Ermo Profundo: pode atacar e ser atacado
     { const want = r.down ? 'CAÍDO · chegue perto para costurar' : r.title; if (tt.textContent !== want) tt.textContent = want; }
     const showBub = r.chat && r.chatT < 6;
     bub.hidden = !showBub; if (showBub && bub.textContent !== r.chat) bub.textContent = r.chat;
@@ -304,6 +305,81 @@ function renderMailOnline() {
 }
 function resetMailOnline() { mlOnlineSel = null; mlInbox = null; }
 
+// ---------- Ermos abertos: PvP no Ermo Profundo e espólio que qualquer um pega ----------
+/** O ponto está no Ermo Profundo, fora de acampamento (lá não há acampamentos, mas confere). */
+const deepAt = (x, z) => !!(RG && RG.wild) && wZone(x / T, z / T) === 7 && !inCamp(x, z);
+/** Pode bater neste jogador? Sala pública dos Ermos, os dois no Ermo Profundo, e ele não é amigo nem do grupo. */
+function pvpFoe(r, n = NETON()) { return !!(n && n.inOpenWilds && P && r.x !== undefined && deepAt(P.x, P.z) && deepAt(r.x, r.z) && !n.isAlly(r.name)); }
+const pvpCd = new Map();   // id → hora do último acerto (um acerto por golpe, mesmo com área)
+function pvpStrike(r, dmg, n) {
+  const now = performance.now(); if (now - (pvpCd.get(r.id) || 0) < 200) return false; pvpCd.set(r.id, now);
+  n.pvpHit(r.id, dmg); popNum(r.x, 2.2, r.z, String(Math.round(dmg * PVP_MUL)), ''); burst(r.x, 1, r.z, 10, 7, 3, .35, .12); sfx('hit');
+  return true;
+}
+/** Golpe em área (giro, especial) ou em arco (golpe corpo a corpo): acerta os jogadores hostis no alcance. */
+function pvpArea(x, z, rad, dmg, yaw, arc) {
+  const n = NETON(); if (!n || !n.inOpenWilds || !deepAt(P.x, P.z)) return;
+  for (const r of n.players()) {
+    if (!pvpFoe(r, n)) continue;
+    const dx = r.x - x, dz = r.z - z, d = Math.hypot(dx, dz) - .45;
+    if (d > rad || (arc !== undefined && Math.abs(angDiff(yaw, Math.atan2(dx, dz))) > arc && d > .4)) continue;
+    pvpStrike(r, dmg, n);
+  }
+}
+/** Projétil do jogador: acerta um jogador hostil no caminho (true: o projétil some). */
+function pvpProj(p) {
+  const n = NETON(); if (!n || !n.inOpenWilds || !deepAt(P.x, P.z)) return false;
+  for (const r of n.players()) {
+    if ((p.hitR && p.hitR.has(r.id)) || !pvpFoe(r, n) || Math.hypot(r.x - p.x, r.z - p.z) > .45 + p.r) continue;
+    pvpStrike(r, p.dmg, n); (p.hitR || (p.hitR = new Set())).add(r.id);
+    return p.pierce-- <= 0;
+  }
+  return false;
+}
+/** Entre jogadores o dano é menor que o dos monstros: uma luta dura alguns golpes, não um. */
+const PVP_MUL = .3;
+function pvpHurt(from, name, dmg) {
+  const n = NETON(); if (!n || !P || G.mode !== 'play' || P.dieT >= 0 || P.iframe > 0 || P.dashT > 0 || !deepAt(P.x, P.z) || n.isAlly(name)) return;
+  const r = n.players().find(q => q.id === from);
+  let d = Math.max(1, Math.round(Math.min(dmg * PVP_MUL, P.maxHp * .2) * (1 - stats().dr)));
+  if (P.ultT > 0) d = Math.round(d * .5);
+  if (P.shield > 0) { const a = Math.min(P.shield, d); P.shield -= a; d -= a; if (d <= 0) { popNum(P.x, 2.2, P.z, 'BLOQUEADO', 'info'); return; } }
+  P.hp -= d; P.iframe = .25; P.flash = 1; G.hurt = 1; G.shake = Math.max(G.shake, .2);
+  if (r && r.x !== undefined) { const dx = P.x - r.x, dz = P.z - r.z, l = Math.hypot(dx, dz) || 1; P.kx = dx / l * 5; P.kz = dz / l * 5; }
+  popNum(P.x, 2.2, P.z, '-' + d, 'hurt'); sfx('hurt');
+  if (P.hp <= 0) { G.pvpBy = name; playerDie(); setTimeout(() => toast('ABATIDO POR ' + name.toUpperCase(), true, 'ERMO PROFUNDO · PVP ATIVO', '#ff5a7a'), 2600); }
+}
+// Espólio. O próprio (G.save.wloot) ganha o id do servidor (sid); os dos outros ficam em TessNet.loots.
+const LOOT_LOST = [];   // espólios meus pegos por outros (pode chegar antes do save carregar)
+let lootAsk = 0;
+function lootNet() { const n = NETON(); return n && n.room && RG && RG.wild ? n : null; }
+/** Caí nos Ermos com sala conectada: o espólio vai para o chão da sala (qualquer um pega). */
+function netLootDrop(L) { const n = lootNet(); if (n) n.lootDrop(L.x, L.z, L.gold, L.items, L.t); }
+/** Perto de um espólio da sala: pede ao servidor (o primeiro leva). true: o jogo não pega localmente. */
+function netLootTake(id, x, z) {
+  const n = lootNet(); if (!n || !id) return false;
+  if (Math.hypot(P.x - x, P.z - z) < 1.4 && performance.now() - lootAsk > 1000) { lootAsk = performance.now(); n.lootTake(id, Math.max(0, BAG() - G.save.inv.length)); }
+  return true;
+}
+function updateNetLoot() {
+  const n = lootNet(); if (!n || !P || P.dieT >= 0) return;
+  const mine = G.save.wloot && G.save.wloot.sid;
+  for (const L of n.loots.values()) if (L.id !== mine) netLootTake(L.id, L.x, L.z);
+}
+function lootGot(m) {
+  const s = G.save; if (!s) return;
+  const n = NETON(), info = n && n.loots.get(m.id);
+  s.gold += m.gold; s.inv.push(...m.items.slice(0, Math.max(0, BAG() - s.inv.length)));
+  if (m.own && s.wloot) { const got = new Set(m.items.map(it => it.id)); s.wloot.items = s.wloot.items.filter(it => !got.has(it.id)); s.wloot.gold = 0; if (!s.wloot.items.length || !m.left) s.wloot = null; }
+  toast(m.own ? 'ESPÓLIO RECUPERADO' : 'ESPÓLIO DE ' + (info ? info.name : 'OUTRO JOGADOR').toUpperCase(), true, `+${m.gold} CENTELHAS · ${m.items.length} ITENS` + (m.left ? ` · ${m.left} NÃO COUBERAM` : ''), '#ffbf3d'); sfx('legend');
+  writeSave();
+}
+function lootLost(id, by, at) { LOOT_LOST.push({ id, at }); checkLootLost(by); }
+function checkLootLost(by) {
+  const L = G.save && G.save.wloot; if (!L || !LOOT_LOST.length) return;
+  if (LOOT_LOST.some(x => x.id === L.sid || x.at === L.t)) { G.save.wloot = null; writeSave(); toast((by ? by.toUpperCase() : 'OUTRO JOGADOR') + ' PEGOU SEU ESPÓLIO', true, 'CENTELHAS E ITENS PERDIDOS NOS ERMOS', '#ff5a7a'); sfx('hurt'); }
+}
+
 // ---------- API do jogo para o módulo de rede ----------
 window.TessGame = {
   get mode() { return G.mode; },
@@ -324,4 +400,9 @@ window.TessGame = {
   remoteAct: (id, a, c, yaw) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) startRemoteAct(r, a, c, yaw); },
   remoteChat: (id, text) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.chat = text; r.chatT = 0; } },
   myEmote: e => { if (!P) return; P.emote = e; P.emoteT = 0; },
+  pvpHurt,
+  lootSid: id => { if (G.save && G.save.wloot) { G.save.wloot.sid = id; writeSave(); } },
+  lootGot,
+  lootLost,
+  lootVanish: id => { const L = G.save && G.save.wloot; if (L && L.sid === id) delete L.sid; },   /* o servidor não tem mais: volta a ser só local */
 };

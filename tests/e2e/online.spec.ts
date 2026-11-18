@@ -320,7 +320,7 @@ test('Ermos do grupo: o líder abre, os dois chegam ao mesmo mapa e o golpe do a
   expect(await ev(A.page, 'netGroupWilds()')).toBe(true);
   await expect(B.page.locator('.net-ready')).toContainText('abriu os Ermos de Tessária');
   await B.page.locator('.net-ready button:has-text("Entrar")').click();
-  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.RG?.key === 'wilds' && (window as any).TessNet.room === 'Ermos', null, { timeout: 30_000 });
+  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.RG?.key === 'wilds' && (window as any).TessNet.room === 'Ermos do grupo', null, { timeout: 30_000 });
   await A.page.waitForFunction(() => (window as any).TessNet.isHost, null, { timeout: 10_000 });
   const mapa = (pg: Page) => ev(pg, 'JSON.stringify(RG.rooms.slice(0, 40).map(r => [Math.round(r.wx), Math.round(r.wz), r.kind || "", r.zone]))');
   expect(await mapa(B.page)).toBe(await mapa(A.page));
@@ -335,6 +335,38 @@ test('Ermos do grupo: o líder abre, os dois chegam ao mesmo mapa e o golpe do a
   await ev(B.page, `hurtEnemy(enemies.find(e => e.nid === ${nid}), 99999, 1, 0, false)`);
   const loot = (pg: Page) => pg.waitForFunction(() => (window as any).__T.ev("pickups.some(p => p.kind === 'item' && p.item.g === 1)"), null, { timeout: 8000 });
   await Promise.all([loot(A.page), loot(B.page)]);
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
+test('Ermos abertos: sem grupo, todos se veem; no Ermo Profundo há PvP e o espólio de quem cai fica para qualquer um', async ({ browser }) => {
+  test.setTimeout(150_000);
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
+  const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
+  for (const pg of [A.page, B.page]) await pg.evaluate(() => (window as any).__T.travel('wilds'));
+  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.RG?.key === 'wilds' && (window as any).__T.ev("G.mode === 'play'") && /^Ermos #/.test((window as any).TessNet.room), null, { timeout: 60_000 });
+  expect(await ev(A.page, 'TessNet.room')).toBe(await ev(B.page, 'TessNet.room'));
+  // os dois no mesmo acampamento de monstros do Ermo Profundo (bioma 7)
+  const go = (pg: Page, dx: number) => ev(pg, `(r => { P.hp = P.maxHp = 1e9; P.x = r.wx + ${dx}; P.z = r.wz + 1; P.warp = true; })(RG.rooms.find(r => r.zone === 7 && r.en))`);
+  await go(A.page, 1); await go(B.page, 2.5);
+  await A.page.waitForFunction(n => (window as any).__T.ev(`(r => !!r && r.x !== undefined && Math.hypot(r.x - P.x, r.z - P.z) < 4)(TessNet.players().find(p => p.name === ${JSON.stringify(n)}))`), B.name, { timeout: 15_000 });
+  expect(await ev(A.page, 'deepAt(P.x, P.z)')).toBe(true);
+  await expect(A.page.locator('#marks .tag.rp.foe .rn', { hasText: B.name })).toBeVisible();
+  // golpe de A acerta B (dano de PvP reduzido)
+  await ev(B.page, 'P.hp = P.maxHp = 5000; P.iframe = 0');
+  await ev(A.page, 'pvpArea(P.x, P.z, 5, 400)');
+  await B.page.waitForFunction(() => (window as any).__T.ev('P.hp < 5000'), null, { timeout: 8000 });
+  expect(await ev(B.page, '5000 - P.hp')).toBeLessThanOrEqual(120);   // 400 × 0,3
+  // B cai com Centelhas e um item na bolsa; A pega o espólio
+  await ev(B.page, "G.save.gold = 777; G.save.inv = [TessItems.makeItem('weapon', 1.5, 1, 'arco')]; P.hp = 1; P.iframe = 0");
+  await A.page.waitForTimeout(300);
+  await ev(A.page, 'pvpCd.clear(); pvpArea(P.x, P.z, 5, 400)');
+  await B.page.waitForFunction(() => (window as any).__T.ev('!!G.save.wloot && !!G.save.wloot.sid'), null, { timeout: 8000 });
+  await A.page.waitForFunction(() => (window as any).TessNet.loots.size === 1, null, { timeout: 8000 });
+  const gold0 = await ev(A.page, 'G.save.gold');
+  await ev(A.page, '(L => { P.x = L.x; P.z = L.z; P.warp = true; })([...TessNet.loots.values()][0])');
+  await A.page.waitForFunction(g => (window as any).__T.ev(`G.save.gold === ${g} + 777 && G.save.inv.length > 0`), gold0, { timeout: 8000 });
+  await B.page.waitForFunction(() => (window as any).__T.ev('!G.save.wloot'), null, { timeout: 8000 });
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
   await A.ctx.close(); await B.ctx.close();
 });

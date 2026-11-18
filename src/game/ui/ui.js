@@ -433,7 +433,7 @@ $('#sDiff').onchange = e => { const v = +e.target.value; if (!G.save || !diffOk(
 $('#sSound').onchange = e => { G.settings.sound = e.target.checked; saveSettings(); };
 $('#sMusic').oninput = e => { G.settings.music = +e.target.value; if (MUS.master && AC) MUS.master.gain.setTargetAtTime(G.settings.music * .8, AC.currentTime, .1); saveSettings(); };
 function saveSettings() { try { localStorage.setItem(SKEY + '-set', JSON.stringify(G.settings)); } catch (e) { } }
-try { const s = JSON.parse(localStorage.getItem(SKEY + '-set') || 'null'); if (s) Object.assign(G.settings, s); } catch (e) { }
+try { const s = JSON.parse(localStorage.getItem(SKEY + '-set') || 'null'); if (s) { Object.assign(G.settings, s); if ((s.sv || 0) < 2) { G.settings.px = 3; G.settings.dither = .5; G.settings.sv = 2; } } } catch (e) { }   /* sv 2: novo padrão de pixel 3 e pontilhado .5 */
 
 /* ---- título, criador, história ---- */
 function toTitle() {

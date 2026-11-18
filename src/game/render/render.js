@@ -53,6 +53,7 @@ function resize() {
 }
 function boneOrder(B) { const o = [], done = new Set(); const vis = i => { if (done.has(i)) return; if (B[i].p >= 0) vis(B[i].p); done.add(i); o.push(i); }; for (let i = 0; i < B.length; i++) vis(i); return o; }
 function computeInst(model, A, M) {
+  if (model.skirt > 0 && A[model.skirt]) A[model.skirt].rx = Math.min(0, (A[6].rx + A[7].rx) * .43);   /* manto do arcano: a frente segue as coxas */
   const B = model.bones, W = [], ord = model.ord && model.ord.length === B.length ? model.ord : (model.ord = boneOrder(B));
   for (const i of ord) {
     const b = B[i], a = A[i], p = b.v;
@@ -137,6 +138,7 @@ function render(dt) {
     P.stance = P.act && P.cls !== 'lamina' ? 1 : 0; P.combo = Math.floor(t / 12) % 3;
     poseHuman(P.anim, P, t); if (EMOTES_PV.includes(pose)) applyEmote(P.anim, pose, t, 1, G.char.cls);
     drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
+    auraFx(0, 0, G.char.aura, t, dt);   /* a aura também aparece no espelho e no inventário */
   } else {
     drawRemotes(dt, t);
     for (const n of npcs) {
@@ -281,6 +283,7 @@ function render(dt) {
 function collectTargets() {
   const out = []; if (!G.save || !RG) return out;
   { const L = G.save.wloot; if (RG.wild && L && Date.now() - L.t < LOOT_MS) out.push({ x: L.x, z: L.z, mat: 14 }); }   // espólio: feixe dourado e seta
+  { const n = RG.wild && NETON(); if (n && n.room) { const mine = G.save.wloot && G.save.wloot.sid; for (const L of n.loots.values()) if (L.id !== mine && L.exp > Date.now()) out.push({ x: L.x, z: L.z, mat: 13 }); } }   /* espólio de outro jogador: feixe laranja */
   const vq = G.save.q && G.save.q.vara;
   if (RG.key === 'hub' && vq && vq.st === 'active') WORMS.forEach(([x, z], i) => { if (!(vq.got || []).includes(i)) out.push({ x, z, mat: 21, worm: true }); });
   for (const it of inter) if (it.kind === 'qitem' && !it.taken) out.push({ x: it.x, z: it.z, mat: it.mat });

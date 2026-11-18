@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.33.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.34.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -29,14 +29,14 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 - **HUD com retrato e ícones 3D:** o seu herói aparece no canto do HUD e os ícones são modelos desenhados pelo motor do jogo; itens de missão têm feixe de luz e uma seta no chão aponta para o mais perto.
 - **Herói em destaque:** esqueleto com cotovelos e joelhos (o Arcano segura o cajado com a mão fechada), superfície lisa em alta definição, rosto chibi com olhos escuros, íris colorida e brilho, sobrancelhas e sorriso, cabelo em mechas, roupa com gola, punhos e botas, e capa que esvoaça ao correr. Espelho na bolsa e na criação em alta definição, com poses e zoom; no jogo, zoom da câmera pela roda do mouse (ou + e −) e um anel que marca o seu herói no grupo.
 - **Dois atos de história, com finais diferentes.** Ato I: Bosque Sussurrante, Ossuário Real e Picos de Cinza. Ato II: Pântano Afogado e Cidadela de Vidro, com O Reflexo, uma cópia sombria do seu próprio herói.
-- **Ermos de Tessária:** um mapa aberto enorme (400×350) em volta da vila, com **oito biomas** (da Campina Brasa ao Ermo Profundo, passando pela Teia Funda das aranhas, o Brejo Cinzento, as Colinas Partidas, o Cemitério Esquecido e o Planalto de Cinzas), covis com Alfas nomeados, cavernas, acampamentos seguros com o Mercador Suspeito (estoque que muda a cada hora), obeliscos de viagem pelo Mapa dos Ermos (tecla M), um Ermo Profundo cada vez mais difícil, Lua de Sangue e emboscadas.
+- **Ermos de Tessária:** um mapa aberto enorme (400×350) em volta da vila, com **oito biomas** (da Campina Brasa ao Ermo Profundo, passando pela Teia Funda das aranhas, o Brejo Cinzento, as Colinas Partidas, o Cemitério Esquecido e o Planalto de Cinzas), covis com Alfas nomeados, cavernas, acampamentos seguros com o Mercador Suspeito (estoque que muda a cada hora), obeliscos de viagem pelo Mapa dos Ermos (tecla M), um Ermo Profundo cada vez mais difícil, Lua de Sangue e emboscadas. Online, os Ermos são abertos: todos se veem, e no Ermo Profundo vale PvP (amigos e grupo nunca se acertam).
 - **Fendas do Tear** geradas a cada vez, com mapas novos, afixos e guardiões. É onde o jogo continua sem fim.
 - **Progressão estilo ARPG:**
   - sete dificuldades, até Tormento III;
   - loot com raridades e lendários com poderes;
   - runas, talentos e itens aprimorados até +10.
 - **Vila Brasa:** o hub, com o Bairro Leste (fogueira com bancos, feira da Dora, a Acendedora Lúcia, patos no lago, o Bardo Tomé e seus rumores, arena com bonecos que mostram o seu dano por segundo e o lago onde o Pescador Ivo ensina a pescar: a missão dele dá a vara) e o **Santuário da Fenda**, uma praça de obsidiana e runas violeta com o portal sombrio da Fenda do Tear.
-- **Banco do Tear:** prédio de mármore na praça; o que fica no cofre não se perde. Nos Ermos, morrer derruba o que você carrega por 5 minutos.
+- **Banco do Tear:** prédio de mármore na praça; o que fica no cofre não se perde. Nos Ermos, morrer derruba o que você carrega por 5 minutos, e online qualquer jogador pode pegar.
 - **Itens com peso:** a raridade máxima depende da área (Lendário só nas áreas fundas, nos Tormentos e com chefes) e itens fortes pedem nível para equipar.
 - **Casa do Tecelão:** baú permanente, mobília com bônus visíveis, o Correio do Tear para trocar itens com amigos e o **Guarda-Roupa**, para mudar o visual quando quiser, escolher o estilo da armadura (clássica, couro, placas, escamas ou tabardo real) e comprar estilos raros (auréola, cartola, óculos, orelhas de elfo, flor, tranças) e auras de partículas (brasas, vaga-lumes, pétalas, gelo, sombra violeta, fios dourados).
 - **Online e co-op:** encontre outros Tecelões na vila, forme grupo com até 4 amigos e jogue junto nas Fendas e nos Ermos, com os mesmos monstros para todos, cada um com o próprio loot.
@@ -170,6 +170,7 @@ Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 
 <img src="docs/img/coop.png" alt="Dois jogadores do mesmo grupo lado a lado na Fenda do Tear" width="100%">
 
+- **Ermos abertos:** sem grupo, você cai numa sala pública dos Ermos (até 30 jogadores) e vê os outros Tecelões. No **Ermo Profundo** o PvP é ativo: o nome de quem pode ser atacado fica vermelho, o dano entre jogadores é reduzido, e **amigos e grupo nunca se acertam**. Quem cai larga o espólio por 5 minutos e **o primeiro que chega leva**.
 - **Fenda do grupo e Ermos do grupo:** o líder abre e todos recebem o aviso **Pronto?**. Quem entra cai no mesmo mapa.
 - **Os mesmos monstros para todos:** o jogo do líder comanda os inimigos e o chefe; o golpe de qualquer um vale; os monstros atacam quem estiver mais perto.
 - **Mais gente, monstros mais fortes:** vida 1,75× em dupla, até 3,25× com quatro.
@@ -177,7 +178,7 @@ Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Loot de cada um, sorteado pelo servidor**, no nível e na sorte de cada jogador. Todo item sorteado fica registrado.
 - **Dificuldade do grupo e Fio de Elo:** vale a dificuldade do líder, até onde todos desbloquearam; o amigo de nível baixo sobe para perto do líder, e quem é muito mais forte fica limitado e ganha o bônus de mentor.
 
-As regras completas estão em [docs/ONLINE.md](docs/ONLINE.md), e a ordem do que vem por aí (história em grupo, troca, mercado, guilda, Ermos abertos e PvP) em [docs/ROADMAP.md](docs/ROADMAP.md). O modelo de receita está em [docs/MONETIZATION.md](docs/MONETIZATION.md): passe de batalha e cosméticos, **nunca vantagem paga**.
+As regras completas estão em [docs/ONLINE.md](docs/ONLINE.md), e a ordem do que vem por aí (história em grupo, troca, mercado, guilda e salas dos Ermos por faixa) em [docs/ROADMAP.md](docs/ROADMAP.md). O modelo de receita está em [docs/MONETIZATION.md](docs/MONETIZATION.md): passe de batalha e cosméticos, **nunca vantagem paga**.
 
 ## Licença
 

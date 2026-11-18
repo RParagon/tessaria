@@ -1,5 +1,6 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { makeItem } from '../../shared/items';
 import { STORES, startServer, api, register, baseSave, WsClient, sleep, type TestServer } from './helpers';
 
 for (const kind of STORES) {
@@ -274,7 +275,7 @@ for (const kind of STORES) {
       assert.equal(rd.kind, 'wilds');
       b.c.send({ t: 'ijoin', inst: rd.inst }); assert.equal((await b.c.waitFor(m => m.t === 'ienter')).kind, 'wilds');
       a.c.send({ t: 'where', r: 'wilds', i: ea.inst }); b.c.send({ t: 'where', r: 'wilds', i: ea.inst });
-      const wb = await b.c.waitFor(m => m.t === 'welcome' && m.room === 'Ermos');
+      const wb = await b.c.waitFor(m => m.t === 'welcome' && m.room === 'Ermos do grupo');
       a.c.send({ t: 'pos', x: 550, z: 480, yaw: 0, m: 0, a: '' }); b.c.send({ t: 'pos', x: 551, z: 481, yaw: 0, m: 0, a: '' });
       await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === wb.id && q[1] === 551));
       a.c.send({ t: 'ikill', n: 5, el: 1, th: 0, x: 550, z: 480, b: 7 });
@@ -284,6 +285,55 @@ for (const kind of STORES) {
       const L0 = await b.c.waitFor(m => m.t === 'loot' && m !== L7);
       assert.ok(L0.items[0].tier < 3, `tier ${L0.items[0].tier}`);
       a.c.close(); b.c.close();
+    });
+
+    test('Ermos abertos: sala pública, PvP só no Ermo Profundo e sem fogo amigo, espólio que outro pega (com lápide no dono)', async () => {
+      const A = await account(baseSave({ lvl: 30 })), B = await account(baseSave({ lvl: 30 })), C = await account(baseSave({ lvl: 30 }));
+      await befriend(A, B);
+      const a = await connect(A, 'wilds'), b = await connect(B, 'wilds'), c = await connect(C, 'wilds');
+      assert.equal(a.w.room, 'Ermos #1'); assert.equal(c.w.room, 'Ermos #1');
+      // Ermo Profundo: ladrilho (40, 175), longe do centro (200, 175)
+      a.c.send({ t: 'pos', x: 80, z: 350, yaw: 0, m: 0, a: '' }); b.c.send({ t: 'pos', x: 82, z: 350, yaw: 0, m: 0, a: '' }); c.c.send({ t: 'pos', x: 84, z: 350, yaw: 0, m: 0, a: '' });
+      await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 84));
+      a.c.send({ t: 'pvp', to: c.w.id, dmg: 120 });
+      const hit = await c.c.waitFor(m => m.t === 'pvp');
+      assert.equal(hit.from, a.w.id); assert.equal(hit.name, A.account.name); assert.equal(hit.dmg, 120);
+      a.c.send({ t: 'pvp', to: b.w.id, dmg: 120 });   // amigo: sem fogo amigo
+      // perto da vila não há PvP: C volta pelo obelisco (teleporte aceito) para o centro
+      c.c.send({ t: 'pos', x: 400, z: 350, yaw: 0, m: 0, a: '', w: 1 });
+      await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 400));
+      a.c.send({ t: 'pvp', to: c.w.id, dmg: 99 });
+      await sleep(250);
+      assert.equal(b.c.msgs.filter(m => m.t === 'pvp').length, 0);
+      assert.equal(c.c.msgs.filter(m => m.t === 'pvp').length, 1);
+      // espólio: C cai e larga Centelhas e um item; A pega primeiro
+      await sleep(3100); c.c.send({ t: 'pos', x: 84, z: 350, yaw: 0, m: 0, a: '', w: 1 });   // teleporte de novo: no máximo um a cada 3 s
+      await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 84));
+      const it = makeItem('weapon', 1.5, 1, 'lamina');
+      c.c.send({ t: 'ldrop', x: 84, z: 350, gold: 500, items: [it, { lixo: true }], at: 12345 });
+      const drop = await a.c.waitFor(m => m.t === 'ldrop');
+      assert.equal(drop.name, C.account.name); assert.equal(drop.gold, 500); assert.equal(drop.n, 1);   // item inválido fica de fora
+      assert.equal((await c.c.waitFor(m => m.t === 'ldrop')).by, c.w.id);
+      b.c.send({ t: 'pos', x: 130, z: 350, yaw: 0, m: 0, a: '', w: 1 });
+      await sleep(100);
+      b.c.send({ t: 'ltake', id: drop.id, free: 5 });   // longe demais: nada
+      a.c.send({ t: 'ltake', id: drop.id, free: 5 });
+      const got = await a.c.waitFor(m => m.t === 'lgot');
+      assert.equal(got.gold, 500); assert.equal(got.items[0].id, it.id); assert.equal(got.own, false);
+      const lost = await c.c.waitFor(m => m.t === 'lgone' && m.by);
+      assert.equal(lost.by, A.account.name); assert.equal(lost.at, 12345);
+      await b.c.waitFor(m => m.t === 'lgone' && m.id === drop.id);
+      assert.equal(b.c.msgs.filter(m => m.t === 'lgot').length, 0);
+      // o item agora tem lápide na conta de C: não volta pelo save dele
+      const r = await api(S.url, 'PUT', '/save', { rev: 1, data: baseSave({ lvl: 30, inv: [it] }) }, C.token);
+      assert.equal(r.status, 422); assert.match(JSON.stringify(r.body), /saíram/);
+      // quem chega depois vê os espólios ainda no chão
+      c.c.send({ t: 'ldrop', x: 84, z: 350, gold: 7, items: [], at: 999 });
+      await a.c.waitFor(m => m.t === 'ldrop' && m.gold === 7);
+      const D = await account(), d = await connect(D, 'wilds');
+      assert.equal(d.w.room, 'Ermos #1');
+      await d.c.waitFor(m => m.t === 'ldrop' && m.gold === 7);
+      a.c.close(); b.c.close(); c.c.close(); d.c.close();
     });
 
     test('dificuldade do grupo: a do líder, limitada à que todos desbloquearam; o Pronto? leva a dificuldade e o nível do líder', async () => {

@@ -38,6 +38,8 @@ export class Net {
   invites: Array<{ from: string; size: number; exp: number }> = [];
   /** Última lista de amigos carregada (para os menus) e nomes bloqueados. */
   friendsList: FriendsList | null = null;
+  /** Espólios no chão da sala dos Ermos (de quem caiu): id → posição, dono, Centelhas, nº de itens e quando some. */
+  loots = new Map<string, { id: string; x: number; z: number; by: number; name: string; gold: number; n: number; exp: number }>();
 
   private listeners = new Set<Listener>();
   private remotes = new Map<number, Remote>();
@@ -197,18 +199,27 @@ export class Net {
   ikill(n: number, el: boolean, th: boolean, x: number, z: number, b?: number) { this.send({ t: 'ikill', n, el: el ? 1 : 0, th: th ? 1 : 0, x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, ...(b === undefined ? {} : { b }) }); }
   px(d: object, to?: number) { this.send(to === undefined ? { t: 'px', d } : { t: 'px', to, d }); }
   get groupRift() { return !!this.party && this.party.members.length > 1 && this.isLeader && this.connected; }
+  // ---------- Ermos abertos ----------
+  /** Na sala pública dos Ermos (não na instância do grupo). */
+  get inOpenWilds() { return this.connected && this.region === 'wilds' && !!this.room && !this.inst; }
+  /** Amigo ou do grupo: sem fogo amigo. */
+  isAlly(name: string) { const n = name.toLowerCase(); return this.isFriend(name) || !!this.party?.members.some(m => m.name.toLowerCase() === n); }
+  pvpHit(to: number, dmg: number) { this.send({ t: 'pvp', to, dmg: Math.round(dmg) }); }
+  lootDrop(x: number, z: number, gold: number, items: unknown[], at: number) { this.send({ t: 'ldrop', x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, gold, items, at }); }
+  lootTake(id: string, free: number) { this.send({ t: 'ltake', id, free }); }
   /** Na vila e com a sala conectada. */
   get inRoom() { return this.connected && !!this.room; }
   setLook(look: Look) { this.look = look; this.send({ t: 'look', look }); }
   players(): Remote[] { return this.remoteList; }
-  sendPos(x: number, z: number, yaw: number, m: number, a: string) {
+  /** w=1: teleporte (obelisco, renascer): o servidor aceita o salto. */
+  sendPos(x: number, z: number, yaw: number, m: number, a: string, w = 0) {
     const k = `${x.toFixed(2)},${z.toFixed(2)},${yaw.toFixed(2)},${m.toFixed(2)},${a}`;
     // Repete a posição parada 1x/s: se o servidor limitou um salto (anti-teleporte),
     // ele converge para a posição real mesmo com o jogador imóvel.
     const now = Date.now();
-    if (k === this.lastPos && now - this.lastPosAt < 1000) return;
+    if (k === this.lastPos && now - this.lastPosAt < 1000 && !w) return;
     this.lastPos = k; this.lastPosAt = now;
-    this.send({ t: 'pos', x, z, yaw, m, a });
+    this.send(w ? { t: 'pos', x, z, yaw, m, a, w: 1 } : { t: 'pos', x, z, yaw, m, a });
   }
   /** Envia no quadro em que a ação começa, para quem assiste ver o início da animação. */
   sendAct(a: Act, c: number, yaw: number) { if (ACTS.includes(a) && this.room) this.send({ t: 'act', a, c, yaw }); }
@@ -266,7 +277,7 @@ export class Net {
     if (this.party) { this.party = null; this.emit('party', null); }
     this.invites = [];
   }
-  private clearRemotes() { this.remotes.clear(); this.remoteList = []; }
+  private clearRemotes() { this.remotes.clear(); this.remoteList = []; this.loots.clear(); }
   private addRemote(p: PublicPlayer) {
     const r: Remote = { id: p.id, name: p.name, title: p.title, look: p.look, tx: p.x, tz: p.z, tyaw: p.yaw, m: 0, a: '' };
     this.remotes.set(p.id, r); this.remoteList = [...this.remotes.values()];
@@ -283,7 +294,7 @@ export class Net {
           // A sala recebida não bate com onde o jogador está (voltou para a vila, ou reconectou dentro
           // da Fenda do grupo): avisa onde está, sempre com a instância. Já na sala certa, não reenvia
           // (reenviar sem a instância tirava o jogador da Fenda do grupo).
-          const wantRoom = this.region === 'hub' || (this.region === this.instKind && !!this.inst);
+          const wantRoom = this.region === 'hub' || this.region === 'wilds' || (this.region === this.instKind && !!this.inst);
           if (!!m.room !== wantRoom || (!m.room && this.regionN)) this.sendWhere();
         }
         this.emit('hub', { connected: true, room: m.room, count: this.remotes.size + 1 }); void this.friends(); break;
@@ -312,6 +323,10 @@ export class Net {
       case 'ihost': this.hostId = m.id; G?.coopHost?.(m.id === this.myId); break;
       case 'hx': case 'gx': case 'px': G?.coopMsg?.(m.t, m.from, m.d); break;
       case 'loot': G?.coopLoot?.(m); break;
+      case 'pvp': G?.pvpHurt?.(m.from, m.name, m.dmg); break;
+      case 'ldrop': this.loots.set(m.id, { id: m.id, x: m.x, z: m.z, by: m.by, name: m.name, gold: m.gold, n: m.n, exp: Date.now() + m.ms }); if (m.by === this.myId) G?.lootSid?.(m.id); break;
+      case 'lgot': G?.lootGot?.(m); break;
+      case 'lgone': this.loots.delete(m.id); if (m.by) G?.lootLost?.(m.id, m.by, m.at); else G?.lootVanish?.(m.id); break;
       case 'iclosed':
         if (this.ready?.inst === m.inst) { this.ready = null; this.emit('iready', null); }
         if (this.inst === m.inst) { this.inst = null; G?.coopClosed?.(); this.emit('iclosed', m.inst); }

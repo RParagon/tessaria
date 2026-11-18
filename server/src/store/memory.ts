@@ -65,6 +65,7 @@ export class MemoryStore implements Store {
   private grants = new Map<string, { accountId: string; source: string }>();
   async grantItems(accountId: string, ids: string[], source: string) { for (const id of ids) if (!this.grants.has(id)) this.grants.set(id, { accountId, source }); }
   async granted(ids: string[]) { return ids.filter(i => this.grants.has(i)); }
+  async addTombstones(accountId: string, ids: string[]) { if (!ids.length) return; if (!this.tombs.has(accountId)) this.tombs.set(accountId, new Set()); for (const i of ids) this.tombs.get(accountId)!.add(i); }
   async tombstoned(accountId: string, ids: string[]) { const t = this.tombs.get(accountId); return t ? ids.filter(i => t.has(i)) : []; }
 
   async transferItem(fromId: string, fromName: string, toId: string, itemId: string, note: string): Promise<TransferResult> {

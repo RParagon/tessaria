@@ -30,6 +30,7 @@ function updateProjectiles(dt) {
           if (p.pierce-- <= 0) { dead = true; break; }
         }
       }
+      if (!dead && pvpProj(p)) { dead = true; burst(p.x, p.y, p.z, 6, p.mat, 2, .25, .1); }   // Ermo Profundo: acerta jogadores hostis
       if (!dead && boss && !boss.dying && !(p.nv && ((boss.nvH || {})[p.nv] || 0) >= 4)) for (const h of bossHits(boss)) if (Math.hypot(h[0] - p.x, h[1] - p.z) < h[2] + p.r) { if (p.nv) { boss.nvH = boss.nvH || {}; boss.nvH[p.nv] = (boss.nvH[p.nv] || 0) + 1; } const c = Math.random() < stats().crit; hurtBoss(boss, p.dmg * (c ? stats().critMul : 1), c, h); dead = true; break; }
     } else if (!dead && p.team === 'e') {
       if (Math.hypot(P.x - p.x, P.z - p.z) < .45 + p.r && Math.abs(p.y - 1) < 1.3) { hurtPlayer(p.dmg, p.x - p.vx, p.z - p.vz); if (p.web) P.slowT = 2.2; dead = true; burst(p.x, p.y, p.z, 8, p.mat, 2, .3, .12); }

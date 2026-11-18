@@ -241,14 +241,29 @@ A instância segue a etapa da história **do líder**. Cada jogador tem uma de t
 - **Procurar grupo:** um botão no menu da Fenda que entra numa fila pública por nível de Fenda e dificuldade. A fila forma grupos de 2 a 4. Como junta desconhecidos, ela só abre quando o servidor simular o combate (caminho B, ver abaixo).
 - **Ranking semanal de Fendas:** ver "Ranking".
 
-## Ermos: mundo compartilhado (Fase 3)
+## Ermos abertos: mundo compartilhado
 
-- **Até 30 jogadores por sala.** Ali você encontra desconhecidos sem precisar de grupo.
-- **A dificuldade do menu não vale nos Ermos.** O perigo vem da zona, como hoje (`WZ`: Campina Brasa nível 2, Mata dos Uivos 7, Colinas Partidas 13, Ermo Profundo 20).
-- **Salas por faixa**, para não misturar novatos com veteranos. A faixa vem da dificuldade que cada jogador está usando: **Normal e Difícil**, **Expert e Mestre**, e **Tormento** (I a III).
+Já no jogo (0.34.0):
+
+- **Salas públicas dos Ermos (`Ermos #1`, `#2`…), até 30 jogadores por sala.** Quem entra nos Ermos sem estar nos Ermos do grupo cai numa sala pública e vê os outros Tecelões: posição, golpes, emotes, auras e chat.
+- **Cada jogo simula os próprios monstros.** Os monstros não são compartilhados nas salas públicas; para caçar os mesmos monstros, abra os **Ermos do grupo** (o jogo do líder comanda os inimigos, como na Fenda do grupo).
+- **Ermo Profundo, PvP ativo.** No anel de fora (o bioma 7, sem acampamentos) os jogadores podem se atacar. O nome de quem pode ser atacado aparece em vermelho com ⚔, e ao entrar no bioma chega o aviso **PvP ATIVO**.
+  - **Sem fogo amigo:** amigos e membros do mesmo grupo nunca se acertam.
+  - Entre jogadores o dano vale 30% do golpe, até 20% da vida máxima de quem leva, menos a redução de dano dela. A Fúria do Tear corta pela metade, e escudos absorvem.
+  - O servidor confere cada acerto: mesma sala pública, os dois no Ermo Profundo (pela distância do centro), até 30 m um do outro, sem amizade nem grupo, e no máximo 8 acertos por segundo. O jogo de quem levou confere de novo o bioma exato e o acampamento.
+- **Espólio para qualquer um.** Quem cai nos Ermos larga as Centelhas e a bolsa (o equipado e o banco ficam). Online, o espólio vai para o chão da sala por **5 minutos**:
+  - **O primeiro que chega leva**, inclusive o próprio dono. O servidor decide e só entrega o que cabe na bolsa; o resto fica no chão.
+  - O espólio de outro jogador aparece com um feixe laranja; o seu, com o feixe dourado.
+  - Se outro pegar o seu, chega o aviso **FULANO PEGOU SEU ESPÓLIO** (também ao voltar, se você estava fora). Os itens ganham **lápide** na sua conta e não podem voltar pelo seu save.
+  - O servidor só aceita itens válidos para o seu nível de progresso.
+- **Teleporte:** a viagem pelo obelisco e o renascer avisam o servidor, que aceita o salto (no máximo um a cada 3 s); fora disso vale o limite de velocidade.
+
+Ainda por vir:
+
+- **A dificuldade do menu não vale nos Ermos.** O perigo vem da zona.
+- **Salas por faixa**, para não misturar novatos com veteranos: **Normal e Difícil**, **Expert e Mestre**, e **Tormento** (I a III).
 - O grupo entra na sala do líder.
-- **Ermo Profundo:** zona PvP. Quem entra fica marcado como hostil. Lá estão os Alfas e o melhor loot. As perdas maiores ao morrer valem só lá, como já está no roadmap: os itens da bolsa caem para quem matou, e o equipamento vestido e o baú ficam sempre protegidos.
-- Fio de Elo e escala por grupo não valem nos Ermos.
+- Monstros compartilhados nas salas públicas (o servidor simula: Fase 2, Caminho B).
 
 ## Social no celular
 

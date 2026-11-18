@@ -162,6 +162,7 @@ function meleeHit(range, arc, dmg, d) {
     if (Math.abs(angDiff(yaw, Math.atan2(dx, dz))) > arc && dist > .4) continue;
     const c = Math.random() < stats().crit; hurtEnemy(e, dmg * (c ? stats().critMul : 1), dx, dz, c); if (c && hasPow('sol')) solBurst(e.x, e.z, dmg);
   }
+  pvpArea(P.x, P.z, range, dmg, yaw, arc);   // Ermo Profundo: outros jogadores (não amigos)
   if (boss && !boss.dying) {
     for (const h of bossHits(boss)) {
       const dx = h[0] - P.x, dz = h[1] - P.z, dist = Math.hypot(dx, dz) - h[2];
@@ -191,6 +192,7 @@ function doSkill() {
     for (let i = 0; i < 70; i++) { const a = i / 70 * 6.28; spawn({ x: P.x + Math.cos(a) * 1.2, y: rr(.4, 1.3), z: P.z + Math.sin(a) * 1.2, vx: Math.cos(a) * R2 * 1.4, vz: Math.sin(a) * R2 * 1.4, life: rr(.3, .5), s0: .22, s1: .05, b0: 1, b1: .2, mat: 7, drag: 3 }); }
     let hits = 0;
     for (const e of enemies) { if (e.dieT >= 0 || e.spawnT > 0) continue; const dx = e.x - P.x, dz = e.z - P.z; if (Math.hypot(dx, dz) - e.def.r * e.scale < R2) { hurtEnemy(e, st.dmg * 2.4, dx, dz, false, 1.6); hits++; } }
+    pvpArea(P.x, P.z, R2, st.dmg * 2.4);
     if (boss && !boss.dying) for (const h of bossHits(boss)) if (Math.hypot(h[0] - P.x, h[1] - P.z) - h[2] < R2) { hurtBoss(boss, st.dmg * 2.4, false, h); hits++; break; }
     if (rn === 1) G.zones.push({ x: P.x, z: P.z, r: 3.2, t: 0, dur: 3, dmg: st.dmg * .45, tick: 0, team: 'p' });
     if (rn === 3 && hits) { const h = Math.round(P.maxHp * .04 * hits); P.hp = Math.min(P.maxHp, P.hp + h); popNum(P.x, 2.3, P.z, '+' + h, 'heal'); }
@@ -219,6 +221,7 @@ function ultHitArea(x, z, r, dmg, slow) {
   G.ultFiring = true;
   try {
     for (const e of enemies) { if (e.dieT >= 0 || e.spawnT > 0) continue; const dx = e.x - x, dz = e.z - z; if (Math.hypot(dx, dz) - e.def.r * e.scale < r) { hurtEnemy(e, dmg, dx, dz, true, 1.4); if (slow) e.slowT = Math.max(e.slowT || 0, slow); } }
+    pvpArea(x, z, r, dmg);
     if (boss && !boss.dying) for (const h of bossHits(boss)) if (Math.hypot(h[0] - x, h[1] - z) - h[2] < r) { hurtBoss(boss, dmg, true, h); break; }
   } finally { G.ultFiring = false; }
 }
@@ -279,7 +282,7 @@ function hurtPlayer(dmg, sx, sz, kb = 7) {
 function playerDie() { P.hp = 0; P.dieT = 0; G.save.deaths++; toast('Você se desfez em fios…', true, 'o Tear vai costurar você de volta');
   if (RG && RG.wild) {   // Ermos: tudo o que você carrega fica no chão por 5 min (equipados e banco ficam)
     const s = G.save, old = s.wloot && Date.now() - s.wloot.t < LOOT_MS ? s.wloot : null, items = s.inv.splice(0);
-    s.wloot = { x: Math.round(P.x * 10) / 10, z: Math.round(P.z * 10) / 10, gold: s.gold + (old ? old.gold : 0), items: (old ? old.items : []).concat(items).slice(0, 40), t: Date.now() }; s.gold = 0; writeSave();
+    s.wloot = { x: Math.round(P.x * 10) / 10, z: Math.round(P.z * 10) / 10, gold: s.gold + (old ? old.gold : 0), items: (old ? old.items : []).concat(items).slice(0, 40), t: Date.now() }; s.gold = 0; writeSave(); netLootDrop(s.wloot);   // online: o espólio vai para o chão da sala e qualquer um pega
     setTimeout(() => toast('ESPÓLIO NOS ERMOS', true, `${s.wloot.gold} CENTELHAS E ${s.wloot.items.length} ITENS NO CHÃO · 5 MIN PARA VOLTAR`, '#ff8a6a'), 1200); return;
   }
   const dv = G.save.diff || 0; if (dv > 0) { const lost = Math.floor(G.save.gold * Math.min(.2, .04 * dv)); if (lost > 0) { G.save.gold -= lost; setTimeout(() => toast('-' + lost + ' Centelhas', false, 'O PREÇO DA ' + curDiff().n.toUpperCase(), '#ff8a6a'), 1100); } } }
@@ -289,7 +292,7 @@ function respawn() {
     if (boss) endBossFight(false);
     const cp = G.save.cp && G.save.cp.region === RG.key ? G.save.cp : null;
     const sx = cp ? cp.x : RG.start.wx, sz = cp ? cp.z : RG.start.wz + 2;
-    makePlayer(sx, sz);
+    makePlayer(sx, sz); P.warp = true;   // online: o servidor aceita o salto
     G.respawning = false;
     fadeTo(0, .6);
   });

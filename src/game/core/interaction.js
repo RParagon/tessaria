@@ -105,7 +105,7 @@ function updateWilds() {
   if (!RG || !RG.wild || !P) return;
   const z = wZone(P.x / T, P.z / T);
   if (G.wzone === undefined || G.wzone === null) G.wzone = z;
-  else if (z !== G.wzone) { G.wzone = z; const W2 = WZ[z], hot = W2.lv > G.save.lvl + 3; if (z === 7) setTimeout(() => toast('SEM ACAMPAMENTOS', false, 'QUANTO MAIS FUNDO, MAIS FORTES OS MONSTROS'), 2400); toast(W2.n.toUpperCase(), true, `monstros nível ${W2.lv}` + (hot ? ' · PERIGOSO PARA VOCÊ' : ''), hot ? '#ff6a5a' : W2.c); updateDiffHud(); G.save.wz = Math.max(G.save.wz || 0, wRing(P.x / T, P.z / T)); }   // wz: maior anel alcançado (3 = Ermo Profundo)
+  else if (z !== G.wzone) { G.wzone = z; const W2 = WZ[z], hot = W2.lv > G.save.lvl + 3; if (z === 7) { setTimeout(() => toast('SEM ACAMPAMENTOS', false, 'QUANTO MAIS FUNDO, MAIS FORTES OS MONSTROS'), 2400); if (NETON() && NETON().inOpenWilds) setTimeout(() => toast('PVP ATIVO', true, 'OUTROS JOGADORES PODEM ATACAR · AMIGOS E GRUPO NÃO', '#ff5a7a'), 4800); } toast(W2.n.toUpperCase(), true, `monstros nível ${W2.lv}` + (hot ? ' · PERIGOSO PARA VOCÊ' : ''), hot ? '#ff6a5a' : W2.c); updateDiffHud(); G.save.wz = Math.max(G.save.wz || 0, wRing(P.x / T, P.z / T)); }   // wz: maior anel alcançado (3 = Ermo Profundo)
   if (G.bloodT > 0 && Math.random() < .5) spawn({ x: P.x + rr(-9, 9), y: rr(2, 5), z: P.z + rr(-7, 7), vy: -rr(.5, 1.2), life: 1.4, s0: .06, s1: .02, b0: .9, b1: .1, mat: 21 });   // Lua de Sangue
   G.wT = (G.wT || 0) - 1 / 60; if (G.wT > 0) return; G.wT = 1;
   wildsEvents(z);
@@ -450,7 +450,7 @@ function useObelisk(it) {
   say([{ who: 'Obelisco', text: dests.length ? 'Os fios do obelisco vibram. Para onde?' : 'Os fios vibram, mas nenhum outro obelisco desperto responde. Desperte mais deles pelos Ermos.', choices }], () => { });
 }
 function obeliskJump(x, z, name) {
-  fadeTo(1, .3, () => { P.x = x; P.z = z; P.vx = P.vz = P.kx = P.kz = 0; G.save.cp = { region: RG.key, x, z }; G.wzone = null; fadeTo(0, .5); toast(name.toUpperCase(), false, 'VIAGEM PELO OBELISCO'); });
+  fadeTo(1, .3, () => { P.warp = true; P.x = x; P.z = z; P.vx = P.vz = P.kx = P.kz = 0; G.save.cp = { region: RG.key, x, z }; G.wzone = null; fadeTo(0, .5); toast(name.toUpperCase(), false, 'VIAGEM PELO OBELISCO'); });
 }
 /** Covil: uma caverna com mapa fixo (mesma semente sempre), no nível do bioma, com guardião; volta para a boca da caverna. */
 const CAVE_BOSS = [null, 'spider', 'spider', 'eye', 'knight', 'knight', 'eye', 'eye'];
@@ -510,9 +510,11 @@ function updateWorms(dt) {
 const LOOT_MS = 5 * 60 * 1000;   // o espólio fica no chão dos Ermos por 5 minutos
 function updateCamps(dt) {
   if (!RG || !RG.wild || !P) return;
+  checkLootLost(); updateNetLoot();
   const L = G.save.wloot;
   if (L) {
     if (Date.now() - L.t > LOOT_MS) { G.save.wloot = null; writeSave(); toast('O espólio se desfez', false, 'CENTELHAS E ITENS PERDIDOS NOS ERMOS', '#ff8a6a'); }
+    else if (L.sid && netLootTake(L.sid, L.x, L.z)) { }   // na sala online: o servidor decide quem pega primeiro
     else if (P.dieT < 0 && Math.hypot(P.x - L.x, P.z - L.z) < 1.4) {
       const s = G.save, room = Math.max(0, BAG() - s.inv.length), back = L.items.splice(0, room);
       s.gold += L.gold; s.inv.push(...back); toast('ESPÓLIO RECUPERADO', true, `+${L.gold} CENTELHAS · ${back.length} ITENS` + (L.items.length ? ` · ${L.items.length} NÃO COUBERAM` : ''), '#ffbf3d'); sfx('legend');

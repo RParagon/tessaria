@@ -78,6 +78,7 @@ function buildHumanoid(c, base, hd) {
       const r = []; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; r.push([sx * .14 + Math.cos(a) * .108, .35, .01 + Math.sin(a) * .108, .025, k]); } S.tube(r, 5, { closed: true, sub: 2, noSolid: true }); }   // dobra
     S.ell([sx * .14, .015, .06], [.115, .02, .18], 5, k, { noCheck: true, noSolid: true });   // sola
   }
+  const skirt = robe ? bones.length : -1; if (robe) bones.push({ p: 1, v: [0, .9, 0] });   /* frente do manto: acompanha as coxas (sentar) */
   if (robe) S.tube([[0, 1.02, 0, .27 * bw, 1], [0, .6, 0, .32 * bw, 1], [0, .26, 0, .37 * bw, 1]], 2, { sub: 3, sy: .85, noSolid: true });
   if (!robe) S.ell([0, .97, 0], [.22 * bw, .14, .16], 3, 1);
   S.ell([0, 1.2, 0], [.27 * bw, .3, .19], (p, n) => (Math.abs(p[0]) < .045 && n[2] > .4) ? 3 : 2, 2);
@@ -206,7 +207,9 @@ function buildHumanoid(c, base, hd) {
   if (c.gear === 'vara') S.tube([[Hd[0], Hd[1] - .1, Hd[2] - .05, .025, 8], [Hd[0], Hd[1] + .55, Hd[2] + .9, .014, 8], [Hd[0], Hd[1] + .75, Hd[2] + 1.7, .008, 8]], 5, { sub: 3, noSolid: true, minSeg: 4 });
   if (c.gear === 'bengala') { S.tube([[Hd[0], Hd[1] + .05, Hd[2] + .08, .03, 8], [Hd[0], Hd[1] - .82, Hd[2] + .15, .025, 8]], 5, { sub: 1, noSolid: true }); S.ell([Hd[0], Hd[1] + .07, Hd[2] + .05], .045, 5, 8, { noSolid: true, noCheck: true }); }
   if (c.gear === 'alaude') { S.ell([.06, 1.1, .25], [.17, .2, .07], 5, 2, { noCheck: true }); S.tube([[.0, 1.26, .27, .03, 2], [-.3, 1.52, .27, .025, 2]], 5, { sub: 1, noSolid: true }); S.ell([.06, 1.12, .31], .045, 3, 2, { noSolid: true, noCheck: true, min: 8 }); }
-  return { bones, data: S.build(), soft: hd ? 1 : .6 };
+  const data = S.build();
+  if (skirt >= 0) for (let i = 0; i < data.length; i += STRIDE) if (data[i + 7] === 1 && data[i + 1] < .86 && data[i + 2] > .02) data[i + 7] = skirt;   /* metade da frente do manto, abaixo do cinto */
+  return { bones, data, soft: hd ? 1 : .6, skirt };
 }
 
 /* ---- inimigos ---- */

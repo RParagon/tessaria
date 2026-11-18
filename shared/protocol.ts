@@ -22,6 +22,14 @@ export const RIFT_BASES = ['forest', 'crypt', 'peaks', 'swamp', 'glass'] as cons
 export const INST_CAP = 4;                 // jogadores por instância
 export const INST_READY_MS = 20_000;       // tempo do aviso "Pronto?"
 export const INST_EMPTY_MS = 60_000;       // instância vazia fecha depois disso
+// Ermos abertos (salas públicas): cada jogo simula os próprios monstros; os jogadores se veem.
+export const WILDS_CAP = 30;          // jogadores por sala pública dos Ermos
+/** Ermo Profundo (o anel de fora), em unidades do mundo (ladrilho = 2). Aproximação sem o ruído da borda: o jogo confere o bioma exato. */
+export const deepWilds = (x: number, z: number) => Math.hypot(x / 2 - 200, (z / 2 - 175) * 1.15) > 132;
+export const PVP_RANGE = 30;          // distância máxima de um acerto entre jogadores
+export const PVP_RATE = 8;            // acertos por segundo (rajada até o dobro)
+export const LOOT_MS = 5 * 60_000;    // espólio de quem caiu nos Ermos: 5 min no chão
+export const LOOT_TAKE_R = 6;         // distância para pegar o espólio
 export const INST_BOUNDS = { x0: 0, x1: 900, z0: 0, z1: 900 };   // cabe a Fenda e os Ermos (800x700 unidades)
 /** Tudo o que define uma Fenda: com os mesmos dados (e a mesma semente), todo jogo gera o mesmo mapa. */
 export const RELAY_PER_SEC = 60;          // mensagens de combate por segundo por jogador (snapshots 10/s + eventos)
@@ -68,7 +76,7 @@ export interface PublicPlayer { id: number; name: string; title: string; look: L
 
 // Cliente → servidor
 export type ClientMsg =
-  | { t: 'pos'; x: number; z: number; yaw: number; m: number; a: string }
+  | { t: 'pos'; x: number; z: number; yaw: number; m: number; a: string; w?: 1 }   // w: teleporte (obelisco, renascer)
   | { t: 'chat'; text: string }
   | { t: 'emote'; e: Emote }
   | { t: 'act'; a: Act; c: number; yaw: number }      // c: golpe do combo, runa da habilidade ou poder da esquiva (0..3)
@@ -83,6 +91,10 @@ export type ClientMsg =
   | { t: 'hto'; to: number; d: unknown }   // anfitrião → um jogador (dano recebido)
   | { t: 'px'; to?: number; d: unknown }   // jogador → jogador (ou todos) da instância: caído, levantou, costurar   // pedido da hora do servidor (c: hora do cliente no envio)
   // amigos e grupo (docs/ONLINE.md). Fora da vila a conexão continua aberta só para isso.
+  // Ermos abertos: PvP no Ermo Profundo e espólio que qualquer um pega
+  | { t: 'pvp'; to: number; dmg: number }      // acertei este jogador (o servidor confere zona, amizade e grupo)
+  | { t: 'ldrop'; x: number; z: number; gold: number; items: unknown[]; at: number }   // caí: meu espólio fica no chão (at: hora da queda no save, wloot.t)
+  | { t: 'ltake'; id: string; free: number }    // pegar um espólio (free: espaços livres na bolsa)
   | { t: 'where'; r: string; n?: number; i?: number }        // região atual (chave do jogo), nível da Fenda e instância do grupo
   | { t: 'pinvite'; name: string }              // convidar para o grupo
   | { t: 'paccept'; from: string }              // aceitar o convite de alguém
@@ -103,6 +115,10 @@ export type ServerMsg =
   | { t: 'hx'; from: number; d: any }
   | { t: 'gx'; from: number; d: any }
   | { t: 'px'; from: number; d: any }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
+  | { t: 'pvp'; from: number; name: string; dmg: number }   // outro jogador me acertou no Ermo Profundo
+  | { t: 'ldrop'; id: string; x: number; z: number; by: number; name: string; gold: number; n: number; ms: number }   // espólio no chão da sala (ms: quanto falta)
+  | { t: 'lgot'; id: string; gold: number; items: any[]; own: boolean; left: number }   // você pegou (left: itens que ficaram por falta de espaço)
+  | { t: 'lgone'; id: string; by?: string; at?: number }   // espólio sumiu (pego ou expirou); by: quem pegou o SEU; t: hora da sua queda
   | { t: 'join'; p: PublicPlayer }
   | { t: 'leave'; id: number }
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação

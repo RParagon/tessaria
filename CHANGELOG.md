@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.34.0 · Ermos abertos e PvP no Ermo Profundo
+- **Ermos abertos:** quem entra nos Ermos sem estar nos Ermos do grupo cai numa sala pública (`Ermos #1`, até 30 jogadores) e vê os outros Tecelões andando, lutando, com emotes, auras e chat. Cada jogo continua com os próprios monstros; para caçar os mesmos, abram os Ermos do grupo
+- **PvP no Ermo Profundo:** no anel de fora os jogadores podem se atacar com golpes, giros, projéteis e o Golpe do Tear. O nome de quem pode ser atacado fica vermelho com ⚔, e ao entrar chega o aviso **PVP ATIVO**. O dano entre jogadores é 30% do golpe, no máximo 20% da vida de quem leva
+- **Sem fogo amigo:** amigos e membros do grupo nunca se acertam. O servidor confere cada acerto (sala, Ermo Profundo, distância, amizade, grupo e ritmo)
+- **Espólio para qualquer um:** online, quem cai nos Ermos larga Centelhas e bolsa no chão da sala por 5 minutos e o primeiro que chegar leva, inclusive o dono. O espólio dos outros aparece com feixe laranja. Se pegarem o seu, você é avisado (até ao voltar), e os itens não voltam pelo seu save
+- **Sentar melhor:** o manto do Arcano acompanha as coxas (sem o buraco na perna) e o cajado fica de pé ao lado, apoiado no chão; as armas não somem mais
+- **Auras no espelho:** as partículas da aura aparecem no Guarda-Roupa, na criação e no inventário
+- **Novo padrão de imagem:** pixel 3 e pontilhado 0,5 (quem já jogava passa para o novo padrão uma vez; dá para mudar no menu)
+- Servidor: salas públicas dos Ermos, PvP validado, espólio da sala com lápide, teleporte aceito (obelisco e renascer); a sala do grupo nos Ermos agora se chama "Ermos do grupo"
+
 ## 0.33.0 · Ermos maiores
 - **Ermos 1,8× maiores (400×350):** os biomas do meio ficaram bem mais largos (anéis maiores), com mais estradas e mais acampamentos de monstros (até 760). O Ermo Profundo continua envolvendo tudo e fica mais forte a cada passo para fora
 - **Acampamentos espaçados:** os dois acampamentos com obelisco de cada bioma ficam no meio da faixa do bioma (não colados na vila) e longe um do outro (no mínimo ~55 ladrilhos)

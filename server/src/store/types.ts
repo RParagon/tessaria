@@ -40,6 +40,8 @@ export interface Store {
 
   /** Lápides: ids de itens que saíram da conta pelo correio e não podem voltar num save. */
   tombstoned(accountId: string, itemIds: string[]): Promise<string[]>;
+  /** Grava lápides (itens que saíram da conta por outro caminho, como o espólio dos Ermos pego por outro jogador). */
+  addTombstones(accountId: string, itemIds: string[]): Promise<void>;
   /** Registra itens sorteados pelo servidor. */
   grantItems(accountId: string, itemIds: string[], source: string): Promise<void>;
   /** Dos ids dados, os que o servidor concedeu (para qualquer conta). */

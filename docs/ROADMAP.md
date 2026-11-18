@@ -54,18 +54,19 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
 
 ## Fase 3 · Mundo compartilhado e PvP (3 a 4 semanas)
 
-- [ ] Ermos compartilhados, com cerca de 30 jogadores por sala, separados por faixa (Normal e Difícil, Expert e Mestre, Tormento)
-- [ ] **Zona PvP no Ermo Profundo:**
-  - quem entra é marcado como hostil;
+- [x] Ermos compartilhados, com até 30 jogadores por sala (0.34.0)
+- [ ] Salas dos Ermos separadas por faixa (Normal e Difícil, Expert e Mestre, Tormento) e monstros compartilhados nas salas públicas
+- [x] **Zona PvP no Ermo Profundo (0.34.0):**
+  - quem pode ser atacado aparece em vermelho; amigos e grupo nunca se acertam;
   - lá está o melhor loot e os Alfas.
 - [ ] **Perdas ao morrer, por zona:**
   - zona segura: como hoje;
   - zona difícil: perde Centelhas e o equipamento desgasta;
-  - zona PvP: os itens da bolsa caem para quem matou;
+  - nos Ermos (feito na 0.31.0 e 0.34.0): Centelhas e bolsa ficam no chão por 5 min e o primeiro que chegar leva;
   - sempre protegidos: equipamento vestido e baú.
 - [ ] Duelos na vila e arena com ranking
 - [ ] Equilíbrio de PvP:
-  - dano entre jogadores reduzido;
+  - dano entre jogadores reduzido (feito: 30% do golpe, até 20% da vida);
   - limite de atordoamento e lentidão;
   - simulador estendido para duelos.
 - [ ] Personagem hardcore, com morte permanente (opcional)
