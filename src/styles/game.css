@@ -302,3 +302,35 @@ body.tch .tb.use{width:auto;min-width:96px;height:48px;border-radius:26px;right:
 .bonus{font-size:12px;line-height:1.6;color:var(--bone);background:rgba(10,7,18,.5);border-left:3px solid var(--gold);padding:6px 10px}
 .bonus b{color:var(--gold)}
 @media (prefers-reduced-motion:reduce){.num,.toast,.story p{animation-duration:.01s}}
+
+/* ---------- PC: interface em escala (o HUD nasceu no celular; no monitor ele cresce com a janela) ---------- */
+:root{--ui:1}
+body:not(.tch) #hud,body:not(.tch) #toast,body:not(.tch) #prompt,body:not(.tch) #dialog{zoom:var(--ui)}
+body.playing:not(.tch) #c{cursor:crosshair}
+/* mouse desenhado nas teclas: botão esquerdo ou direito em destaque */
+.ms{display:inline-block;width:8px;height:11px;border:1px solid currentColor;border-radius:4px;vertical-align:-2px;position:relative;margin-right:2px;box-sizing:border-box}
+.ms::before{content:"";position:absolute;top:0;width:50%;height:45%;background:currentColor}
+.ms.l::before{left:0;border-radius:3px 0 0 0}
+.ms.r::before{right:0;border-radius:0 3px 0 0}
+.ms::after{content:"";position:absolute;left:50%;top:0;width:1px;height:45%;background:currentColor;opacity:.6}
+/* dica ao passar o mouse nos botões da barra */
+.ab[data-tip]:hover::before{content:attr(data-tip);white-space:pre;position:absolute;bottom:calc(100% + 18px);left:50%;transform:translateX(-50%);background:#100b19;color:var(--bone);border:2px solid #000;box-shadow:inset 0 0 0 1px #3e3157,2px 2px 0 #000;padding:6px 9px;font-size:11px;line-height:1.45;text-align:left;z-index:5;pointer-events:none}
+.keys{transition:opacity .6s}
+.keys.faded{opacity:0}
+.keys kbd .ms{color:#1c1105}
+/* barra de vida mais legível e selo de nível */
+body:not(.tch) .bar.hp{height:14px}
+body:not(.tch) .bar.hp span{font-size:10px}
+/* controles do menu em grade */
+.ctrl-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;font-size:12px;line-height:1.4}
+.ctrl-grid em{font-style:normal;color:var(--dim)}
+.ctrl-grid kbd{font-size:9px}
+/* controles: coluna estreita à esquerda, sem encostar na barra de ações */
+body:not(.tch) .keys{max-width:min(290px,calc(50% - 300px));line-height:2;bottom:calc(env(safe-area-inset-bottom,0px) + 14px)}
+/* menus no PC: escala mais contida (até 1,3x) para caber na altura */
+:root{--uim:1}
+body:not(.tch) #title .title-box,body:not(.tch) #pause>.panel,body:not(.tch) #pause>div{zoom:var(--uim)}
+.ctrl kbd{color:var(--bone)}
+.ctrl kbd .ms{color:var(--gold)}
+/* título: texto legível sobre a vila ao fundo */
+#title .tagline{text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;color:var(--bone)}

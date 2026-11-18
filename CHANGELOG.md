@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.18.0 · HUD e controles (onda 1)
+- **Interface em escala no PC:** o HUD, os avisos, o diálogo e os menus crescem com a janela (cerca de 1,1× em 1280×720 e 1,7× em 1920×1080). No celular nada muda
+- **Barra de ações mais clara:** o mouse aparece desenhado nas teclas (botão esquerdo no ataque, **botão direito na habilidade**), a esquiva aceita Espaço e Shift, e cada botão mostra uma dica ao passar o mouse (a da habilidade traz a runa ativa)
+- **Controles:** Shift direito também esquiva; a linha de controles some sozinha depois de um tempo e volta com **H**; a mira vira uma cruz durante o jogo
+- **Menu de pausa:** controles em grade legível, com o mouse desenhado
+- **Título:** texto de abertura legível sobre a vila ao fundo
+
 ## 0.17.0 · Vila 2.0: Bairro Leste
 - **A vila quase dobrou:** um bairro novo a leste, ligado à praça por um caminho de pedra, com casas, lampiões e árvores
 - **Praça da fogueira:** fogueira acesa com quatro bancos. Sentar perto dela recupera a vida aos poucos, e os outros jogadores veem você sentado

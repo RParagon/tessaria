@@ -36,6 +36,8 @@ function updateHud() {
     for (const id of ['#abSkill img', '#tSkill img']) $(id).src = icon(SKILLICON[G.char.cls]);
     $('#abSkillL').textContent = SKILLNAME[G.char.cls];
   }
+  { const R2 = RUNES[G.char.cls][curRune()], tip = (R2 ? R2.n + '\n' + R2.d : 'Habilidade') + '\nBotão direito do mouse (ou K)'; if (hudCache.tip !== tip) { hudCache.tip = tip; $('#abSkill').dataset.tip = tip; } }   // dica com a runa ativa
+  if (!G.touch && (G.keysT = (G.keysT ?? 60) - 1 / 60) <= 0 && G.keysT > -1) { $('#keys').classList.add('faded'); G.keysT = -2; }   // a linha de controles some depois de um tempo (H mostra de novo)
   const trk = trackerHTML(); if (hudCache.trk !== trk) { hudCache.trk = trk; $('#hTrk').innerHTML = trk; }
   const S = G.streak, se = $('#streak');
   if (S.n >= 3) { se.hidden = false; setTxt('#stN', 'x' + S.n); setTxt('#stL', S.n >= 50 ? 'CARNIFICINA' : S.n >= 25 ? 'MASSACRE' : S.n >= 10 ? 'MATANÇA' : 'SEQUÊNCIA'); $('#stBar').style.width = clamp(S.t / 3.2, 0, 1) * 100 + '%'; } else se.hidden = true;
@@ -47,6 +49,7 @@ function updateHud() {
 }
 function refreshHudVis() {
   document.body.classList.toggle('tch', !!G.touch);
+  document.body.classList.toggle('playing', G.mode === 'play');
   const play = (['play', 'dialog'].includes(G.mode) || (G.mode === 'menu' && $('#ending').hidden && P)) && G.menu !== 'inv';
   $('#hud').hidden = !play;
   if (!play) { $('#mmap').hidden = true; $('#mmapZ').hidden = true; } else if (RG && RG.key !== 'hub' && RG.key !== 'home') { $('#mmap').hidden = false; $('#mmapZ').hidden = false; }

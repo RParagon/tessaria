@@ -40,13 +40,13 @@
     <div id="bossBar" hidden><div class="bname" id="bName"></div><div class="bar"><i id="bHp" style="width:100%"></i></div></div>
     <div id="streak" hidden><b id="stN">x0</b><span id="stL">SEQUÊNCIA</span><div class="sbar"><i id="stBar"></i></div></div>
     <div id="riftBar" hidden><div class="bname"><span id="rbName">FENDA</span><span id="rbTime">0:00</span></div><div class="bar"><i id="rbFill" style="width:0%"></i></div><div class="raff" id="rbAff"></div></div>
-    <div class="keys" id="keys"><kbd>WASD</kbd> mover · <kbd>E</kbd> interagir · <kbd>TAB</kbd> diário · <kbd>G</kbd> grimório · <kbd>ESC</kbd> menu</div>
+    <div class="keys" id="keys"><kbd>WASD</kbd> mover · <kbd><i class="ms l" aria-hidden="true"></i></kbd> atacar · <kbd><i class="ms r" aria-hidden="true"></i></kbd> habilidade · <kbd>ESPAÇO</kbd> esquiva · <kbd>E</kbd> interagir · <kbd>TAB</kbd> diário · <kbd>H</kbd> esconder</div>
     <div class="abar" id="abar">
-      <button class="ab" id="abAtk" aria-label="Atacar"><img data-ic="sword" alt=""><kbd>J · CLIQUE</kbd><span class="lbl">Atacar</span></button>
-      <button class="ab" id="abDash" aria-label="Esquiva"><img data-ic="dash" alt=""><kbd>ESPAÇO</kbd><span class="lbl">Esquiva</span></button>
-      <button class="ab" id="abSkill" aria-label="Habilidade"><img data-ic="fire" alt=""><kbd>K</kbd><span class="lbl" id="abSkillL">Habilidade</span><i class="cdv" id="abSkillT"></i></button>
-      <button class="ab" id="abPot" aria-label="Poção"><img data-ic="potion" alt=""><kbd>Q</kbd><b class="cnt" id="abPotN">3</b><span class="lbl">Poção</span></button>
-      <button class="ab" id="abBag" aria-label="Bolsa"><img data-ic="bag" alt=""><kbd>I</kbd><span class="lbl">Bolsa</span></button>
+      <button class="ab" id="abAtk" aria-label="Atacar" data-tip="Atacar&#10;Segure o botão esquerdo do mouse (ou J)"><img data-ic="sword" alt=""><kbd><i class="ms l" aria-hidden="true"></i> J</kbd><span class="lbl">Atacar</span></button>
+      <button class="ab" id="abDash" aria-label="Esquiva" data-tip="Esquiva&#10;Espaço ou Shift · invulnerável durante o salto"><img data-ic="dash" alt=""><kbd>ESPAÇO</kbd><span class="lbl">Esquiva</span></button>
+      <button class="ab" id="abSkill" aria-label="Habilidade" data-tip="Habilidade&#10;Botão direito do mouse (ou K)"><img data-ic="fire" alt=""><kbd><i class="ms r" aria-hidden="true"></i> K</kbd><span class="lbl" id="abSkillL">Habilidade</span><i class="cdv" id="abSkillT"></i></button>
+      <button class="ab" id="abPot" aria-label="Poção" data-tip="Poção&#10;Q · enche boa parte da vida"><img data-ic="potion" alt=""><kbd>Q</kbd><b class="cnt" id="abPotN">3</b><span class="lbl">Poção</span></button>
+      <button class="ab" id="abBag" aria-label="Bolsa" data-tip="Bolsa&#10;I ou B · equipamento e itens"><img data-ic="bag" alt=""><kbd>I</kbd><span class="lbl">Bolsa</span></button>
     </div>
   </div>
   <canvas id="mmap" width="64" height="48" hidden></canvas><div id="mmapZ" hidden></div>
@@ -143,7 +143,17 @@
       <label class="chk" for="sSound"><input type="checkbox" id="sSound"> Efeitos sonoros</label>
       <label class="chk" for="sVib"><input type="checkbox" id="sVib"> Vibrar ao levar dano (celular)</label>
       <button class="px" id="pFull">Tela cheia (horizontal)</button>
-      <div class="ctrl"><kbd>WASD</kbd> mover · <kbd>Clique</kbd>/<kbd>J</kbd> atacar (segure) · <kbd>Espaço</kbd> esquiva · <kbd>K</kbd>/<kbd>Botão direito</kbd> habilidade · <kbd>Q</kbd> poção · <kbd>E</kbd> interagir · <kbd>Tab</kbd> diário · <kbd>Esc</kbd> menu</div>
+      <div class="ctrl ctrl-grid" aria-label="Controles">
+        <span><kbd>WASD</kbd> / <kbd>setas</kbd></span><em>mover</em>
+        <span><kbd><i class="ms l" aria-hidden="true"></i> botão esquerdo</kbd> / <kbd>J</kbd></span><em>atacar (segure; mira no mouse)</em>
+        <span><kbd><i class="ms r" aria-hidden="true"></i> botão direito</kbd> / <kbd>K</kbd></span><em>habilidade</em>
+        <span><kbd>Espaço</kbd> / <kbd>Shift</kbd></span><em>esquiva</em>
+        <span><kbd>Q</kbd></span><em>poção</em>
+        <span><kbd>E</kbd> / <kbd>Enter</kbd></span><em>interagir · falar · costurar</em>
+        <span><kbd>I</kbd> · <kbd>G</kbd> · <kbd>Tab</kbd></span><em>bolsa · grimório · diário</em>
+        <span><kbd>Enter</kbd></span><em>chat (online)</em>
+        <span><kbd>H</kbd> · <kbd>Esc</kbd></span><em>mostrar/esconder controles · menu</em>
+      </div>
       <button class="px" id="pQuit">Salvar e voltar ao título</button>
     </div>
   </section>

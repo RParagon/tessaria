@@ -111,3 +111,21 @@ test('Vila 2.0: Bairro Leste com Bardo, bonecos de treino, fogueira com bancos e
   await expect(page.locator('#dialog')).toContainText('Bardo Tomé');
   expect(errors).toEqual([]);
 });
+
+test('controles do PC: botão direito usa a habilidade, Shift esquiva, a barra mostra o mouse e H esconde os controles', async ({ page }) => {
+  await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  await page.mouse.move(500, 300);
+  await page.mouse.down({ button: 'right' }); await page.mouse.up({ button: 'right' });
+  await page.waitForFunction(() => window.__T.P.skillCd > 0, null, { timeout: 3000 });
+  await ev('P.dashCd = 0');
+  await page.keyboard.press('ShiftRight');
+  await page.waitForFunction(() => window.__T.P.dashCd > 0, null, { timeout: 3000 });
+  await expect(page.locator('#abSkill kbd .ms.r')).toHaveCount(1);
+  await expect(page.locator('#abAtk kbd .ms.l')).toHaveCount(1);
+  expect(await page.locator('#abSkill').getAttribute('data-tip')).toContain('Botão direito');
+  await page.keyboard.press('h');
+  await expect(page.locator('#keys')).toHaveClass(/faded/);
+  await page.keyboard.press('h');
+  await expect(page.locator('#keys')).not.toHaveClass(/faded/);
+});

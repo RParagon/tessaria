@@ -4,7 +4,10 @@
    ========================================================= */
 const keys = new Set();
 const input = { atk: false, mouseX: 0, mouseY: 0, mouseT: -9, joy: { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0 } };
-function setTouch(on) { if (G.touch === on) return; G.touch = on; refreshHudVis(); }
+function setTouch(on) { if (G.touch === on) return; G.touch = on; refreshHudVis(); updateUiScale(); }
+/** PC: a interface cresce com a janela (1x em 1100x640, até 1,75x). No celular fica 1x. */
+function updateUiScale() { const ui = G.touch ? 1 : Math.max(1, Math.min(1.75, Math.min(innerWidth / 1100, innerHeight / 640))); document.documentElement.style.setProperty('--ui', ui.toFixed(3)); document.documentElement.style.setProperty('--uim', Math.min(ui, 1.3).toFixed(3)); }
+addEventListener('resize', updateUiScale); updateUiScale();
 function goLandscape() { try { const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen({ navigationUI: 'hide' }).then(() => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); }).catch(() => { }); else if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } catch (e) { } }
 addEventListener('keydown', e => {
   if (e.target && ((e.target.tagName === 'INPUT' && e.target.type === 'text') || e.target.tagName === 'TEXTAREA')) { if (e.code === 'Escape') e.target.blur(); return; }
@@ -21,7 +24,8 @@ addEventListener('keydown', e => {
   else if (k === 'Tab') openMenu('journal');
   else if (k === 'KeyI' || k === 'KeyB') openMenu('inv');
   else if (k === 'KeyG') openMenu('skills');
-  else if (k === 'Space' || k === 'ShiftLeft') doDash();
+  else if (k === 'Space' || k === 'ShiftLeft' || k === 'ShiftRight') doDash();
+  else if (k === 'KeyH') { const el = $('#keys'); el.classList.toggle('faded'); G.keysT = 1e9; }
   else if (k === 'KeyK' || k === 'KeyL') doSkill();
   else if (k === 'KeyQ') drinkPotion();
   else if (k === 'KeyE' || k === 'Enter') interact();
