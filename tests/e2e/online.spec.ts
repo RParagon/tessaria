@@ -448,4 +448,7 @@ test('um save novo do jogo passa na validação do servidor', async ({ page }) =
   await page.waitForFunction(() => (window as any).__T, null, { timeout: 30_000 });
   const save = await page.evaluate(() => (window as any).__T.ev('(() => { G.char.name = "Lume"; return newSave(); })()'));
   expect(validateSave(save).errors).toEqual([]);
+  // casa com toda a mobília do jogo e todos os estilos raros do Guarda-Roupa: o servidor precisa conhecer cada um
+  const full = await page.evaluate(() => (window as any).__T.ev(`(() => { const s = newSave(); s.house = { owned: true, f: Object.fromEntries(HOUSE_F.map(f => [f.id, true])), stash: [], cap: 20, seen: [] }; s.cos = RARE_ACCS.concat(RARE_HAIR).map(a => a[0]); return s; })()`));
+  expect(validateSave(full).errors).toEqual([]);
 });

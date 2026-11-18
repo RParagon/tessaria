@@ -54,6 +54,9 @@ test('save: válido passa, impossível é recusado', () => {
   assert.ok(validateSave(baseSave({ inv: Array.from({ length: 21 }, (_, i) => item('x' + i)) })).errors.includes('bolsa inválida'));
   assert.ok(validateSave(baseSave({ inv: [item('dup'), item('dup')] })).errors.some(e => /repetido/.test(e)));
   assert.ok(validateSave(baseSave({ house: { owned: false, cap: 20, stash: [item('s1')], f: {} } })).errors.some(e => /sem ser comprada/.test(e)));
+  // Guarda-Roupa e estilos raros
+  assert.deepEqual(validateSave(baseSave({ house: { owned: true, cap: 20, stash: [], f: { guarda: true } }, cos: ['cartola', 'trancas'] })).errors, []);
+  assert.ok(validateSave(baseSave({ cos: ['coroa-de-ouro'] })).errors.some(e => /estilo raro desconhecido/.test(e)));
 });
 
 test('save: saltos absurdos desde o último save são recusados; grandes viram alerta', () => {

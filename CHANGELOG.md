@@ -1,5 +1,8 @@
 # Histórico de versões
 
+## 0.20.2 · Correção do Guarda-Roupa
+- **Correção:** comprar o Guarda-Roupa fazia o servidor recusar o progresso ("mobília desconhecida: guarda"). O servidor agora conhece o Guarda-Roupa e os estilos raros, e um teste confere que toda mobília e todo estilo do jogo passam na validação
+
 ## 0.20.1 · Rosto refeito
 - **Olhos no estilo chibi:** oval escuro, íris na cor do brilho na parte de baixo e um brilho em cima. Sai o anel brilhante enorme, que parecia um óculos de luz
 - **Sobrancelhas suaves** (antes pareciam bravas), **nariz pequeno** e **sorriso fino** em vez de um borrão

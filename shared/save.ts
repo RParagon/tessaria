@@ -15,7 +15,10 @@ import { itemProblems, type Item } from './items';
 
 export const MAX_SAVE_BYTES = 400_000;
 export const BOSSES = ['forest', 'crypt', 'peaks', 'swamp', 'glass'];
-export const HOUSE_FURNITURE = ['cama', 'lareira', 'jardim', 'estante', 'bancada', 'mapa', 'altar', 'estatua'];
+// Precisa listar toda a mobília de HOUSE_F (src/game/core/state.js); o teste de ponta a ponta confere.
+export const HOUSE_FURNITURE = ['cama', 'guarda', 'lareira', 'jardim', 'estante', 'bancada', 'mapa', 'altar', 'estatua'];
+/** Estilos raros do Guarda-Roupa (RARE_ACCS e RARE_HAIR em src/game/data/palettes.js). */
+export const RARE_COSMETICS = ['flor', 'oculos', 'orelhas', 'aureola', 'cartola', 'trancas'];
 export const DIFF_LEVEL = [1, 1, 6, 12, 16, 20, 24];
 export const INV_MAX = 20;
 
@@ -75,6 +78,10 @@ export function validateSave(s: unknown, opts: { prev?: AnySave | null; elapsedM
     if (h.stash !== undefined && (!Array.isArray(h.stash) || h.stash.length > (h.cap ?? 20))) errors.push('baú cheio demais');
     if (h.f && typeof h.f === 'object') for (const k of Object.keys(h.f)) if (!HOUSE_FURNITURE.includes(k)) errors.push(`mobília desconhecida: ${k}`);
     if (!h.owned && ((h.stash && h.stash.length) || (h.f && Object.keys(h.f).length))) errors.push('casa usada sem ser comprada');
+  }
+  if (v.cos !== undefined) {
+    if (!Array.isArray(v.cos) || v.cos.length > RARE_COSMETICS.length) errors.push('estilos raros inválidos');
+    else for (const k of v.cos) if (!RARE_COSMETICS.includes(k)) errors.push(`estilo raro desconhecido: ${k}`);
   }
 
   const tierMax = maxItemTier(v), ids = new Set<string>();
