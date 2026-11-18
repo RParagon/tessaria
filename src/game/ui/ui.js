@@ -55,6 +55,7 @@ function refreshHudVis() {
   if (!play) { $('#mmap').hidden = true; $('#mmapZ').hidden = true; } else if (RG && RG.key !== 'hub' && RG.key !== 'home') { $('#mmap').hidden = false; $('#mmapZ').hidden = false; }
   $('#touch').hidden = !(play && G.touch && G.mode === 'play');
   $('#keys').hidden = G.touch; $('#abar').hidden = G.touch;
+  { const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); $('#poseBar').hidden = !pv; if (!pv) { G.pvPose = null; G.pvZoom = 1; document.querySelectorAll('#poseBar button').forEach(x => x.classList.remove('on')); } }
 }
 function showOnly(id) { for (const s of ['#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail']) $(s).hidden = s !== id; }
 function openMenu(which) {
@@ -287,8 +288,12 @@ function renderJournal() {
   const rn = { forest: 'Bosque Sussurrante', crypt: 'Ossuário Real', peaks: 'Picos de Cinza' };
   $('#jFrags').innerHTML = FRAG.map((f, i) => s.frags.includes(i) ? `<div class="frag"><b>${f.t}</b><p>${f.x}</p></div>` : `<div class="frag lock"><b>??? · ${rn[f.r]}</b><p>Uma memória escondida num canto afastado.</p></div>`).join('');
 }
-function renderPause() { renderDiff(); $('#sVib').checked = G.settings.vib !== false; $('#sMusic').value = G.settings.music; $('#sPx').value = G.settings.px; $('#sDither').value = G.settings.dither; $('#sOutline').checked = G.settings.outline; $('#sSound').checked = G.settings.sound; }
+function renderPause() { $('#sZoom').value = G.settings.zoom || 1; $('#sHalo').checked = G.settings.halo !== false; renderDiff(); $('#sVib').checked = G.settings.vib !== false; $('#sMusic').value = G.settings.music; $('#sPx').value = G.settings.px; $('#sDither').value = G.settings.dither; $('#sOutline').checked = G.settings.outline; $('#sSound').checked = G.settings.sound; }
 $('#sPx').oninput = e => { G.settings.px = +e.target.value; saveSettings(); };
+$('#sZoom').oninput = e => { G.settings.zoom = +e.target.value; saveSettings(); };
+$('#sHalo').onchange = e => { G.settings.halo = e.target.checked; saveSettings(); };
+// barra de poses do espelho (bolsa e criação)
+document.querySelectorAll('#poseBar button').forEach(b => b.onclick = () => { const p = b.dataset.p; sfx('ui'); if (p === 'zin') camZoom(-1); else if (p === 'zout') camZoom(1); else { G.pvPose = p; document.querySelectorAll('#poseBar button').forEach(x => x.classList.toggle('on', x === b)); } });
 $('#sDither').oninput = e => { G.settings.dither = +e.target.value; saveSettings(); };
 $('#sOutline').onchange = e => { G.settings.outline = e.target.checked; saveSettings(); };
 $('#sDiff').onchange = e => { const v = +e.target.value; if (!G.save || !diffOk(DIFFS[v]) || !(RG && RG.key === 'hub')) { renderDiff(); return; } G.save.diff = v; writeSave(); renderDiff(); updateObjective(); toast('DIFICULDADE: ' + DIFFS[v].n.toUpperCase(), true, DIFFS[v].d, DIFFS[v].c); sfx(v > 0 ? 'epic' : 'open'); };

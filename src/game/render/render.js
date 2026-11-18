@@ -3,6 +3,7 @@
    RENDER
    ========================================================= */
 let dpr = 1, pxDev = 4, VP = null;
+const EMOTES_PV = ['acenar', 'comemorar', 'dancar', 'sentar'];   // poses do espelho
 const cam = { x: 0, z: 0, zoom: 1 };
 const IDB = (() => { const a = new Float32Array(24 * 16); a.set(mI(), 0); return a; })();
 const boneBuf = new Float32Array(24 * 16);
@@ -10,7 +11,9 @@ function resize() {
   dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   const w = Math.max(1, Math.round(canvas.clientWidth * dpr)), h = Math.max(1, Math.round(canvas.clientHeight * dpr));
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
-  pxDev = Math.max(1, Math.round(G.settings.px * dpr));
+  // espelho (bolsa e criação): o dobro da resolução, para ver o personagem e os cosméticos de perto
+  const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv');
+  pxDev = Math.max(1, Math.round((pv ? Math.max(1, G.settings.px * .5) : G.settings.px) * dpr));
   resizeFB(Math.ceil(w / pxDev), Math.ceil(h / pxDev));
 }
 function computeInst(model, A, M) {
@@ -47,14 +50,14 @@ function render(dt) {
   } else if (preview) {
     const sideL = cssW <= 760 && innerHeight < 520 && cssW > innerHeight && G.mode !== 'create';
     if (cssW > 760 || sideL) proj[8] = sideL ? .44 : (G.mode === 'create' ? 400 : 440) / cssW * .95; else proj[9] = G.mode === 'create' ? -.48 : -.56;
-    tgt = [0, 1.0, 0]; eye = cssW > 760 || sideL ? [0, 1.9, 5.6] : [0, 2.1, 7.4];
+    const pz = G.pvZoom || 1; tgt = [0, 1.0 + (1 - pz) * .35, 0]; eye = cssW > 760 || sideL ? [0, 1.9, 5.6 * pz] : [0, 2.1, 7.4 * pz];   // roda do mouse aproxima
   } else {
     let tx = P.x, tz = P.z;
     if (boss && !boss.dying) { tx = lerp(P.x, boss.x, .32); tz = lerp(P.z, boss.z, .32); }
     if (RG && RG.key === 'home') { tx = lerp(P.x, 16, .85); tz = lerp(P.z, 12.6, .85); }
     if (G.cine) { const k = sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)); tx = lerp(tx, G.cine.x, k); tz = lerp(tz, G.cine.z, k); }
     cam.x = lerp(cam.x, tx, 1 - Math.exp(-dt * 6)); cam.z = lerp(cam.z, tz, 1 - Math.exp(-dt * 6));
-    const fit = Math.pow(clamp(1.1 / asp, 1, 2), .55), dist = 15.5 * fit * (RG && RG.key === 'home' ? 1.16 : 1) * (boss ? 1.3 : 1) * (boss && boss.type === 'dragon' ? 1.12 : 1) * (G.cine ? 1 - .3 * sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)) : 1), pitch = .98;
+    const fit = Math.pow(clamp(1.1 / asp, 1, 2), .55), dist = 15.5 * (G.settings.zoom || 1) * fit * (RG && RG.key === 'home' ? 1.16 : 1) * (boss ? 1.3 : 1) * (boss && boss.type === 'dragon' ? 1.12 : 1) * (G.cine ? 1 - .3 * sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)) : 1), pitch = .98;
     const sh = G.shake || 0;
     tgt = [cam.x + rr(-sh, sh), .8, cam.z + rr(-sh, sh)]; eye = [tgt[0], tgt[1] + dist * Math.sin(pitch), tgt[2] + dist * Math.cos(pitch)];
     xray = 1; player = [P.x, 0, P.z];
@@ -92,8 +95,12 @@ function render(dt) {
     drawModel(getModel('pedestal'), newAnim(getModel('pedestal')), 0, 0, 0, 0, 1);
     creatorYaw += dt * .4; resetAnim(P.anim); P.moveAmt = 0; P.cls = G.char.cls; P.act = (Math.floor(t / 4) % 3 === 2) ? ({ lamina: 'swing', arcano: 'cast', arco: 'shoot' }[G.char.cls]) : null; P.actT = (t % 4) * .25;
     if (G.mode !== 'create') { P.act = null; P.actT = 0; }
+    const pose = G.pvPose || (G.mode === 'create' ? 'auto' : 'idle');
+    if (pose === 'idle' || EMOTES_PV.includes(pose)) { P.act = null; P.actT = 0; }
+    else if (pose === 'atk') { P.act = { lamina: 'swing', arcano: 'cast', arco: 'shoot' }[G.char.cls]; P.actT = (t % 1.2) * .25; }
     P.stance = P.act && P.cls !== 'lamina' ? 1 : 0; P.combo = Math.floor(t / 12) % 3;
-    poseHuman(P.anim, P, t); drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
+    poseHuman(P.anim, P, t); if (EMOTES_PV.includes(pose)) applyEmote(P.anim, pose, t);
+    drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
   } else {
     drawRemotes(dt, t);
     for (const n of npcs) {
@@ -156,6 +163,7 @@ function render(dt) {
       if (P.ghosts) for (const g of P.ghosts) if (g.t < .18) drawModel(playerModel, P.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
       for (const k in G.buffs) if (G.buffs[k] > 0 && Math.random() < .35) spawn({ x: P.x + rr(-.45, .45), y: rr(.1, 1.8), z: P.z + rr(-.45, .45), vy: rr(.3, .8), life: .6, s0: .09, s1: .02, b0: 1, b1: .2, mat: BUFFS[k].mat });
       const blink = P.iframe > 0 && P.dashT <= 0 && P.dieT < 0 && Math.floor(t * 20) % 2 === 0;
+      if (G.settings.halo !== false && P.dieT < 0) for (let k = 0; k < 18; k++) { const a = k / 18 * 6.283 + t * .6; dyn(P.x + Math.cos(a) * .62, .07, P.z + Math.sin(a) * .62, k % 3 ? .45 : .75, 30, .13); }   // anel de destaque do herói
       if (!blink) P.W = drawModel(playerModel, P.anim, P.x, 0, P.z, P.yaw, 1, { dis: P.dieT >= 0 ? clamp(P.dieT / 1.2, 0, 1) : 0, dmat: 7, flash: P.flash > .6 ? 1 : 0 });
       if (P.shield > 0) for (let i = 0; i < 16; i++) { const a = t * 2 + i / 16 * 6.283; dyn(P.x + Math.cos(a) * .7, .3 + (i % 4) * .4, P.z + Math.sin(a) * .7, .7, 31, .14); }
       if (G.save && G.save.eq && G.save.eq.weapon && G.save.eq.weapon.rar === 4 && P.W && Math.random() < .5) { const wp = G.char.cls === 'arco' ? handPos('bow') : G.char.cls === 'arcano' ? handPos('staff') : tp(P.W[8], [-.38 * ([.86, 1, 1.18][G.char.body ?? 1]), .6, .6]); spawn({ x: wp[0] + rr(-.1, .1), y: wp[1] + rr(-.1, .1), z: wp[2] + rr(-.1, .1), vy: .5, life: .4, s0: .08, s1: .02, b0: 1, b1: .2, mat: 124 }); }

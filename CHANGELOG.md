@@ -1,5 +1,16 @@
 # Histórico de versões
 
+## 0.19.0 · Herói em destaque
+- **Personagem mais nítido:** o herói (e os outros jogadores e moradores) tem quase o dobro de splats, e o espelho da bolsa e da criação desenha na metade do tamanho de pixel, com o dobro de definição
+- **Rosto de verdade:** olhos com branco, íris na cor do brilho e pupila, sobrancelhas na cor do cabelo e boca. Corrigido um buraco na testa que a touca de cabelo, o capuz e o elmo abriam no rosto
+- **Cabelo com volume:** franja em mechas na testa e mechas laterais nos cortes Curto, Longo, Rabo e Coque
+- **Roupa com acabamento:** gola e punhos na cor do detalhe, botões no peito (a armadura cobre), bolsinha no cinto, botas com cano, dobra e sola
+- **Capa viva:** a capa ganhou dois ossos e esvoaça para trás ao correr, na esquiva e no giro; parada, balança com a respiração. Presilha e broches nos ombros
+- **Zoom da câmera:** roda do mouse ou **+ / −** aproxima e afasta durante o jogo; a escolha fica salva (também no menu, "Zoom da câmera"). A câmera começa um pouco mais perto do que antes
+- **Espelho com poses:** na bolsa e na criação, uma barra de poses (Parado, Ataque, Acenar, Comemorar, Dançar, Sentar) e aproximação com a roda do mouse ou os botões + e −
+- **Destacar meu herói:** um anel discreto no chão marca o seu personagem no meio do grupo (pode desligar no menu)
+- O Bardo Tomé agora carrega o alaúde
+
 ## 0.18.0 · HUD e controles (onda 1)
 - **Interface em escala no PC:** o HUD, os avisos, o diálogo e os menus crescem com a janela (cerca de 1,1× em 1280×720 e 1,7× em 1920×1080). No celular nada muda
 - **Barra de ações mais clara:** o mouse aparece desenhado nas teclas (botão esquerdo no ataque, **botão direito na habilidade**), a esquiva aceita Espaço e Shift, e cada botão mostra uma dica ao passar o mouse (a da habilidade traz a runa ativa)

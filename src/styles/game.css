@@ -334,3 +334,10 @@ body:not(.tch) #title .title-box,body:not(.tch) #pause>.panel,body:not(.tch) #pa
 .ctrl kbd .ms{color:var(--gold)}
 /* título: texto legível sobre a vila ao fundo */
 #title .tagline{text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;color:var(--bone)}
+
+/* espelho: barra de poses e zoom */
+.posebar{position:fixed;left:16px;top:calc(env(safe-area-inset-top,0px) + 14px);display:flex;gap:4px;align-items:center;z-index:30;flex-wrap:wrap;max-width:min(520px,calc(100% - 490px))}
+@media (max-width:760px){.posebar{max-width:calc(100% - 32px)}}
+.posebar span{font-family:var(--f-display);font-size:9px;letter-spacing:.14em;color:var(--dim);margin-right:4px}
+.posebar button{font-size:11px;padding:5px 8px;background:var(--btn);color:var(--bone);border:2px solid #000;box-shadow:inset -2px -2px 0 #130d1e,inset 2px 2px 0 #3e3157;cursor:pointer}
+.posebar button.on{background:var(--gold);color:#1c1105}

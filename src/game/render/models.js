@@ -15,14 +15,18 @@ function resetAnim(A) { for (const a of A) { a.rx = a.ry = a.rz = a.tx = a.ty = 
 function humBones(bw) { return [{ p: -1, v: [0, 0, 0] }, { p: 0, v: [0, .92, 0] }, { p: 1, v: [0, 1.0, 0] }, { p: 2, v: [0, 1.5, 0] }, { p: 2, v: [.3 * bw, 1.42, 0] }, { p: 2, v: [-.3 * bw, 1.42, 0] }, { p: 1, v: [.13, .9, 0] }, { p: 1, v: [-.13, .9, 0] }, { p: 5, v: [-.38 * bw, .85, .06] }, { p: 4, v: [.38 * bw, .85, .06] }]; }
 function buildHumanoid(c, base) {
   let rm = null; if (base) { rm = {}; for (let i = 0; i < 8; i++) rm[i] = base + i; rm[125] = base + 4; rm[126] = base + 6; rm[127] = base + 7; }
-  const S = new SplatSet(c.seed || 7, 900, rm);
+  const S = new SplatSet(c.seed || 7, 1500, rm);   // densidade alta: rosto, cabelo e cosméticos bem definidos
   const bw = [.86, 1, 1.18][c.body ?? 1];
   const bones = humBones(bw);
+  if (c.cape) bones.push({ p: 2, v: [0, 1.3, -.2] }, { p: 10, v: [0, .86, -.29] });   // capa em dois gomos: balança e esvoaça (poseHuman)
   const robe = c.cls === 'arcano';
   for (const sx of [1, -1]) {
     const b = sx > 0 ? 6 : 7;
     S.tube([[sx * .13, .92, 0, .12, b], [sx * .14, .5, .02, .1, b], [sx * .14, .17, 0, .09, b]], 3, { sub: 3 });
     S.ell([sx * .14, .09, .05], [.11, .09, .17], 5, b);
+    if (!robe) { S.tube([[sx * .14, .34, .01, .104, b], [sx * .14, .14, .0, .1, b]], 5, { sub: 1, noSolid: true });   // cano da bota
+      const r = []; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; r.push([sx * .14 + Math.cos(a) * .108, .35, .01 + Math.sin(a) * .108, .025, b]); } S.tube(r, 5, { closed: true, sub: 2, noSolid: true }); }   // dobra
+    S.ell([sx * .14, .015, .06], [.115, .02, .18], 5, b, { noCheck: true, noSolid: true });   // sola
   }
   if (robe) S.tube([[0, 1.02, 0, .27 * bw, 1], [0, .6, 0, .32 * bw, 1], [0, .26, 0, .37 * bw, 1]], 2, { sub: 3, sy: .85, noSolid: true });
   S.ell([0, .97, 0], [.22 * bw, .14, .16], 3, 1);
@@ -30,20 +34,31 @@ function buildHumanoid(c, base) {
   const belt = []; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; belt.push([Math.cos(a) * .235 * bw, 1.0, Math.sin(a) * .175, .035, 1]); }
   S.tube(belt, 5, { closed: true, sub: 2, noSolid: true });
   S.ell([0, 1.0, .18], [.05, .04, .02], 3, 1, { noSolid: true, noCheck: true, min: 8 });
+  for (const y of [1.13, 1.25, 1.37]) S.ell([0, y, .193 - (y - 1.2) * .05], .022, 4, 2, { noSolid: true, min: 6 });   // botões (a armadura cobre)
+  S.box([-.2 * bw, .93, .12], [.045, .055, .035], 5, 1, { noSolid: true });   // bolsinha do cinto
+  if (c.acc !== 'cachecol') { const r = []; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; r.push([Math.cos(a) * .12, 1.47 + (Math.sin(a) > 0 ? -.03 * Math.sin(a) : 0), Math.sin(a) * .11, .026, 2]); } S.tube(r, 3, { closed: true, sub: 2, noSolid: true }); }   // gola
   for (const sx of [1, -1]) {
     const b = sx > 0 ? 4 : 5;
     S.ell([sx * .27 * bw, 1.4, 0], .11, 2, 2);
     S.tube([[sx * .3 * bw, 1.42, 0, .085, b], [sx * .35 * bw, 1.13, .02, .075, b], [sx * .37 * bw, .91, .05, .065, b]], 2, { sub: 3 });
     S.ell([sx * .38 * bw, .85, .06], .07, 0, b);
+    { const r = []; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; r.push([sx * .368 * bw + Math.cos(a) * .072, .95, .045 + Math.sin(a) * .072, .022, b]); } S.tube(r, 3, { closed: true, sub: 2, noSolid: true }); }   // punho da manga
   }
   S.tube([[0, 1.42, 0, .08, 3], [0, 1.56, 0, .08, 3]], 0, { sub: 1, noSolid: true });
   S.ell([0, 1.72, 0], [.25, .26, .24], 0, 3);
   for (const sx of [1, -1]) {
-    S.ell([sx * .09, 1.72, .225], [.04, .05, .03], 6, 3, { noSolid: true, noCheck: true, min: 10 });
+    S.ell([sx * .09, 1.72, .222], [.05, .056, .022], 4, 3, { noSolid: true, noCheck: true, min: 14 });   // branco do olho
+    S.ell([sx * .086, 1.716, .236], [.033, .041, .014], 6, 3, { noSolid: true, noCheck: true, min: 10 });   // íris brilhante (cor do brilho)
+    S.ell([sx * .085, 1.715, .247], [.013, .018, .008], 5, 3, { noSolid: true, noCheck: true, min: 5 });   // pupila
     S.ell([sx * .25, 1.71, 0], [.045, .065, .05], 0, 3, { noSolid: true });
   }
   S.ell([0, 1.66, .24], .03, 0, 3, { noSolid: true, noCheck: true, min: 6 });
-  const cap = () => S.ell([0, 1.77, -.02], [.275, .25, .27], 1, 3, { noCheck: true, keep: d => d[1] > -.1 && !(d[2] > .5 && d[1] < .5) });
+  for (const sx of [1, -1]) S.tube([[sx * .045, 1.785, .232, .014, 3], [sx * .095, 1.795, .226, .016, 3], [sx * .14, 1.78, .205, .011, 3]], 1, { sub: 2, noSolid: true, minSeg: 5 });   // sobrancelhas
+  S.tube([[-.045, 1.612, .226, .009, 3], [0, 1.606, .232, .01, 3], [.045, 1.612, .226, .009, 3]], 5, { sub: 2, noSolid: true, minSeg: 4 });   // boca
+  const cap = () => { S.ell([0, 1.77, -.02], [.275, .25, .27], 1, 3, { noCheck: true, noSolid: true, keep: d => d[1] > -.1 && !(d[2] > .5 && d[1] < .5) });
+    for (let i = 0; i < 5; i++) { const x = (i - 2) * .075, z = .2 - Math.abs(x) * .35; S.tube([[x * .9, 1.97, z - .04, .045, 3], [x * 1.05 + .02, 1.89, z + .03, .03, 3], [x * 1.1 + .035, 1.83, z + .05, .01, 3]], 1, { sub: 2, noSolid: true, minSeg: 6 }); }   // franja
+    for (let i = 0; i < 7; i++) { const a = (i / 6 - .5) * 2.6; S.tube([[Math.sin(a) * .1, 2.0, -Math.cos(a) * .1 - .02, .03, 3], [Math.sin(a) * .21, 1.93, -Math.cos(a) * .2 - .02, .03, 3], [Math.sin(a) * .27, 1.8, -Math.cos(a) * .27 - .02, .015, 3]], 1, { sub: 2, noSolid: true, minSeg: 6 }); }   // volume em mechas
+  };
   switch (c.hair) {
     case 'curto': cap(); for (const sx of [1, -1]) S.ell([sx * .22, 1.66, -.05], [.07, .12, .12], 1, 3, { noCheck: true }); break;
     case 'longo': cap(); S.tube([[0, 1.75, -.15, .24, 3], [0, 1.45, -.2, .22, 3], [0, 1.15, -.18, .17, 3]], 1, { sx: 1.15, sy: .55, noSolid: true });
@@ -54,26 +69,28 @@ function buildHumanoid(c, base) {
     default: break;
   }
   switch (c.beard) {
-    case 'barba': S.ell([0, 1.6, .1], [.21, .15, .16], 1, 3, { noCheck: true, keep: d => d[2] > -.2 && d[1] < .45 }); S.cone([0, 1.5, .2], [0, 1.36, .22], .09, 1, 3); break;
+    case 'barba': S.ell([0, 1.6, .1], [.21, .15, .16], 1, 3, { noCheck: true, noSolid: true, keep: d => d[2] > -.2 && d[1] < .45 }); S.cone([0, 1.5, .2], [0, 1.36, .22], .09, 1, 3); break;
     case 'bigode': for (const sx of [1, -1]) S.tube([[sx * .015, 1.645, .245, .026, 3], [sx * .08, 1.635, .235, .022, 3], [sx * .125, 1.6, .215, .012, 3]], 1, { sub: 2, noSolid: true, minSeg: 5 }); break;
     case 'cavanhaque': S.ell([0, 1.54, .19], [.065, .075, .05], 1, 3, { noCheck: true }); S.tube([[-.05, 1.645, .24, .018, 3], [.05, 1.645, .24, .018, 3]], 1, { sub: 1, noSolid: true, minSeg: 5 }); break;
     default: break;
   }
   switch (c.acc) {
-    case 'capuz': S.ell([0, 1.75, -.02], [.31, .31, .31], 2, 3, { noCheck: true, keep: d => !(d[2] > .3 && d[1] < .65 && d[1] > -.75) && d[1] > -.6 }); break;
+    case 'capuz': S.ell([0, 1.75, -.02], [.31, .31, .31], 2, 3, { noCheck: true, noSolid: true, keep: d => !(d[2] > .3 && d[1] < .65 && d[1] > -.75) && d[1] > -.6 }); break;
     case 'chapeu': S.ell([0, 1.93, 0], [.44, .035, .44], 2, 3, { noCheck: true }); S.tube([[0, 1.95, 0, .25, 3], [.03, 2.3, -.08, .13, 3], [.1, 2.55, -.22, .02, 3]], 2, { sub: 3, noSolid: true });
       S.tube((() => { const r = []; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; r.push([Math.cos(a) * .25, 1.99, Math.sin(a) * .25, .03, 3]); } return r; })(), 3, { closed: true, sub: 2, noSolid: true }); break;
     case 'chifres': for (const sx of [1, -1]) S.tube([[sx * .14, 1.92, .02, .05, 3], [sx * .22, 2.05, -.04, .035, 3], [sx * .25, 2.12, -.14, .008, 3]], 3, { sub: 3, noSolid: true, minSeg: 6 }); break;
     case 'coroa': { const r = []; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; r.push([Math.cos(a) * .27, 1.9, Math.sin(a) * .26, .035, 3]); S.cone([Math.cos(a) * .27, 1.9, Math.sin(a) * .26], [Math.cos(a) * .31, 2.0, Math.sin(a) * .3], .04, 3, 3); } S.tube(r, 3, { closed: true, sub: 2, noSolid: true }); } break;
     case 'cachecol': { const r = []; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283; r.push([Math.cos(a) * .14, 1.48, Math.sin(a) * .13, .07, 2]); } S.tube(r, 3, { closed: true, sub: 2, noSolid: true }); S.tube([[.06, 1.46, -.12, .06, 2], [.12, 1.2, -.2, .05, 2], [.14, 1.0, -.22, .045, 2]], 3, { sub: 3, noSolid: true }); } break;
     case 'tapa': S.ell([.09, 1.72, .245], [.06, .06, .02], 5, 3, { noSolid: true, noCheck: true, min: 10 }); S.tube([[.15, 1.76, .2, .012, 3], [.25, 1.8, 0, .012, 3]], 5, { sub: 1, noSolid: true }); break;
-    case 'elmo': S.ell([0, 1.78, -.01], [.3, .29, .29], 4, 3, { noCheck: true, keep: d => d[1] > -.2 && !(d[2] > .55 && d[1] < .35) }); S.box([0, 1.69, .275], [.025, .09, .02], 4, 3, { faces: 'stew' }); S.tube([[0, 2.05, .12, .05, 3], [0, 2.12, -.1, .065, 3], [0, 1.98, -.34, .04, 3]], 3, { sub: 3, noSolid: true }); break;
+    case 'elmo': S.ell([0, 1.78, -.01], [.3, .29, .29], 4, 3, { noCheck: true, noSolid: true, keep: d => d[1] > -.2 && !(d[2] > .55 && d[1] < .35) }); S.box([0, 1.69, .275], [.025, .09, .02], 4, 3, { faces: 'stew' }); S.tube([[0, 2.05, .12, .05, 3], [0, 2.12, -.1, .065, 3], [0, 1.98, -.34, .04, 3]], 3, { sub: 3, noSolid: true }); break;
     case 'padeiro': S.tube([[0, 1.9, 0, .23, 3], [0, 2.18, 0, .26, 3]], 3, { sub: 2, noSolid: true }); S.ell([0, 2.22, 0], [.28, .11, .28], 3, 3, { noCheck: true, keep: d => d[1] > 0 }); break;
     case 'bandana': { const r = []; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; r.push([Math.cos(a) * .265, 1.83, Math.sin(a) * .255, .045, 3]); } S.tube(r, 3, { closed: true, sub: 2, noSolid: true }); S.tube([[0, 1.83, -.26, .04, 3], [.08, 1.7, -.36, .03, 3]], 3, { sub: 1, noSolid: true }); S.tube([[0, 1.83, -.26, .04, 3], [-.06, 1.68, -.34, .03, 3]], 3, { sub: 1, noSolid: true }); } break;
     case 'pena': S.ell([0, 1.93, 0], [.44, .035, .44], 2, 3, { noCheck: true }); S.tube([[0, 1.95, 0, .25, 3], [.03, 2.25, -.06, .17, 3], [.06, 2.36, -.12, .04, 3]], 2, { sub: 3, noSolid: true }); S.tube([[.2, 2.02, -.08, .035, 3], [.36, 2.3, -.24, .045, 3], [.4, 2.5, -.46, .01, 3]], 3, { sub: 3, noSolid: true }); break;
     default: break;
   }
-  if (c.cape) S.mem([[[.27 * bw, 1.46, -.17], [-.27 * bw, 1.46, -.17], [.36 * bw, .42, -.38]], [[-.27 * bw, 1.46, -.17], [.36 * bw, .42, -.38], [-.36 * bw, .42, -.38], .08]], 3, () => 2);
+  if (c.cape) { S.mem([[[.27 * bw, 1.46, -.17], [-.27 * bw, 1.46, -.17], [.36 * bw, .42, -.38]], [[-.27 * bw, 1.46, -.17], [.36 * bw, .42, -.38], [-.36 * bw, .42, -.38], .08]], 3, p => p[1] > 1.3 ? 2 : p[1] > .86 ? 10 : 11, { dm: 1.3 });
+    S.tube([[-.27 * bw, 1.47, -.15, .035, 2], [0, 1.5, -.19, .035, 2], [.27 * bw, 1.47, -.15, .035, 2]], 3, { sub: 3, noSolid: true });   // presilha da capa nos ombros
+    for (const sx of [1, -1]) S.ell([sx * .2 * bw, 1.49, -.08], .035, 4, 2, { noSolid: true, noCheck: true, min: 8 }); }
   const ar = c.armor;
   if (ar !== undefined && ar !== null && ar >= 0) {
     const AM = ar >= 2 ? 125 : 5, RN = 126;

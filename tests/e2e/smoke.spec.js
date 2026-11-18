@@ -129,3 +129,32 @@ test('controles do PC: botão direito usa a habilidade, Shift esquiva, a barra m
   await page.keyboard.press('h');
   await expect(page.locator('#keys')).not.toHaveClass(/faded/);
 });
+
+test('personagem em destaque: zoom da câmera, espelho com poses e capa que esvoaça', async ({ page }) => {
+  const errors = await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  // zoom: roda do mouse e teclas + / −, lembrado nas configurações
+  const z0 = await ev('G.settings.zoom');
+  await page.mouse.move(500, 300); await page.mouse.wheel(0, -240); await page.waitForTimeout(200);
+  const z1 = await ev('G.settings.zoom'); expect(z1).toBeLessThan(z0);
+  await page.keyboard.press('Minus'); await page.waitForTimeout(100);
+  expect(await ev('G.settings.zoom')).toBeGreaterThan(z1);
+  expect(await ev('JSON.parse(localStorage.getItem(SKEY + "-set")).zoom')).toBeGreaterThan(0);
+  // capa em dois gomos: ossos extras que balançam ao andar
+  await ev('G.char.cape = true; rebuildPlayerModel()');
+  expect(await ev('playerModel.bones.length')).toBe(12);
+  await page.keyboard.down('d'); await page.waitForTimeout(700);
+  expect(await ev('P.anim[10].rx')).toBeGreaterThan(.12);
+  await page.keyboard.up('d');
+  // espelho da bolsa: barra de poses e aproximação
+  await page.keyboard.press('i');
+  await expect(page.locator('#poseBar')).toBeVisible();
+  await page.click('#poseBar button[data-p="dancar"]');
+  expect(await ev('G.pvPose')).toBe('dancar');
+  await page.click('#poseBar button[data-p="zin"]');
+  expect(await ev('G.pvZoom')).toBeLessThan(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#poseBar')).toBeHidden();
+  expect(await ev('G.pvPose')).toBe(null);
+  expect(errors).toEqual([]);
+});

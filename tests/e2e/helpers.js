@@ -57,3 +57,6 @@ export async function unlock(page, { bosses = [], ended = false, lvl, gold, met 
     if (g !== undefined) s.gold = g;
   }, [bosses, ended, lvl, gold, met]);
 }
+
+/** Tira da vila os moradores que caminham pelo relógio (senão um deles pode passar mais perto do herói que o alvo do teste). */
+export const calmVillage = page => page.evaluate(() => __T.ev('npcs.forEach(n => { if (n.wander) n.visible = false; })'));

@@ -71,7 +71,7 @@ const HUB = {
   props: [[26, 18, 'crate'], [27, 18.6, 'barrel'], [62, 18, 'crate'], [22, 40, 'barrel'], [66, 44, 'crate'], [65.4, 44.8, 'barrel'], [12, 30, 'crate'], [36, 12, 'board'], [102, 16, 'crate'], [102.8, 16.6, 'barrel'], [98, 50, 'barrel'], [112, 52, 'crate']],
 };
 /** Bardo do Bairro Leste: fica fora de NPCS (as linhas de paleta dos moradores estão cheias) e usa as linhas 152-159, livres na vila. */
-const BARD = { id: 'bardo', name: 'Bardo Tomé', x: 121.6, z: 27.6, baseYaw: 2.6, cfg: { seed: 81, body: 1, hair: 'longo', hairCol: 2, skin: 3, outfit: 3, trim: 4, glow: 3, acc: 'pena', cape: true } };
+const BARD = { id: 'bardo', name: 'Bardo Tomé', x: 121.6, z: 27.6, baseYaw: 2.6, cfg: { seed: 81, body: 1, hair: 'longo', hairCol: 2, skin: 3, outfit: 3, trim: 4, glow: 3, acc: 'pena', cape: true, gear: 'alaude' } };
 const WANDER_KIDS = [[36, 27], [52, 27], [52, 38], [36, 38], [44, 24], [40, 44], [50, 44]];
 const NPCS = [
   { id: 'ysolde', name: 'Anciã Ysolde', x: 37, z: 32, baseYaw: 1.57, cfg: { seed: 61, body: 0, hair: 'longo', hairCol: 4, skin: 1, outfit: 7, trim: 0, glow: 1, acc: 'coroa', cape: true, cls: 'arcano' } },

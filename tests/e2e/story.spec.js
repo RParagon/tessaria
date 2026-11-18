@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { newGame, T, travel, unlock, skipDialogs } from './helpers.js';
+import { newGame, T, travel, unlock, skipDialogs, calmVillage } from './helpers.js';
 
 test('Ato II: Ysolde libera o Pântano e a Hidra entrega o Fio de Água', async ({ page }) => {
   const errors = await newGame(page);
   await unlock(page, { bosses: ['forest', 'crypt', 'peaks'], ended: true, lvl: 14 });
   await travel(page, 'hub');
+  await calmVillage(page);
   expect(await T(page, () => __T.inter.find(i => i.to === 'swamp').lit)).toBe(false);
   await T(page, () => { __T.P.x = 38.5; __T.P.z = 32; });
   await page.waitForTimeout(300);
@@ -30,6 +31,7 @@ test('Ato II: Ysolde libera o Pântano e a Hidra entrega o Fio de Água', async 
 test('missão A Maçã do Vovô termina com a Maçã de Âmbar', async ({ page }) => {
   await newGame(page);
   await unlock(page, { bosses: ['forest', 'crypt', 'peaks'], ended: true, met: { act2y: true, t_brann: true } });
+  await calmVillage(page);
   await T(page, () => { __T.P.x = 22.5; __T.P.z = 51.5; });
   await page.waitForTimeout(300);
   await T(page, () => __T.interact());

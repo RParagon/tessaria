@@ -43,6 +43,11 @@ function poseHuman(A, e, t) {
   if (e.landT > 0) { A[1].ty -= .1 * e.landT / .15; A[2].rx += .2 * e.landT / .15; }
   if (cls === 'arcano') { const th = a === 'cast' ? Math.sin(clamp(at / .26, 0, 1) * Math.PI) : 0; poseStaff(A, .06 + .3 * th, -.1 * (1 - stc)); }
   if (cls === 'arco' && A[9]) { A[9].rx = -A[4].rx - A[2].rx; A[9].rz = -A[4].rz; }
+  if (A[11]) {   // capa: esvoaça para trás ao andar e na esquiva; parado, só respira
+    const fl = .45 * m + (a === 'dash' ? .7 : 0) + (a === 'spin' ? .5 : 0) + br * .025 * (1 - m) + Math.sin(t * 3.3 + w) * .06 * m;
+    A[10].rx = fl - A[2].rx * .8; A[10].rz = Math.sin(t * 1.7) * .03 + sw * .05 * m;
+    A[11].rx = fl * .55 + Math.sin(t * 2.4 + 1) * (.03 + .08 * m); A[11].rz = Math.sin(t * 2.1) * .04;
+  }
 }
 /* Cajado do Arcano (osso 8, preso à mão direita). O osso desfaz exatamente a rotação do tronco (2) e do braço (5),
    para o cajado ficar quase em pé em relação ao quadril, com a inclinação pedida: rx > 0 leva a ponta para a frente,
