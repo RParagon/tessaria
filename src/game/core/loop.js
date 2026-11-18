@@ -16,10 +16,10 @@ function frame(now) {
       let gdt = dt; if (G.hitStop > 0) { G.hitStop -= dt; gdt = dt * .12; }
       G.save.time += dt;
       updatePlayer(gdt); netTick(dt);
-      for (const e of enemies) updateEnemy(e, gdt);
+      coopUpdateEnemies(gdt);   // co-op: alvo substituto no anfitrião, cópias nos convidados
       enemies = enemies.filter(e => { if (e.dead && e.el) e.el.remove(); return !e.dead; });
-      if (boss) updateBoss(boss, gdt);
-      updateProjectiles(gdt); updateTelegraphs(gdt); updatePickups(gdt);
+      coopUpdateBoss(gdt);
+      updateProjectiles(gdt); updateTelegraphs(gdt); updatePickups(gdt); coopTick(dt);
       if (G.rift && !G.rift.done) G.rift.t += gdt; updateLater(gdt); updateZones(gdt);
       for (const k in G.buffs) G.buffs[k] -= gdt;
       updateStreak(gdt); checkFeats(dt); updateMinimap(dt);

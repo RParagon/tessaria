@@ -197,6 +197,19 @@ for (const kind of STORES) {
       await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === wb.id && q[1] === 150));
       const pv = await a.c.waitFor(m => m.t === 'party' && m.party?.inst?.n === 2);
       assert.equal(pv.party.inst.L, 3);
+      // anfitrião (líder) e repasse do combate
+      await b.c.waitFor(m => m.t === 'ihost' && m.id === wa.id);
+      a.c.send({ t: 'hx', d: { k: 'snap', n: 1 } });
+      assert.equal((await b.c.waitFor(m => m.t === 'hx' && m.d.k === 'snap')).from, wa.id);
+      b.c.send({ t: 'hx', d: { k: 'falso' } });                 // quem não é anfitrião não transmite
+      b.c.send({ t: 'gx', d: { k: 'hit', dmg: 5 } });
+      assert.equal((await a.c.waitFor(m => m.t === 'gx' && m.d.k === 'hit')).from, wb.id);
+      a.c.send({ t: 'hto', to: wb.id, d: { k: 'hurt', dmg: 3 } });
+      await b.c.waitFor(m => m.t === 'hx' && m.d.k === 'hurt');
+      a.c.send({ t: 'hx', d: 'texto' });                        // conteúdo precisa ser objeto
+      await sleep(150);
+      assert.ok(!a.c.msgs.some((m: any) => m.t === 'hx' && m.d.k === 'falso'));
+      assert.ok(!b.c.msgs.some((m: any) => m.t === 'hx' && m.d === 'texto'));
       // quem não é do grupo não entra
       c.c.send({ t: 'where', r: 'rift', n: 3, i: ea.inst });
       await c.c.waitFor(m => m.t === 'iclosed' && m.inst === ea.inst);

@@ -29,6 +29,8 @@ export class Net {
   party: PartyView | null = null;
   /** Instância do grupo em que este jogador está (ou entrando). */
   inst: number | null = null;
+  /** Quem simula o combate na instância (id de jogador na sala). */
+  hostId = 0;
   /** Aviso "Pronto?" pendente. */
   ready: { inst: number; L: number; by: string; until: number } | null = null;
   invites: Array<{ from: string; size: number; exp: number }> = [];
@@ -161,7 +163,7 @@ export class Net {
   /** A conexão fica aberta em qualquer região (amigos e grupo); só na vila ela entra numa sala. */
   setRegion(key: string, look: Look, _pos: [number, number] | null, n = 0) {
     this.look = look;
-    if (key !== 'rift') this.inst = null;
+    if (key !== 'rift') { this.inst = null; this.hostId = 0; }
     const changed = key !== this.region || n !== this.regionN || (key === 'rift' && !!this.inst);
     this.region = key; this.regionN = n;
     if (key !== 'hub') { this.clearRemotes(); this.room = ''; }
@@ -180,6 +182,13 @@ export class Net {
   /** O jogo chama ao gerar a Fenda do grupo: daqui em diante o 'where' leva a instância. */
   enteringInst(id: number) { this.inst = id; }
   /** Em grupo e líder: os portais de Fenda abrem para o grupo. */
+  /** Este jogo simula inimigos e chefe da instância. */
+  get isHost() { return !!this.inst && !!this.room && this.hostId === this.myId; }
+  /** Id deste jogador na sala atual. */
+  get selfId() { return this.myId; }
+  hx(d: object) { this.send({ t: 'hx', d }); }
+  gx(d: object) { this.send({ t: 'gx', d }); }
+  hto(to: number, d: object) { this.send({ t: 'hto', to, d }); }
   get groupRift() { return !!this.party && this.party.members.length > 1 && this.isLeader && this.connected; }
   /** Na vila e com a sala conectada. */
   get inRoom() { return this.connected && !!this.room; }
@@ -293,6 +302,8 @@ export class Net {
       case 'party': this.party = m.party; this.emit('party', m.party); break;
       case 'iready': this.ready = { inst: m.inst, L: m.L, by: m.by, until: Date.now() + m.ms }; this.emit('iready', this.ready); break;
       case 'ienter': this.ready = null; G?.startGroupRift(m.inst, m.rift as RiftParams); break;
+      case 'ihost': this.hostId = m.id; G?.coopHost?.(m.id === this.myId); break;
+      case 'hx': case 'gx': G?.coopMsg?.(m.t, m.from, m.d); break;
       case 'iclosed':
         if (this.ready?.inst === m.inst) { this.ready = null; this.emit('iready', null); }
         if (this.inst === m.inst) { this.inst = null; this.emit('iclosed', m.inst); }

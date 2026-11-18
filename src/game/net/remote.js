@@ -35,11 +35,10 @@ function startGroupRift(inst, prm) {
   G.riftRoll = { base: prm.base, boss: prm.boss, aff: prm.aff.slice() };
   n.enteringInst(inst);
   withSeed(prm.seed, () => startRift(prm.L));
-  // Etapa atual do co-op: mesmo mapa e todos se veem; os monstros compartilhados chegam na próxima versão.
-  setTimeout(() => toast('FENDA DO GRUPO', false, 'MESMO MAPA · POR ENQUANTO CADA UM ENFRENTA OS PRÓPRIOS MONSTROS'), 1800);
+  setTimeout(() => toast('FENDA DO GRUPO', false, 'MESMO MAPA E MESMOS MONSTROS · O JOGO DO LÍDER COMANDA OS INIMIGOS'), 1800);
 }
 
-function netRegion(key) { const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : 0); if (key !== 'hub') clearRemoteMarks(); }
+function netRegion(key) { coopReset(); const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : 0); if (key !== 'hub') clearRemoteMarks(); }
 function netLook() { const n = NETON(); if (n) n.setLook(lookOfPlayer()); }
 let netPosAcc = 0, netAct = null, netActT = 0;
 const NET_ACTS = ['swing', 'cast', 'shoot', 'spin', 'nova', 'dash'];

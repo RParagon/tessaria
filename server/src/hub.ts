@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
 import type { Account, Store } from './store/types';
@@ -29,7 +29,7 @@ interface Player {
   look: Look; title: string;
   x: number; z: number; yaw: number; m: number; a: string;
   lastPos: number; synced: boolean; dirty: boolean; alive: boolean;
-  actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number; timeReqs: number;
+  actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number; timeReqs: number; relayTokens: number; relayRefill: number;
 }
 
 class Room {
@@ -45,7 +45,7 @@ class Room {
 
 interface Party { id: number; leader: string; members: string[]; info: Map<string, { name: string; cls: string; lvl: number }>; gone: Map<string, NodeJS.Timeout>; inst?: Instance | null }
 /** Instância do grupo (Fenda): uma sala própria, com os dados que geram o mesmo mapa para todos. */
-interface Instance { id: number; party: Party; kind: 'rift'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
+interface Instance { host: number; id: number; party: Party; kind: 'rift'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
 export interface HubOptions { inviteMs?: number; graceMs?: number; instEmptyMs?: number }
 const lvlOf = (save: any) => (Number.isInteger(save?.lvl) ? save.lvl : 1);
 
@@ -104,7 +104,7 @@ export class Hub {
       friends: new Set(links.filter(l => l.state === 'amigo').map(l => l.otherId)), blocks: new Set(blocks.map(b => b.id)), lastInvite: 0,
       look: lookFromSave(save), title: titleFromSave(save),
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
-      actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0,
+      actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0, relayTokens: RELAY_PER_SEC, relayRefill: Date.now(),
     };
     const old = this.byAccount.get(account.id);
     this.byAccount.set(account.id, p);
@@ -128,13 +128,14 @@ export class Hub {
     room.players.set(p.id, p);
     send(p, { t: 'welcome', id: p.id, room: room.label, players: [...room.players.values()].filter(o => o !== p).map(pub), v: PROTOCOL_VERSION, now: Date.now() });
     room.broadcast({ t: 'join', p: pub(p) }, p);
+    if (room.inst) this.pickHost(room.inst);
   }
   private leaveRoom(p: Player) {
     const room = p.room; if (!room) return;
     p.room = null;
     if (!room.players.delete(p.id)) return;
     room.broadcast({ t: 'leave', id: p.id });
-    if (room.inst) { if (!room.players.size) this.scheduleClose(room.inst); else this.sendParty(room.inst.party); }
+    if (room.inst) { if (!room.players.size) this.scheduleClose(room.inst); else { this.pickHost(room.inst); this.sendParty(room.inst.party); } }
     else if (!room.players.size && this.rooms.size > 1) this.rooms.delete(room.id);
   }
 
@@ -167,6 +168,7 @@ export class Hub {
       case 'look': return this.onLook(p, msg.look);
       case 'where': return this.onWhere(p, msg.r, msg.n, msg.i);
       case 'iopen': return this.openInst(p, msg);
+      case 'hx': case 'gx': case 'hto': return this.relay(p, msg, raw.length);
       case 'ijoin': return this.joinInst(p, msg.inst);
       case 'pinvite': return void this.invite(p, msg.name);
       case 'paccept': return this.accept(p, msg.from);
@@ -334,7 +336,7 @@ export class Hub {
     if (pt.inst && pt.inst.room.players.size && !(pt.inst.room.players.size === 1 && pt.inst.room.players.has(p.id))) return send(p, { t: 'sys', text: 'O grupo ainda está numa Fenda.' });
     if (pt.inst) this.closeInst(pt.inst);
     const id = ++this.instSeq, room = new Room('inst-' + id, `Fenda ${L}`);
-    const inst: Instance = { id, party: pt, kind: 'rift', L, base: m.base, aff: aff.slice(), boss: m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
+    const inst: Instance = { host: 0, id, party: pt, kind: 'rift', L, base: m.base, aff: aff.slice(), boss: m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
     room.bounds = INST_BOUNDS; room.inst = inst; pt.inst = inst; this.instances.set(id, inst);
     send(p, this.enterMsg(inst));
     for (const mid of pt.members) if (mid !== p.account.id) this.notify(mid, { t: 'iready', inst: id, kind: 'rift', L, by: p.account.name, ms: INST_READY_MS });
@@ -347,6 +349,26 @@ export class Hub {
     if (!inst || inst.id !== id) return send(p, { t: 'sys', text: 'Essa Fenda já fechou.' });
     if (inst.room.players.size >= INST_CAP && !inst.room.players.has(p.id)) return send(p, { t: 'sys', text: 'A Fenda do grupo está cheia.' });
     send(p, this.enterMsg(inst));
+  }
+  /** Anfitrião da instância: o líder do grupo, se estiver dentro; senão quem está há mais tempo. */
+  private pickHost(inst: Instance) {
+    const ps = [...inst.room.players.values()];
+    const leader = ps.find(q => q.account.id === inst.party.leader);
+    const h = leader ?? ps[0];
+    const id = h ? h.id : 0;
+    if (id !== inst.host || h) { inst.host = id; if (id) inst.room.broadcast({ t: 'ihost', id }); }
+  }
+  /** Repasse do combate na instância. O servidor não lê o conteúdo; só confere quem pode mandar o quê, tamanho e ritmo. */
+  private relay(p: Player, m: any, bytes: number) {
+    const inst = p.room?.inst; if (!inst || bytes > RELAY_MAX_BYTES || m.d === null || typeof m.d !== 'object') return;
+    const now = Date.now();
+    p.relayTokens = Math.min(RELAY_PER_SEC, p.relayTokens + (now - p.relayRefill) / 1000 * RELAY_PER_SEC); p.relayRefill = now;
+    if (p.relayTokens < 1) { inc('hub_relay_drops'); return; }
+    p.relayTokens -= 1;
+    const isHost = inst.host === p.id;
+    if (m.t === 'hx' && isHost) inst.room.broadcast({ t: 'hx', from: p.id, d: m.d }, p);
+    else if (m.t === 'hto' && isHost) { const to = inst.room.players.get(m.to); if (to) send(to, { t: 'hx', from: p.id, d: m.d }); }
+    else if (m.t === 'gx' && !isHost) { const h = inst.room.players.get(inst.host); if (h) send(h, { t: 'gx', from: p.id, d: m.d }); }
   }
   private enterMsg(i: Instance): ServerMsg { return { t: 'ienter', inst: i.id, kind: 'rift', rift: { L: i.L, base: i.base, aff: i.aff, boss: i.boss, seed: i.seed } }; }
   private scheduleClose(inst: Instance) {

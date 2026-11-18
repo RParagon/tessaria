@@ -18,6 +18,8 @@ export const INST_READY_MS = 20_000;       // tempo do aviso "Pronto?"
 export const INST_EMPTY_MS = 60_000;       // instância vazia fecha depois disso
 export const INST_BOUNDS = { x0: 0, x1: 400, z0: 0, z1: 400 };
 /** Tudo o que define uma Fenda: com os mesmos dados (e a mesma semente), todo jogo gera o mesmo mapa. */
+export const RELAY_PER_SEC = 60;          // mensagens de combate por segundo por jogador (snapshots 10/s + eventos)
+export const RELAY_MAX_BYTES = 24_000;
 export interface RiftParams { L: number; base: string; aff: string[]; boss: string; seed: number }
 
 export const EMOTES = ['acenar', 'comemorar', 'dancar', 'sentar'] as const;
@@ -65,7 +67,10 @@ export type ClientMsg =
   | { t: 'look'; look: Look }
   | { t: 'time'; c: number }
   | { t: 'iopen'; kind: 'rift'; L: number; base: string; aff: string[]; boss: string }   // líder abre a Fenda para o grupo
-  | { t: 'ijoin'; inst: number }   // entrar na instância do grupo   // pedido da hora do servidor (c: hora do cliente no envio)
+  | { t: 'ijoin'; inst: number }   // entrar na instância do grupo
+  | { t: 'hx'; d: unknown }                // anfitrião → todos da instância (estado dos inimigos, mortes, projéteis)
+  | { t: 'gx'; d: unknown }                // jogador → anfitrião (acertos)
+  | { t: 'hto'; to: number; d: unknown }   // anfitrião → um jogador (dano recebido)   // pedido da hora do servidor (c: hora do cliente no envio)
   // amigos e grupo (docs/ONLINE.md). Fora da vila a conexão continua aberta só para isso.
   | { t: 'where'; r: string; n?: number; i?: number }        // região atual (chave do jogo), nível da Fenda e instância do grupo
   | { t: 'pinvite'; name: string }              // convidar para o grupo
@@ -81,7 +86,10 @@ export type ServerMsg =
   | { t: 'time'; c: number; s: number }
   | { t: 'iready'; inst: number; kind: 'rift'; L: number; by: string; ms: number }   // aviso "Pronto?" para o grupo
   | { t: 'ienter'; inst: number; kind: 'rift'; rift: RiftParams }   // pode entrar: dados para gerar o mesmo mapa
-  | { t: 'iclosed'; inst: number }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
+  | { t: 'iclosed'; inst: number }
+  | { t: 'ihost'; id: number }   // quem simula o combate na instância
+  | { t: 'hx'; from: number; d: any }
+  | { t: 'gx'; from: number; d: any }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
   | { t: 'join'; p: PublicPlayer }
   | { t: 'leave'; id: number }
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação

@@ -282,7 +282,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
   });
 
   // ---------- WebSocket da vila ----------
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 8 * 1024 });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 32 * 1024 });
   app.server.on('upgrade', async (req, socket, head) => {
     try {
       const url = new URL(req.url ?? '/', 'http://x');

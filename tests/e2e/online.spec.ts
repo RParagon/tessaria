@@ -184,6 +184,59 @@ test('Fenda do grupo: o líder abre, o outro aceita o Pronto? e os dois entram n
   await A.ctx.close(); await B.ctx.close();
 });
 
+test('Fenda do grupo: os monstros são os mesmos para os dois, o acerto do convidado vale e o lobo persegue quem está perto', async ({ browser }) => {
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
+  await A.page.evaluate(n => (window as any).TessNet.invite(n), B.name);
+  await B.page.click('.net-invite button:has-text("Aceitar")');
+  await A.page.waitForFunction(() => (window as any).TessNet.party?.members.length === 2, null, { timeout: 10_000 });
+  await A.page.evaluate(() => (window as any).__T.ev('netGroupRift(1)'));
+  await B.page.locator('.net-ready button:has-text("Entrar")').click();
+  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.RG?.key === 'rift' && (window as any).TessNet.room, null, { timeout: 20_000 });
+  await A.page.waitForFunction(() => (window as any).TessNet.isHost, null, { timeout: 10_000 });
+  await B.page.waitForFunction(() => (window as any).TessNet.hostId > 0 && !(window as any).TessNet.isHost, null, { timeout: 10_000 });
+  const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
+
+  // 1. o líder cria um inimigo; o convidado vê a cópia no mesmo lugar
+  await ev(A.page, "(() => { const e = spawnEnemy('gosmo', P.x + 3, P.z); e.spawnT = 0; e.hp = e.maxHp = 40; e.def = Object.assign({}, e.def, { dmg: 0 }); window.__g = e; })()");
+  await A.page.waitForFunction(() => (window as any).__T.ev('__g.nid > 0'), null, { timeout: 5000 });
+  const nid = await ev(A.page, '__g.nid');
+  await B.page.waitForFunction(id => (window as any).__T.ev(`enemies.some(e => e.proxy && e.nid === ${id})`), nid, { timeout: 5000 });
+  const [pa, pb] = await Promise.all([ev(A.page, '[__g.x, __g.z]'), ev(B.page, `(e => [e.x, e.z])(enemies.find(e => e.nid === ${nid}))`)]);
+  expect(Math.hypot(pa[0] - pb[0], pa[1] - pb[1])).toBeLessThan(1);
+
+  // 2. o convidado acerta: o líder aplica o dano, o inimigo cai e o convidado ganha a recompensa
+  const killsB = await ev(B.page, 'G.save.kills');
+  await ev(B.page, `hurtEnemy(enemies.find(e => e.nid === ${nid}), 9999, 1, 0, false)`);
+  await A.page.waitForFunction(() => (window as any).__T.ev('__g.dieT >= 0'), null, { timeout: 5000 });
+  await B.page.waitForFunction(id => (window as any).__T.ev(`!!(enemies.find(e => e.nid === ${id}) || { rewarded: true }).rewarded`), nid, { timeout: 5000 });
+  expect(await ev(B.page, 'G.save.kills')).toBeGreaterThan(killsB);
+
+  // 3. um lobo perto do convidado (longe do líder) persegue e morde o convidado
+  // afasta o convidado do líder (os dois começam no mesmo ponto), espera o líder ver a posição nova
+  const far = await ev(B.page, "(() => { const rm = RG.rooms.filter(r => r.kind !== 'boss').sort((a, b) => Math.hypot(b.wx - P.x, b.wz - P.z) - Math.hypot(a.wx - P.x, a.wz - P.z))[0]; P.x = rm.wx; P.z = rm.wz; return [P.x, P.z]; })()");
+  await A.page.waitForFunction(([x, z]) => (window as any).TessNet.players().some((r: any) => Math.hypot(r.x - x, r.z - z) < 1.5), far, { timeout: 10_000 });
+  await B.page.waitForTimeout(300);
+  const hpB = await ev(B.page, 'P.hp');
+  await ev(A.page, "(() => { const r = TessNet.players()[0]; const e = spawnEnemy('lobo', r.x + 1.2, r.z); e.spawnT = 0; e.aggro = true; })()");
+  await B.page.waitForFunction(h => (window as any).__T.ev('P.hp') < h, hpB, { timeout: 15_000 });
+
+  // 4. o convidado não cria inimigos próprios
+  expect(await ev(B.page, 'enemies.every(e => e.proxy)')).toBe(true);
+
+  // 5. chefe: o líder chega na sala do chefe e ele aparece para os dois
+  await ev(A.page, "(() => { enemies.forEach(e => { e.dieT = 0; }); G.rift.prog = 100; G.rift.bossUp = true; const rm = RG.rooms.find(r => r.kind === 'boss'); P.x = rm.wx; P.z = rm.wz + 2; })()");
+  await A.page.waitForFunction(() => (window as any).__T.boss, null, { timeout: 10_000 });
+  await B.page.waitForFunction(() => (window as any).__T.boss && (window as any).__T.boss.proxy, null, { timeout: 10_000 });
+  expect(await ev(B.page, 'boss.type')).toBe(await ev(A.page, 'boss.type'));
+  // 6. os golpes do convidado derrubam o chefe no líder; 7. a Fenda termina para os dois
+  await ev(A.page, 'boss.invuln = 0; boss.spawnT = 0; boss.hp = 50');
+  for (let i = 0; i < 5 && !(await ev(A.page, '!!(boss && boss.dying) || G.rift.done')); i++) { await ev(B.page, 'boss && hurtBoss(boss, 60, false, bossHits(boss)[0])'); await B.page.waitForTimeout(300); }
+  await A.page.waitForFunction(() => (window as any).__T.ev('G.rift.done'), null, { timeout: 15_000 });
+  await B.page.waitForFunction(() => (window as any).__T.ev('G.rift.done'), null, { timeout: 15_000 });
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});
+
 test('o progresso vai para a nuvem e volta em outro aparelho', async ({ browser }) => {
   const A = await onlinePlayer(browser);
   await A.page.evaluate(() => { const s = (window as any).__T.G.save; s.lvl = 4; s.gold = 321; (window as any).__T.ev('writeSave()'); });

@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.12.0 · Fenda do grupo (co-op, parte 2): monstros compartilhados
+- **Os mesmos monstros para todos:** o jogo do líder comanda inimigos e chefe e envia o estado deles 10 vezes por segundo; os outros veem as mesmas criaturas, no mesmo lugar, com as mesmas animações
+- **Todo golpe vale:** acertos de qualquer jogador vão para o líder e tiram vida de verdade; cada um ganha o próprio XP, Centelhas e chance de item quando um inimigo cai
+- **Os monstros escolhem quem está perto:** a IA persegue e ataca o jogador mais próximo, inclusive projéteis e áreas marcadas no chão; as salas acordam quando qualquer jogador chega
+- **Chefe em grupo:** aparece para todos, os golpes de todos contam, e a Fenda termina para todos (cada um com o próprio rank e Fios do Tear)
+- Se o líder sair da Fenda, quem está lá há mais tempo passa a comandar os monstros, sem a luta parar
+
 ## 0.11.0 · Fenda do grupo (co-op, parte 1)
 - **Fenda do grupo:** em grupo, o líder abre a Fenda pelo menu de sempre e todos recebem o aviso **Pronto?** (20 s). Quem entra cai **no mesmo mapa**, com a mesma semente sorteada pelo servidor, e todos se veem lá dentro, com animações, chat e emotes
 - Quem recusou ou chegou depois entra pelo botão **Entrar na Fenda do grupo**, no painel do grupo. A Fenda vazia fecha sozinha depois de 1 minuto; sair do grupo tira da Fenda do grupo

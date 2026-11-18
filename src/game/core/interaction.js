@@ -138,8 +138,8 @@ function updateTriggers(dt) {
     pr.innerHTML = (G.touch ? '' : '<kbd>E</kbd>') + label; pr.hidden = false; tu.hidden = !G.touch;
     if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
   } else { pr.hidden = true; tu.hidden = true; }
-  for (const rm of RG.rooms) {
-    if (rm.en && !rm.spawned && Math.hypot(rm.wx - P.x, rm.wz - P.z) < ((rm.r || Math.max(rm.w, rm.h)) + 3) * T) {
+  if (!coopIsGuest()) for (const rm of RG.rooms) {   // co-op: só o anfitrião cria inimigos; a sala acorda com qualquer jogador perto
+    if (rm.en && !rm.spawned && coopNear(rm.wx, rm.wz, ((rm.r || Math.max(rm.w, rm.h)) + 3) * T)) {
       rm.spawned = true; let k = 0;
       const grp = []; for (const [type, n] of Object.entries(rm.en)) for (let i = 0; i < n; i++) { const [x, z] = freeSpot(rm.wx, rm.wz, (rm.r || Math.min(rm.w, rm.h)) * T * .7); grp.push(spawnEnemy(type, x, z, k++ * .12)); }
       grp.forEach(e => e.room = rm);
@@ -148,7 +148,7 @@ function updateTriggers(dt) {
       if (grp.length >= 5 && (G.save.diff || 0) >= 3 && Math.random() < .35) makeElite(pick(grp.filter(e => !e.elite)));
       if (!RG.thiefDone && rm.kind !== 'boss' && Math.random() < .14) { RG.thiefDone = true; spawnThief(rm); }
     }
-    if (rm.kind === 'boss' && !boss && (G.rift ? G.rift.bossUp && !G.rift.done : !G.save.bosses[RG.key]) && Math.hypot(rm.wx - P.x, rm.wz - P.z) < (rm.r - 1.5) * T) startBoss(rm);
+    if (rm.kind === 'boss' && !boss && (G.rift ? G.rift.bossUp && !G.rift.done : !G.save.bosses[RG.key]) && coopNear(rm.wx, rm.wz, (rm.r - 1.5) * T)) startBoss(rm);
   }
 }
 function interact() {

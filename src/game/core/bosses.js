@@ -39,6 +39,7 @@ function startBoss(rm) {
   if (type === 'dragon' && !G.save.preFinal && !G.rift) { G.save.preFinal = true; writeSave(); }
   $('#bName').textContent = G.rift ? 'GUARDIÃO DA FENDA · ' + def.name : def.name; $('#bossBar').hidden = false; updateBossBar();
   if (!G.rift && !G.rematch) say(DIALOG.bossIntro(type), () => { });
+  coopBossStart(rm);
 }
 function endBossFight(won) {
   RG.gatesOn = false; $('#bossBar').hidden = true; setMusic(G.rift ? G.rift.base : RG.key);
@@ -46,8 +47,9 @@ function endBossFight(won) {
 }
 function updateBossBar() { if (boss) $('#bHp').style.width = clamp(boss.hp / boss.maxHp, 0, 1) * 100 + '%'; }
 function hurtBoss(b, dmg, crit, h) {
+  if (b.proxy) return coopHitBoss(b, dmg, crit, h);   // co-op: cópia; o acerto vai para o anfitrião
   if (b.invuln > 0 || b.spawnT > 0 || (b.blinkDis || 0) > .5) { popNum(h[0], 3, h[1], 'IMUNE', 'info'); return; }
-  dmg = Math.round(dmg); b.hp -= dmg; b.flash = 1; lifeSteal(dmg); if (crit) hitStop(.05);
+  dmg = Math.round(dmg); b.hp -= dmg; b.flash = 1; if (!COOP.remoteHit) { lifeSteal(dmg); if (crit) hitStop(.05); }
   popNum(h[0], 3.2, h[1], crit ? dmg + '!' : '' + dmg, crit ? 'crit' : ''); sfx('hit'); burst(h[0], 1.6, h[1], 6, 7, 3, .3, .12);
   updateBossBar();
   if (b.hp <= 0 && !b.dying) { b.hp = 0; b.dying = true; b.dieT = 0; G.hitStop = .45; tels.length = 0; projs = projs.filter(p => p.team === 'p'); sfx('roar'); G.shake = .5; enemies.forEach(e => { if (e.summoned && e.dieT < 0) { e.dieT = 0; } }); }
@@ -349,6 +351,7 @@ function updateBoss(b, dt) {
   }
 }
 function finishBoss(b) {
+  coopBossDone();
   if (G.rift) { finishRift(b); return; }
   const type = b.type, key = RG.key;
   if (G.rematch) {

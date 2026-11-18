@@ -363,6 +363,7 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 
 - **Mesmo mapa:** o líder escolhe nível, base, afixos e chefe (o sorteio do menu da Fenda). O servidor cria a instância e sorteia a **semente**. Cada jogo roda `startRift` com `Math.random` trocado por um sorteio com essa semente (`withSeed` em `src/game/net/remote.js`), então todos geram as mesmas salas, ligações e afixos.
 - **Mensagens:** `iopen` (líder abre), `iready` (aviso "Pronto?", 20 s), `ijoin` (aceitar), `ienter` (dados + semente), `where` com `i` (entrar na sala da instância), `iclosed`. A sala da instância reaproveita as salas da vila: snapshots, ações, chat e emotes funcionam lá dentro.
+- **Anfitrião:** quem simula é o líder, se estiver na Fenda; senão quem está lá há mais tempo. O servidor avisa (`ihost`) e repassa o combate sem ler o conteúdo: `hx` (anfitrião → todos), `gx` (jogador → anfitrião), `hto` (anfitrião → um jogador), com limite de ritmo e tamanho. Código em `src/game/net/coop.js`.
 - **Inimigos (2.2b):** o líder simula; antes de cada inimigo pensar, o `P` aponta por um instante para o jogador mais próximo (alvo substituto), então a IA atual persegue quem estiver perto sem ser reescrita. Nos outros jogos os inimigos são cópias desenhadas a partir dos snapshots do líder; `hurtEnemy` e `hurtBoss` repassam o acerto ao líder. Projéteis e áreas marcadas viram eventos e cada jogo confere só o próprio herói.
 
 ### Caminho B: o servidor simula (depois)
@@ -378,8 +379,8 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 | 2.1 | Amigos e grupo: pedidos de amizade, lista com presença, bloqueio, convite de grupo na vila, líder, chat do grupo, painel do grupo | feito (0.10.2) |
 | 2.2 | **Fendas em grupo** (instâncias, caminho A), em três partes: | |
 | 2.2a | instância da Fenda: o líder abre, "Pronto?" para o grupo, semente do servidor (mesmo mapa para todos), sala da instância (todos se veem), "Entrar na Fenda do grupo" pelo painel | feito (0.11.0) |
-| 2.2b | inimigos e chefe simulados pelo líder: cópias nos outros, acertos repassados ao líder, alvo substituto na IA, projéteis e áreas marcadas como eventos, mortes repassadas | próximo |
-| 2.2c | escala por número de jogadores, Caído/Costurar, fim da Fenda e rank para todos, loot sorteado pelo servidor com conferência de plausibilidade | |
+| 2.2b | inimigos e chefe simulados pelo líder: cópias nos outros, acertos repassados ao líder, alvo substituto na IA, projéteis e áreas marcadas como eventos, mortes repassadas | feito (0.12.0) |
+| 2.2c | escala por número de jogadores, Caído/Costurar, loot sorteado pelo servidor com conferência de plausibilidade (o fim da Fenda para todos já entrou na 2.2b) | próximo |
 | 2.3 | Dificuldade do grupo e Fio de Elo | |
 | 2.4 | Portais da história em grupo (na etapa, Eco, Antes), escolhas pessoais, Reflexo e Hidra em grupo, Marca do Tear | |
 | 2.5 | Nível de item visível e teto de NI no correio; correio com Centelhas e bloqueio | |

@@ -27,6 +27,7 @@
     "ui/ui.js",
     "render/render.js",
     "net/remote.js",
+    "net/coop.js",
     "core/loop.js"
   ]
 }

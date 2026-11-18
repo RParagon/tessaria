@@ -13,10 +13,11 @@ function spawnEnemy(type, x, z, delay = 0) {
   return e;
 }
 function hurtEnemy(e, dmg, dx, dz, crit, kbm = 1) {
+  if (e.proxy) return coopHitEnemy(e, dmg, dx, dz, crit, kbm);   // co-op: cópia; o acerto vai para o anfitrião
   if ((e.fade || 0) > .6) return;
   dmg = Math.round(dmg * (e.elite && e.elite.aff.includes('blind') ? .6 : 1));
   if (e.shieldT > 0) { dmg = Math.max(1, Math.round(dmg * .2)); if (Math.random() < .4) popNum(e.x, 2.2, e.z, 'ESCUDO', 'info'); }
-  e.hp -= dmg; e.flash = 1; e.hitT = .18; lifeSteal(dmg); if (crit) hitStop(.045);
+  e.hp -= dmg; e.flash = 1; e.hitT = .18; if (!COOP.remoteHit) { lifeSteal(dmg); if (crit) hitStop(.045); }
   if (e.thief && e.hp > 0) dropGold(e.x, e.z, 2);
   const l = Math.hypot(dx, dz) || 1, kb = (e.type === 'beetle' ? 2 : 6) * kbm; e.kx += dx / l * kb; e.kz += dz / l * kb;
   popNum(e.x, 1.6 * e.scale + (e.type === 'bat' ? 1 : 0), e.z, crit ? dmg + '!' : '' + dmg, crit ? 'crit' : '');
@@ -26,7 +27,7 @@ function hurtEnemy(e, dmg, dx, dz, crit, kbm = 1) {
     dropGold(e.x, e.z, e.def.gold + Math.floor(rr(0, 3)));
     if (Math.random() < .07) pickups.push({ kind: 'heart', x: e.x, y: .5, z: e.z, vx: 0, vy: 3, vz: 0, t: 0 });
     if (Math.random() < .08 * stats().itemFind) dropItem(e.x, e.z, rollRar(G.rift && G.rift.L >= 4 ? 1 : 0));
-    onEnemyKilled(e);
+    onEnemyKilled(e); coopKilled(e);
   }
 }
 function dropGold(x, z, n) { for (let i = 0; i < n; i++) { const a = rr(0, 6.28), s = rr(1, 3); pickups.push({ kind: 'gold', x, y: .8, z, vx: Math.cos(a) * s, vy: rr(3, 5), vz: Math.sin(a) * s, t: 0, v: 1 }); } }

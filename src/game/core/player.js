@@ -219,6 +219,7 @@ function drinkPotion() {
   for (let i = 0; i < 30; i++) spawn({ x: P.x + rr(-.5, .5), y: rr(0, 1.5), z: P.z + rr(-.5, .5), vy: rr(1, 2), life: rr(.5, .9), s0: .1, s1: .02, b0: 1, b1: .2, mat: 31 });
 }
 function hurtPlayer(dmg, sx, sz, kb = 7) {
+  if (P && P.remote) return coopHurtRemote(dmg, sx, sz, kb);   // co-op: alvo substituto (companheiro)
   if (!P || P.dieT >= 0 || P.iframe > 0 || P.dashT > 0 || G.mode !== 'play') return false;
   dmg = Math.max(1, Math.round(dmg * monsterScale().dmg * (1 - stats().dr)));
   if (P.shield > 0) { const a = Math.min(P.shield, dmg); P.shield -= a; dmg -= a; if (dmg <= 0) { P.iframe = .35; popNum(P.x, 2.2, P.z, 'BLOQUEADO', 'info'); return true; } }
