@@ -142,9 +142,10 @@ test('personagem em destaque: zoom da câmera, espelho com poses e capa que esvo
   expect(await ev('JSON.parse(localStorage.getItem(SKEY + "-set")).zoom')).toBeGreaterThan(0);
   // capa em dois gomos: ossos extras que balançam ao andar
   await ev('G.char.cape = true; rebuildPlayerModel()');
-  expect(await ev('playerModel.bones.length')).toBe(12);
+  expect(await ev('playerModel.bones.length')).toBe(16);   // 14 do esqueleto articulado + 2 da capa
   await page.keyboard.down('d'); await page.waitForTimeout(700);
-  expect(await ev('P.anim[10].rx')).toBeGreaterThan(.12);
+  expect(await ev('P.anim[14].rx')).toBeGreaterThan(.12);
+  expect(await ev('P.anim[12].rx + P.anim[13].rx')).toBeGreaterThan(.2);   // joelhos dobram ao andar
   await page.keyboard.up('d');
   // espelho da bolsa: barra de poses e aproximação
   await page.keyboard.press('i');

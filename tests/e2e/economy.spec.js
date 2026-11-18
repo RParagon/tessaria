@@ -18,7 +18,7 @@ test('casa: comprar, mobiliar, guardar no baú e bônus aplicados', async ({ pag
   await T(page, () => __T.interact());
   for (let i = 0; i < 12; i++) { const b = await page.$('#hmList button.gold'); if (!b) break; await b.click(); await page.waitForTimeout(200); }
   const f = await T(page, () => __T.H().f);
-  expect(Object.keys(f).length).toBe(8);
+  expect(Object.keys(f).length).toBe(9);
   const st = await T(page, () => { const s = __T.stats(); return { gold: s.gold, find: s.itemFind, pots: s.maxPot }; });
   expect(st.gold).toBeCloseTo(1.05, 2);
   expect(st.find).toBeCloseTo(1.1, 2);
@@ -61,4 +61,31 @@ test('correio: código viaja entre jogadores, não reabre e rejeita adulteraçã
   const got = await page2.evaluate(c => { const it = __T.readCode(c); return it && { cls: it.cls, slot: it.slot }; }, code);
   expect(got).toEqual({ cls: 'arco', slot: 'weapon' });
   await page2.close();
+});
+
+test('guarda-roupa: móvel da casa troca o visual e vende estilos raros uma vez só', async ({ page }) => {
+  const errors = await newGame(page);
+  await T(page, () => { const s = __T.G.save; s.gold = 5000; __T.H().owned = true; __T.H().f.guarda = true; });
+  await travel(page, 'home');
+  await T(page, () => { __T.P.x = 24.2; __T.P.z = 8.6; });
+  await page.waitForTimeout(300);
+  expect(await T(page, () => __T.nearInter && __T.nearInter.kind)).toBe('wardrobe');
+  await T(page, () => __T.interact());
+  await expect(page.locator('#cTitle')).toHaveText('Guarda-Roupa');
+  await expect(page.locator('#cClsF')).toBeHidden();
+  // cancelar desfaz a troca
+  await page.locator('#cBeard button', { hasText: 'Barba' }).click();
+  await page.click('#cBack');
+  expect(await T(page, () => [__T.G.mode, __T.G.char.beard])).toEqual(['play', 'nenhuma']);
+  // estilo raro: compra, veste e fica no save
+  await T(page, () => __T.interact());
+  const spent0 = await T(page, () => __T.G.save.spent || 0);   // conta pelo total gasto (um feito pode dar Centelhas no meio)
+  await page.locator('#cAcc button', { hasText: 'Cartola' }).click();
+  expect(await T(page, () => __T.G.save.spent)).toBe(spent0 + 2000);
+  await page.locator('#cAcc button', { hasText: 'Nenhum' }).click();
+  await page.locator('#cAcc button', { hasText: 'Cartola' }).click();   // já comprada: não cobra de novo
+  expect(await T(page, () => __T.G.save.spent)).toBe(spent0 + 2000);
+  await page.click('#cGo');
+  expect(await T(page, () => [__T.G.mode, __T.G.save.char.acc, __T.G.save.cos])).toEqual(['play', 'cartola', ['cartola']]);
+  expect(errors).toEqual([]);
 });

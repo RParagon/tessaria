@@ -217,7 +217,9 @@ export function mountOnlineUI(net: Net) {
   const chatBtn = h('button', { class: 'px net-chatbtn', hidden: true, 'aria-label': 'Abrir o chat', onclick: () => openChat(), text: 'Chat' });
   chat.append(log, emotes, input);
   const hud = document.querySelector('#hud') || document.body;
-  hud.append(chat, chatBtn); (document.querySelector('.hud-l') || hud).append(chip);
+  // Chat e Amigos lado a lado numa fileira (antes, Amigos tinha posição fixa e cobria o Chat)
+  const btnRow = h('div', { class: 'net-btns' });
+  hud.append(chat, btnRow); btnRow.append(chatBtn); (document.querySelector('.hud-l') || hud).append(chip);
 
   const playing = () => { const g = game(); return !!(g && (g.mode === 'play' || g.mode === 'dialog')); };
   const inHub = () => { const g = game(); return !!(g && g.region === 'hub' && playing() && net.inRoom); };
@@ -254,7 +256,8 @@ export function mountOnlineUI(net: Net) {
   // ---------- amigos e grupo no HUD ----------
   const friendsBtn = h('button', { class: 'px net-friendsbtn', hidden: true, 'aria-label': 'Amigos', onclick: () => { game()?.sfx('ui'); openModal('amigos'); }, text: 'Amigos' });
   const partyBox = h('div', { class: 'net-party', hidden: true, 'aria-label': 'Grupo' });
-  hud.append(friendsBtn, partyBox);
+  // o grupo entra no fluxo da coluna da esquerda, abaixo do objetivo e do status (antes cobria os dois)
+  btnRow.append(friendsBtn); (document.querySelector('.hud-l') || hud).append(partyBox);
   let partyKey = '';
   function renderParty() {
     const pt = net.party, show = !!pt && playing();

@@ -16,9 +16,10 @@ function resize() {
   pxDev = Math.max(1, Math.round((pv ? Math.max(1, G.settings.px * .5) : G.settings.px) * dpr));
   resizeFB(Math.ceil(w / pxDev), Math.ceil(h / pxDev));
 }
+function boneOrder(B) { const o = [], done = new Set(); const vis = i => { if (done.has(i)) return; if (B[i].p >= 0) vis(B[i].p); done.add(i); o.push(i); }; for (let i = 0; i < B.length; i++) vis(i); return o; }
 function computeInst(model, A, M) {
-  const B = model.bones, W = [];
-  for (let i = 0; i < B.length; i++) {
+  const B = model.bones, W = [], ord = model.ord && model.ord.length === B.length ? model.ord : (model.ord = boneOrder(B));
+  for (const i of ord) {
     const b = B[i], a = A[i], p = b.v;
     let L = mMul(mT(p[0] + a.tx, p[1] + a.ty, p[2] + a.tz), mMul(mRY(a.ry), mMul(mRX(a.rx), mRZ(a.rz))));
     if (a.sx !== 1 || a.sy !== 1 || a.sz !== 1) L = mMul(L, mS(a.sx, a.sy, a.sz));
@@ -34,7 +35,7 @@ function drawModel(model, A, x, y, z, yaw, scale, o = {}) {
   const W = computeInst(model, A, M);
   gl.uniformMatrix4fv(U.u_bones, false, boneBuf);
   gl.uniform1f(U.u_sizeMul, scale); gl.uniform1f(U.u_dissolve, o.dis || 0); gl.uniform1f(U.u_dmat, o.dmat ?? 21);
-  gl.uniform1f(U.u_flash, o.flash || 0); gl.uniform1f(U.u_glow, o.glow || 1); gl.uniform1f(U.u_xray, 0);
+  gl.uniform1f(U.u_flash, o.flash || 0); gl.uniform1f(U.u_glow, o.glow || 1); gl.uniform1f(U.u_xray, 0); gl.uniform1f(U.u_soft, o.soft ?? model.soft ?? 0);
   gl.bindVertexArray(model.vao); gl.drawArrays(gl.POINTS, 0, model.count);
   return W;
 }
@@ -85,7 +86,7 @@ function render(dt) {
   gl.uniform4fv(U.u_shadow, shadows);
   // mundo
   if (!preview && WD) {
-    gl.uniformMatrix4fv(U.u_bones, false, IDB); gl.uniform1f(U.u_sizeMul, 1); gl.uniform1f(U.u_dissolve, 0); gl.uniform1f(U.u_flash, 0); gl.uniform1f(U.u_glow, 1); gl.uniform1f(U.u_xray, xray);
+    gl.uniformMatrix4fv(U.u_bones, false, IDB); gl.uniform1f(U.u_sizeMul, 1); gl.uniform1f(U.u_dissolve, 0); gl.uniform1f(U.u_flash, 0); gl.uniform1f(U.u_glow, 1); gl.uniform1f(U.u_xray, xray); gl.uniform1f(U.u_soft, 0);
     const vr = G.mode === 'title' ? 60 : 30 + (boss ? 8 : 0);
     if (WD && WD.lazy) streamWorld(tgt[0], tgt[2], WD.chunks.length ? 2 : 999);   // Ermos: blocos perto da câmera (todos de uma vez ao entrar)
     for (const c of WD.chunks) { if (Math.abs(c.cx - tgt[0]) > vr || Math.abs(c.cz - tgt[2]) > vr * .95) continue; gl.bindVertexArray(c.vao); gl.drawArrays(gl.POINTS, 0, c.count); }
@@ -185,7 +186,7 @@ function render(dt) {
   drawTelegraphs(); drawZones(t);
   for (const it of inter) if (it.kind === 'qitem') { const y = .5 + Math.sin(t * 3 + it.x) * .1; dyn(it.x, y, it.z, 1, it.mat, .3); for (let k = 0; k < 6; k++) { const a = t * 2 + k / 6 * 6.283; dyn(it.x + Math.cos(a) * .35, .06, it.z + Math.sin(a) * .35, .6, it.mat, .12); } if (Math.random() < .4) spawn({ x: it.x + rr(-.1, .1), y: .3, z: it.z + rr(-.1, .1), vy: rr(1, 2), life: .7, s0: .08, s1: .02, b0: 1, b1: .2, mat: it.mat }); }
   if (dynN) {
-    gl.uniformMatrix4fv(U.u_bones, false, IDB); gl.uniform1f(U.u_sizeMul, 1); gl.uniform1f(U.u_dissolve, 0); gl.uniform1f(U.u_flash, 0); gl.uniform1f(U.u_glow, 1); gl.uniform1f(U.u_xray, 0);
+    gl.uniformMatrix4fv(U.u_bones, false, IDB); gl.uniform1f(U.u_sizeMul, 1); gl.uniform1f(U.u_dissolve, 0); gl.uniform1f(U.u_flash, 0); gl.uniform1f(U.u_glow, 1); gl.uniform1f(U.u_xray, 0); gl.uniform1f(U.u_soft, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, dynVAO.buf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, pData, 0, dynN * STRIDE);
     gl.bindVertexArray(dynVAO.vao); gl.drawArrays(gl.POINTS, 0, dynN);
   }

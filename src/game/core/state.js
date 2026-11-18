@@ -53,6 +53,7 @@ const bless = k => (G.buffs[k] || 0) > 0;
 const HOUSE_COST = 1500;
 const HOUSE_F = [
   { id: 'cama', n: 'Cama de Dossel', d: 'Dormir enche a vida e as poções e dá Bem Descansado: +15% de XP por 10 minutos.', c: 600 },
+  { id: 'guarda', n: 'Guarda-Roupa', d: 'Troque o visual quando quiser (cabelo, cores, rosto, acessório, capa) e compre estilos raros.', c: 900 },
   { id: 'lareira', n: 'Lareira de Pedra', d: '+5% de Centelhas em tudo, para sempre.', c: 1200 },
   { id: 'jardim', n: 'Jardim de Ervas', d: '+1 poção máxima.', c: 2000 },
   { id: 'estante', n: 'Estante de Troféus', d: 'Mostra cada guardião vencido. +2% de dano por guardião da história vencido.', c: 2500 },

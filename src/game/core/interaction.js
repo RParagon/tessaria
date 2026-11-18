@@ -136,10 +136,10 @@ function updateTriggers(dt) {
   if (RG.key === 'hub') { const [fx, fz] = HUB.fountain, d = Math.hypot(fx - P.x, fz - P.z); if (d < 3.4 && d < bd) { bd = d; nearInter = { kind: 'shrine', x: fx, z: fz, hub: true }; } }
   const pr = $('#prompt'), tu = $('#tUse');
   if (nearInter && P.dieT < 0) {
-    const HL = { bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar', obelisk: nearInter.kind === 'obelisk' ? ((G.save.obel || []).includes(nearInter.zone) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
+    const HL = { wardrobe: 'Abrir o guarda-roupa', bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar', obelisk: nearInter.kind === 'obelisk' ? ((G.save.obel || []).includes(nearInter.zone) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
     const label = HL[nearInter.kind] || (nearInter.kind === 'appletree' ? 'Deixar a maçã na macieira' : nearInter.kind === 'altar' ? 'Desafiar ' + BOSSDEF[REG[RG.key].boss].name.split(',')[0] + ' de novo · ' + curDiff().n : nearInter.kind === 'npc' ? 'Falar com ' + nearInter.npc.name : nearInter.kind === 'shrine' ? 'Descansar e salvar' : nearInter.kind === 'chest' ? 'Abrir baú' : nearInter.kind === 'portal' ? (nearInter.to === 'hub' ? 'Voltar à Vila Brasa' : 'Entrar: ' + REG[nearInter.to].name) : nearInter.kind === 'dragon' ? 'Falar com Varkhaz' : nearInter.kind === 'board' ? 'Ver contratos' : nearInter.kind === 'riftportal' ? 'Entrar na Fenda do Tear' : 'Usar');
     pr.innerHTML = (G.touch ? '' : '<kbd>E</kbd>') + label; pr.hidden = false; tu.hidden = !G.touch;
-    if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
+    if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' || k === 'wardrobe' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
   } else { pr.hidden = true; tu.hidden = true; }
   if (!coopIsGuest()) for (const rm of RG.rooms) {   // co-op: só o anfitrião cria inimigos; a sala acorda com qualquer jogador perto
     if (rm.en && !rm.spawned && coopNear(rm.wx, rm.wz, ((rm.r || Math.max(rm.w, rm.h)) + 3) * T)) {
@@ -181,6 +181,7 @@ function interact() {
   } else if (it.kind === 'house') { if (H().owned) travel('home'); else openMenu('home');
   } else if (it.kind === 'catalog') { openMenu('home');
   } else if (it.kind === 'stash') { openMenu('stash');
+  } else if (it.kind === 'wardrobe') { openWardrobe();
   } else if (it.kind === 'mail') { openMenu('mail');
   } else if (it.kind === 'bed') {
     fadeTo(1, .35, () => { P.hp = P.maxHp; G.save.potions = stats().maxPot; G.buffs.descanso = 600; writeSave(); fadeTo(0, .9); toast('BEM DESCANSADO', true, '+15% de XP por 10 minutos · vida e poções cheias', '#ffd27a'); sfx('heal'); });
@@ -299,6 +300,7 @@ function setupHome() {
   inter.push({ kind: 'catalog', x: 12.6, z: 8.2, r: 1.6 });
   inter.push({ kind: 'mail', x: 23.6, z: 8.3, r: 1.6 });
   if (f.cama) inter.push({ kind: 'bed', x: 22.4, z: 11.4, r: 1.6 });
+  if (f.guarda) inter.push({ kind: 'wardrobe', x: 24.5, z: 8.4, r: 1.5 });
   if (f.estatua) { const m = makeModel('statue:' + JSON.stringify(G.char), () => { const r = buildHumanoid({ ...G.char, seed: 5 }, 0); for (let i = 0; i < r.data.length; i += STRIDE) { const m0 = r.data[i + 6]; r.data[i + 6] = (m0 === 6 || m0 === 7 || m0 >= 120) ? 26 : 25; } return r; }); inter.push({ kind: 'statue', x: 9.6, z: 11.6, r: .01, y: .55, scale: 1.3, model: m, anim: newAnim(m), yaw: .6 }); }
 }
 function homeRebuild() { if (RG && RG.key === 'home') { if (WORLDS.home) WORLDS.home.chunks.forEach(freeVAO); WORLDS.home = buildWorld('home', RG); WD = WORLDS.home; emitAcc = {}; setupHome(); } }

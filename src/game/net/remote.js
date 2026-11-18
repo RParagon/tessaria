@@ -83,7 +83,7 @@ function lookKey(l) { return [l.cls, l.body, l.skin, l.hair, l.hairCol, l.outfit
 function buildRemoteModel(slot, look) {
   const cfg = { ...look, seed: 11 + slot, armor: look.armor ?? undefined, charm: look.charm ?? undefined };
   const rows = charRows(cfg); for (let i = 0; i < 8; i++) REMOTE_ROWS[RBASE + slot * 8 + i] = rows[i];
-  const r = buildHumanoid(cfg, RBASE + slot * 8), v = makeVAO(r.data);
+  const r = buildHumanoid(cfg, RBASE + slot * 8, true), v = makeVAO(r.data);   // outros jogadores também em alta definição
   return Object.assign(r, { vao: v.vao, buf: v.buf, count: v.count, data: null });
 }
 
@@ -107,9 +107,9 @@ function assignRemoteSlots(list) {
 /** Ajustes de pose dos emotes, aplicados depois de poseHuman (jogador local e remotos). */
 function applyEmote(A, em, t) {
   if (em === 'acenar') { A[5].rz = -2.5 + .35 * Math.sin(t * 9); A[5].rx = -.2; A[3].rz = .08 * Math.sin(t * 4); }
-  else if (em === 'comemorar') { const k = .5 + .5 * Math.sin(t * 8); A[4].rx = A[5].rx = -2.5 - .3 * k; A[4].rz = .35; A[5].rz = -.35; A[1].ty = .12 * k; A[3].rx = -.25; }
-  else if (em === 'dancar') { A[1].ry = Math.sin(t * 5) * .6; A[1].ty = Math.abs(Math.sin(t * 9)) * .12; A[4].rz = 1.2 + Math.sin(t * 9) * .6; A[5].rz = -1.2 + Math.sin(t * 9 + 1.5) * .6; A[6].rx = Math.sin(t * 9) * .4; A[7].rx = -Math.sin(t * 9) * .4; }
-  else if (em === 'sentar') { A[1].ty = -.48; A[6].rx = A[7].rx = -1.45; A[4].rx = A[5].rx = -.25; A[2].rx = .1; }
+  else if (em === 'comemorar') { const k = .5 + .5 * Math.sin(t * 8); A[4].rx = A[5].rx = -2.5 - .3 * k; A[4].rz = .35; A[5].rz = -.35; A[1].ty = .12 * k; A[3].rx = -.25; if (A[13]) { A[10].rx = A[11].rx = -.25 - .3 * (1 - k); A[12].rx = A[13].rx = .35 * (1 - k); } }
+  else if (em === 'dancar') { A[1].ry = Math.sin(t * 5) * .6; A[1].ty = Math.abs(Math.sin(t * 9)) * .12; A[4].rz = 1.2 + Math.sin(t * 9) * .6; A[5].rz = -1.2 + Math.sin(t * 9 + 1.5) * .6; A[6].rx = Math.sin(t * 9) * .4; A[7].rx = -Math.sin(t * 9) * .4; if (A[13]) { A[10].rx = -.9 - .4 * Math.sin(t * 9); A[11].rx = -.9 + .4 * Math.sin(t * 9); A[12].rx = .2 + .5 * Math.max(0, -Math.sin(t * 9)); A[13].rx = .2 + .5 * Math.max(0, Math.sin(t * 9)); } }
+  else if (em === 'sentar') { A[1].ty = -.48; A[6].rx = A[7].rx = -1.45; A[4].rx = A[5].rx = -.25; A[2].rx = .1; if (A[13]) { A[12].rx = A[13].rx = 1.45; A[10].rx = A[11].rx = -.6; } }
 }
 // Duração de cada ação, igual à do jogador local (core/player.js).
 const REMOTE_ACT_DUR = { swing: .3, cast: .3, shoot: .25, volley: .25, spin: .5, nova: .45, dash: .18 };
@@ -211,7 +211,7 @@ function clearRemoteMarks() { for (const el of rmarks.values()) el.remove(); rma
 function updateRemoteMarks() {
   const n = NETON(), box = $('#marks');
   const show = n && RG && n.room && P && (G.mode === 'play' || G.mode === 'dialog');
-  const alive = new Set();
+  const alive = new Set(), placed = [];
   if (show) for (const r of n.players()) {
     if (r.slot === undefined || r.x === undefined || Math.hypot(r.x - P.x, r.z - P.z) > 18) continue;
     const sc = project(r.x, 2.35, r.z); if (!sc) continue;
@@ -224,9 +224,13 @@ function updateRemoteMarks() {
       nmEl.addEventListener('pointerdown', e => e.stopPropagation());
       nmEl.addEventListener('click', e => { e.stopPropagation(); document.dispatchEvent(new CustomEvent('tess:player', { detail: { name: nmEl.textContent, x: e.clientX, y: e.clientY } })); });
     }
-    el.style.left = sc[0] + 'px'; el.style.top = sc[1] + 'px';
     const nm = el.querySelector('.rn'), tt = el.querySelector('.rt'), bub = el.querySelector('.bub');
-    if (nm.textContent !== r.name) nm.textContent = r.name;
+    if (nm.textContent !== r.name) { nm.textContent = r.name; el._w = 0; }
+    // jogadores lado a lado: o nome de quem chegou depois sobe um degrau, em vez de encavalar
+    if (!el._w) el._w = el.offsetWidth || 90;
+    let y = sc[1]; for (let k = 0; k < 4; k++) { const hit = placed.find(q => Math.abs(q.x - sc[0]) < (q.w + el._w) / 2 + 4 && Math.abs(q.y - y) < 22); if (!hit) break; y = hit.y - 22; }
+    placed.push({ x: sc[0], y, w: el._w });
+    el.style.left = sc[0] + 'px'; el.style.top = y + 'px';
     const ally = !!(n.party && n.party.members.some(m => m.name === r.name));
     if (el.classList.contains('ally') !== ally) el.classList.toggle('ally', ally);
     { const want = r.down ? 'CAÍDO · chegue perto para costurar' : r.title; if (tt.textContent !== want) tt.textContent = want; }

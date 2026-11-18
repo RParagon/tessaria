@@ -62,13 +62,15 @@ void main(){
 const FS_SPLAT = `#version 300 es
 precision highp float;
 in float v_mat; in float v_shade; in float v_flash; in float v_depth;
+uniform float u_soft;
 out vec4 o;
 void main(){
   vec2 c=gl_PointCoord*2.0-1.0;
   float r2=dot(c,c);
   if(r2>1.0) discard;
   float g=exp(-r2*2.5);
-  o=vec4(v_mat/255.0, clamp(v_shade+(g-0.45)*0.14,0.0,1.0), v_flash, v_depth);
+  // u_soft: sem o brilho no centro de cada splat (que dá o aspecto de bolinhas); usado nos humanoides
+  o=vec4(v_mat/255.0, clamp(v_shade+(g-0.45)*0.14*(1.0-u_soft),0.0,1.0), v_flash, v_depth);
 }`;
 const VS_POST = `#version 300 es
 void main(){ vec2 p=vec2((gl_VertexID<<1)&2, gl_VertexID&2); gl_Position=vec4(p*2.0-1.0,0.0,1.0); }`;

@@ -5,8 +5,8 @@
 let playerModel = null;
 function rebuildPlayerModel() {
   if (playerModel) freeVAO(playerModel);
-  const eq = G.mode !== 'create' && G.save && G.save.eq ? G.save.eq : {};
-  const r = buildHumanoid({ ...G.char, seed: 7, armor: eq.armor ? eq.armor.rar : undefined, charm: eq.charm ? eq.charm.rar : undefined }, 0), v = makeVAO(r.data);
+  const eq = (G.mode !== 'create' || G.wardrobe) && G.save && G.save.eq ? G.save.eq : {};   // no guarda-roupa, com o equipamento
+  const r = buildHumanoid({ ...G.char, seed: 7, armor: eq.armor ? eq.armor.rar : undefined, charm: eq.charm ? eq.charm.rar : undefined }, 0, true), v = makeVAO(r.data);   // o seu herói em alta definição
   playerModel = Object.assign(r, { vao: v.vao, buf: v.buf, count: v.count, data: null });
   if (P) P.anim = newAnim(playerModel);
 }

@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.20.0 · Herói articulado e Guarda-Roupa
+- **Cotovelos e joelhos:** o herói, os outros jogadores e os moradores ganharam antebraços e canelas com articulação. Os braços dobram ao andar, no golpe, no tiro e no lançamento; os joelhos dobram ao correr, na esquiva, ao aterrissar e para sentar de verdade
+- **Mão no cajado:** o Arcano segura o cajado com a mão fechada (dedos em volta do cabo) e o cotovelo dobrado; a Lâmina fecha a mão no cabo da espada. O escudo acompanha o antebraço
+- **Fim do aspecto de "bolinhas":** o seu herói e os outros jogadores são desenhados com splats menores e mais densos, sem o brilho no centro de cada um, então a superfície fica lisa. Pernas e quadril não vazam mais pelo manto do Arcano
+- **Olhos refeitos:** sem o branco; íris brilhante na cor escolhida, pupila escura e um brilhinho
+- **Guarda-Roupa** (mobília da casa, 900 ✦): troque o visual quando quiser no mesmo espelho da criação, com o equipamento vestido. "Cancelar" desfaz, "Vestir" salva e os outros jogadores veem na hora
+- **Estilos raros** (só no Guarda-Roupa, comprados uma vez): Flor no cabelo, Óculos redondos, Orelhas de elfo, Auréola, Cartola e o cabelo Tranças
+- **Online mais arrumado:** o painel do grupo fica abaixo do objetivo e do status (antes cobria os dois); Chat e Amigos ficam lado a lado (o Amigos cobria o Chat); o balão de fala usa a fonte de leitura e fica menor no celular; nomes de jogadores lado a lado não se encavalam mais
+
 ## 0.19.0 · Herói em destaque
 - **Personagem mais nítido:** o herói (e os outros jogadores e moradores) tem quase o dobro de splats, e o espelho da bolsa e da criação desenha na metade do tamanho de pixel, com o dobro de definição
 - **Rosto de verdade:** olhos com branco, íris na cor do brilho e pupila, sobrancelhas na cor do cabelo e boca. Corrigido um buraco na testa que a touca de cabelo, o capuz e o elmo abriam no rosto

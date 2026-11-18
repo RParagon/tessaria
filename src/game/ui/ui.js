@@ -329,10 +329,17 @@ function optRow(id, items, key, isSwatch) {
   const box = $(id); box.innerHTML = '';
   items.forEach((it, i) => {
     const b = document.createElement('button');
+    const locked = it.cost && !(G.save && (G.save.cos || []).includes(it.value));
     if (isSwatch) { b.className = 'sw'; b.style.background = it.color; b.title = it.label; b.setAttribute('aria-label', it.label); }
-    else { b.className = 'opt'; b.textContent = it.label; }
+    else { b.className = 'opt' + (it.cost ? ' rare' : ''); b.textContent = locked ? `🔒 ${it.label} · ${it.cost} ✦` : it.label; }
     b.setAttribute('aria-pressed', G.char[key] === it.value);
-    b.onclick = () => { G.char[key] = it.value; sfx('ui'); [...box.children].forEach(c => c.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); scheduleRebuild(); };
+    b.onclick = () => {
+      if (locked) {   // estilo raro: compra uma vez e fica liberado para sempre
+        if (G.save.gold < it.cost) { sfx('ui'); toast('CENTELHAS INSUFICIENTES', false, `${it.label} custa ${it.cost} ✦`); return; }
+        spend(it.cost); (G.save.cos = G.save.cos || []).push(it.value); writeSave(); sfx('lvl'); toast(it.label.toUpperCase(), true, 'estilo raro liberado no guarda-roupa', '#ffbf3d');
+        G.char[key] = it.value; renderCreator(); scheduleRebuild(); return;
+      }
+      G.char[key] = it.value; sfx('ui'); [...box.children].forEach(c => c.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true'); scheduleRebuild(); };
     box.appendChild(b);
   });
 }
@@ -346,19 +353,35 @@ function renderCreator() {
   }
   optRow('#cBody', BODIES.map((b, i) => ({ label: b[0], value: i })), 'body');
   optRow('#cSkin', SKINS.map((s, i) => ({ color: css(hsl2rgb(s[0], s[1], s[2])), label: 'Tom ' + (i + 1), value: i })), 'skin', true);
-  optRow('#cHair', HAIR_STYLES.map(h => ({ label: h[1], value: h[0] })), 'hair');
+  const W = !!G.wardrobe;
+  $('#cTitle').textContent = W ? 'Guarda-Roupa' : 'Crie sua Tecelagem'; $('#cNameF').hidden = W; $('#cClsF').hidden = W; $('#cRand').hidden = W; $('#cWardSub').hidden = !W;
+  if (W) $('#cWardSub').innerHTML = `Você tem <b style="color:var(--gold)">${G.save.gold}</b> Centelhas. Os estilos com 🔒 são raros: compre uma vez e use quando quiser.`;
+  $('#cGo').textContent = W ? 'Vestir' : 'Começar a jornada'; $('#cBack').textContent = W ? 'Cancelar' : 'Voltar';
+  optRow('#cHair', HAIR_STYLES.map(h => ({ label: h[1], value: h[0] })).concat(W ? RARE_HAIR.map(h => ({ label: h[1], value: h[0], cost: h[2] })) : []), 'hair');
   optRow('#cHairCol', HAIRS.map((s, i) => ({ color: css(hsl2rgb(s[0], s[1], s[2])), label: 'Cor ' + (i + 1), value: i })), 'hairCol', true);
   optRow('#cOutfit', OUTFITS.map((s, i) => ({ color: css(hsl2rgb(s[0], s[1], s[2])), label: 'Roupa ' + (i + 1), value: i })), 'outfit', true);
   optRow('#cTrim', TRIMS.map((s, i) => ({ color: css(hsl2rgb(s[0], s[1], s[2])), label: 'Detalhe ' + (i + 1), value: i })), 'trim', true);
   optRow('#cGlow', GLOWS.map((g2, i) => ({ color: css(g2[1][2]), label: g2[0], value: i })), 'glow', true);
-  optRow('#cAcc', ACCS.map(a => ({ label: a[1], value: a[0] })), 'acc');
+  optRow('#cAcc', ACCS.map(a => ({ label: a[1], value: a[0] })).concat(W ? RARE_ACCS.map(a => ({ label: a[1], value: a[0], cost: a[2] })) : []), 'acc');
   optRow('#cBeard', BEARDS.map(b => ({ label: b[1], value: b[0] })), 'beard');
   $('#cCape').checked = G.char.cape;
 }
 let rebuildTimer = 0;
 function scheduleRebuild() { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(() => { rebuildPlayerModel(); uploadPalette(RG ? RG.key : 'hub'); }, 50); }
+/** Guarda-Roupa da casa: o mesmo espelho da criação, sem nome e classe, com os estilos raros à venda. */
+function openWardrobe() {
+  G.wardrobe = { prev: { ...G.char } }; G.mode = 'create'; G.pvPose = null; $('#prompt').hidden = true; $('#tUse').hidden = true;
+  renderCreator(); rebuildPlayerModel(); uploadPalette(RG.key); getModel('pedestal');
+  showOnly('#create'); refreshHudVis(); sfx('ui');
+}
+function closeWardrobe(keep) {
+  if (!keep) G.char = { ...G.wardrobe.prev };
+  else { G.save.char = { ...G.char }; writeSave(); toast('VISUAL NOVO', true, 'os outros jogadores já veem', '#ffbf3d'); sfx('lvl'); }
+  G.wardrobe = null; G.mode = 'play'; P.act = null; P.actT = 0; showOnly(null); rebuildPlayerModel(); uploadPalette(RG.key); refreshHudVis(); netLook();
+}
 function openCreator() {
-  G.mode = 'create'; if (!G.char.name) G.char.name = pick(NAMES); G.char.beard = G.char.beard || 'nenhuma';
+  G.wardrobe = null; G.mode = 'create'; if (!G.char.name) G.char.name = pick(NAMES); G.char.beard = G.char.beard || 'nenhuma';
+  if (!ACCS.some(a => a[0] === G.char.acc)) G.char.acc = 'nenhum'; if (!HAIR_STYLES.some(h => h[0] === G.char.hair)) G.char.hair = 'curto';   // estilos raros não passam para um herói novo
   renderCreator(); rebuildPlayerModel(); uploadPalette('hub'); getModel('pedestal');
   makePlayer(0, 0); showOnly('#create'); refreshHudVis();
 }
@@ -369,8 +392,9 @@ $('#cRand').onclick = () => {
   Object.assign(G.char, { cls: pick(Object.keys(CLS)), body: Math.floor(rr(0, 3)), skin: Math.floor(rr(0, SKINS.length)), hair: pick(HAIR_STYLES)[0], hairCol: Math.floor(rr(0, HAIRS.length)), outfit: Math.floor(rr(0, OUTFITS.length)), trim: Math.floor(rr(0, TRIMS.length)), glow: Math.floor(rr(0, GLOWS.length)), acc: pick(ACCS)[0], cape: Math.random() < .6, name: pick(NAMES), beard: Math.random() < .6 ? 'nenhuma' : pick(BEARDS)[0] });
   renderCreator(); scheduleRebuild();
 };
-$('#cBack').onclick = () => { sfx('ui'); toTitle(); };
+$('#cBack').onclick = () => { sfx('ui'); if (G.wardrobe) return closeWardrobe(false); toTitle(); };
 $('#cGo').onclick = () => {
+  if (G.wardrobe) return closeWardrobe(true);
   sfx('ui'); G.char.name = ($('#cName').value.trim() || pick(NAMES)).slice(0, 14);
   G.save = newSave(); writeSave(); P = null; rebuildPlayerModel();
   G.mode = 'story'; G.storyI = 0; showOnly('#story'); $('#storyBox').innerHTML = ''; storyNext();

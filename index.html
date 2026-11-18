@@ -84,9 +84,10 @@
 
   <section id="create" class="screen" hidden>
     <div class="cpanel panel" id="cpanel">
-      <h2>Crie sua Tecelagem</h2>
-      <div class="field"><label for="cName">Nome</label><input id="cName" type="text" maxlength="14" autocomplete="off"></div>
-      <div class="field"><span class="lbl">Classe</span><div class="cls" id="cCls"></div></div>
+      <h2 id="cTitle">Crie sua Tecelagem</h2>
+      <p class="sub" id="cWardSub" hidden></p>
+      <div class="field" id="cNameF"><label for="cName">Nome</label><input id="cName" type="text" maxlength="14" autocomplete="off"></div>
+      <div class="field" id="cClsF"><span class="lbl">Classe</span><div class="cls" id="cCls"></div></div>
       <div class="field"><span class="lbl">Corpo</span><div class="opts" id="cBody"></div></div>
       <div class="field"><span class="lbl">Pele</span><div class="opts" id="cSkin"></div></div>
       <div class="field"><span class="lbl">Cabelo</span><div class="opts" id="cHair"></div></div>

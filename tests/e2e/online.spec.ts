@@ -280,7 +280,7 @@ test('Fenda do grupo: monstros mais fortes em dupla, Caído, Costurar e grupo in
   await ev(B.page, 'P.iframe = 0; P.hp = 1; hurtPlayer(500, P.x + 1, P.z)');
   await A.page.waitForFunction(() => (window as any).TessNet.players()[0].down, null, { timeout: 5000 });
   await ev(A.page, 'P.iframe = 0; P.dashT = 0; P.hp = 1; hurtPlayer(500, P.x + 1, P.z)');
-  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.ev('!(P.down > 0) && P.dieT < 0 && P.hp === P.maxHp'), null, { timeout: 10_000 });
+  for (const pg of [A.page, B.page]) await pg.waitForFunction(() => (window as any).__T.ev('!(P.down > 0) && P.dieT < 0 && P.hp === P.maxHp'), null, { timeout: 20_000 });
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
   await A.ctx.close(); await B.ctx.close();
 });

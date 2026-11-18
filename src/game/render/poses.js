@@ -41,12 +41,13 @@ function poseHuman(A, e, t) {
   else if (a === 'talk') { A[5].rx = -.5 - .25 * Math.sin(t * 5); A[3].ry = .1 * Math.sin(t * 1.7); A[3].rx = .05 * Math.sin(t * 3); A[4].rx = -.15 - .1 * Math.sin(t * 3.3); }
   else if (a === 'wave') { A[5].rz = -2.5 + .35 * Math.sin(t * 9); A[5].rx = -.2; A[3].rz = .08 * Math.sin(t * 4); }
   if (e.landT > 0) { A[1].ty -= .1 * e.landT / .15; A[2].rx += .2 * e.landT / .15; }
+  if (A[13]) poseJoints(A, e, t, m, w, sw, cw, br, stc, a, at, cls, ranged);
   if (cls === 'arcano') { const th = a === 'cast' ? Math.sin(clamp(at / .26, 0, 1) * Math.PI) : 0; poseStaff(A, .06 + .3 * th, -.1 * (1 - stc)); }
-  if (cls === 'arco' && A[9]) { A[9].rx = -A[4].rx - A[2].rx; A[9].rz = -A[4].rz; }
-  if (A[11]) {   // capa: esvoaça para trás ao andar e na esquiva; parado, só respira
+  if (cls === 'arco' && A[9]) { A[9].rx = -A[4].rx - A[2].rx - (A[10] ? A[10].rx : 0); A[9].rz = -A[4].rz; }
+  if (A[15]) {   // capa: esvoaça para trás ao andar e na esquiva; parado, só respira
     const fl = .45 * m + (a === 'dash' ? .7 : 0) + (a === 'spin' ? .5 : 0) + br * .025 * (1 - m) + Math.sin(t * 3.3 + w) * .06 * m;
-    A[10].rx = fl - A[2].rx * .8; A[10].rz = Math.sin(t * 1.7) * .03 + sw * .05 * m;
-    A[11].rx = fl * .55 + Math.sin(t * 2.4 + 1) * (.03 + .08 * m); A[11].rz = Math.sin(t * 2.1) * .04;
+    A[14].rx = fl - A[2].rx * .8; A[14].rz = Math.sin(t * 1.7) * .03 + sw * .05 * m;
+    A[15].rx = fl * .55 + Math.sin(t * 2.4 + 1) * (.03 + .08 * m); A[15].rz = Math.sin(t * 2.1) * .04;
   }
 }
 /* Cajado do Arcano (osso 8, preso à mão direita). O osso desfaz exatamente a rotação do tronco (2) e do braço (5),
@@ -59,8 +60,31 @@ function rot3(a) {
 }
 const mul3 = (a, b) => a.map(r => [0, 1, 2].map(j => r[0] * b[0][j] + r[1] * b[1][j] + r[2] * b[2][j]));
 function poseStaff(A, rx, rz) {
-  const Q = mul3(rot3(A[2]), rot3(A[5])), R = mul3([0, 1, 2].map(i => [Q[0][i], Q[1][i], Q[2][i]]), rot3({ rx, ry: 0, rz }));
+  const Q = A[11] ? mul3(mul3(rot3(A[2]), rot3(A[5])), rot3(A[11])) : mul3(rot3(A[2]), rot3(A[5])), R = mul3([0, 1, 2].map(i => [Q[0][i], Q[1][i], Q[2][i]]), rot3({ rx, ry: 0, rz }));
   A[8].rx = Math.asin(clamp(-R[1][2], -1, 1)); A[8].ry = Math.atan2(R[0][2], R[2][2]); A[8].rz = Math.atan2(R[1][0], R[1][1]);
+}
+/** Cotovelos (10, 11: rx < 0 dobra para a frente) e joelhos (12, 13: rx > 0 dobra para trás). */
+function poseJoints(A, e, t, m, w, sw, cw, br, stc, a, at, cls, ranged) {
+  // andando: o braço que vai à frente dobra mais; parado, um leve dobrar que respira
+  let eL = -.28 - .38 * m * Math.max(0, sw) - .03 * br, eR = -.28 - .38 * m * Math.max(0, -sw) - .03 * br;
+  let kL = .05 + m * (.12 + .95 * Math.max(0, -cw)), kR = .05 + m * (.12 + .95 * Math.max(0, cw));
+  if (ranged && cls === 'arco') { const snap = a === 'shoot' ? Math.sin(clamp(at / .2, 0, 1) * Math.PI) : 0; eL = lerp(eL, -.08, stc); eR = lerp(eR, -.35 - .5 * (1 - snap), stc); }
+  else if (ranged && cls === 'arcano') { const th = a === 'cast' ? Math.sin(clamp(at / .26, 0, 1) * Math.PI) : 0; eR = lerp(eR, -.7 + .45 * th, stc); eL = lerp(eL, -.45 + .3 * th, stc); }
+  else if (cls === 'arcano') eR = Math.min(eR, -.55);   // segura o cajado com o cotovelo dobrado, a mão à frente do corpo
+  if (a === 'swing') {
+    const k = clamp(at / .3, 0, 1), ant = sm(0, .22, k) * (1 - sm(.22, .42, k)), str = sm(.2, .45, k), rec = sm(.6, 1, k);
+    eR = lerp(lerp(-.9, -1.2, ant), -.08, str) * (1 - rec) + eR * rec; eL = -.6;
+    if ((e.combo || 0) === 2) { kL += .45 * str * (1 - rec); kR += .45 * str * (1 - rec); }
+  } else if (a === 'cast' && !ranged) { const sv = Math.sin(clamp(at / .25, 0, 1) * Math.PI); eR = lerp(eR, -.15, sv); }
+  else if (a === 'shoot' && !ranged) eL = eR = -.12;
+  else if (a === 'spin') { eL = eR = -.15; kL += .3; kR += .3; }
+  else if (a === 'nova') { const sv = Math.sin(clamp(at / .45, 0, 1) * Math.PI); eL = lerp(eL, -.05, sv); eR = lerp(eR, -.05, sv); kL += .25 * (1 - sv); kR += .25 * (1 - sv); }
+  else if (a === 'dash') { eL = eR = -.8; kL += .55; kR += .3; }
+  else if (a === 'hurt') { const sv = 1 - clamp(at / .3, 0, 1); eL -= .4 * sv; eR -= .4 * sv; }
+  else if (a === 'talk') eR = -.7 - .3 * Math.sin(t * 5);
+  else if (a === 'wave') eR = -.5 - .35 * Math.sin(t * 9 + 1);
+  if (e.landT > 0) { kL += .5 * e.landT / .15; kR += .5 * e.landT / .15; }
+  A[10].rx = eL; A[11].rx = eR; A[12].rx = kL; A[13].rx = kR;
 }
 function poseEnemy(e, t) {
   const A = e.anim; resetAnim(A);

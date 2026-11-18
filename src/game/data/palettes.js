@@ -38,6 +38,9 @@ const TRIMS = [[44, .7, .55], [220, .08, .75], [28, .45, .36], [250, .15, .15], 
 const GLOWS = [['Âmbar', EYEY], ['Ciano', CYANE], ['Violeta', VIOLET], ['Verde', GHOST], ['Rubi', REDGEM]];
 const HAIR_STYLES = [['curto', 'Curto'], ['longo', 'Longo'], ['rabo', 'Rabo'], ['coque', 'Coque'], ['moicano', 'Moicano'], ['careca', 'Raspado']];
 const ACCS = [['nenhum', 'Nenhum'], ['capuz', 'Capuz'], ['chapeu', 'Chapéu'], ['pena', 'Chapéu de pena'], ['elmo', 'Elmo'], ['bandana', 'Bandana'], ['chifres', 'Chifres'], ['coroa', 'Coroa de folhas'], ['cachecol', 'Cachecol'], ['tapa', 'Tapa-olho']];
+// estilos raros: só no Guarda-Roupa da casa, comprados uma vez com Centelhas (ficam em save.cos)
+const RARE_ACCS = [['flor', 'Flor no cabelo', 500], ['oculos', 'Óculos redondos', 600], ['orelhas', 'Orelhas de elfo', 800], ['aureola', 'Auréola', 1500], ['cartola', 'Cartola', 2000]];
+const RARE_HAIR = [['trancas', 'Tranças', 1000]];
 const BEARDS = [['nenhuma', 'Liso'], ['barba', 'Barba'], ['bigode', 'Bigode'], ['cavanhaque', 'Cavanhaque']];
 const BODIES = [['Esguio'], ['Médio'], ['Robusto']];
 function charRows(c) {

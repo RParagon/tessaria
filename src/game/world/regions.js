@@ -553,6 +553,12 @@ function buildWorld(key, G) {
     if (f.jardim) for (const z of [14, 16, 18]) { S.box([25.2, .32, z], [.32, .32, .32], 22, 0, { faces: 'tnsew' }); S.ell([25.2, .85, z], [.45, .4, .45], 13, 0); for (let k = 0; k < 4; k++) S.ell([25.2 + Math.cos(k * 1.7) * .35, .95 + (k % 2) * .2, z + Math.sin(k * 1.7) * .35], .08, [16, 17, 27, 28][k], 0, { min: 6 }); }
     if (f.mapa) { S.box([19.4, 2.1, 6.07], [1.3, .75, .03], 23, 0, { faces: 's' }); for (let k = 0; k < 5; k++) S.box([18.4 + k * .5, 2.0 + Math.sin(k) * .3, 6.1], [.2, .02, .01], 12, 0, { faces: 's' }); for (const [mx, my, mm] of [[18.5, 2.5, 31], [19.2, 1.8, 123], [20, 2.4, 14], [20.4, 1.7, 121]]) S.ell([mx, my, 6.12], .06, mm, 0, { min: 6 }); }
     if (f.altar) { S.box([21.5, .45, 16.8], [.4, .45, .4], 28, 0, { faces: 'tnsew' }); S.cone([21.5, .9, 16.8], [21.5, 2.1, 16.8], .3, 27, 0); emitters.push({ t: 'crystal', x: 21.5, y: 2.2, z: 16.8 }); }
+    if (f.guarda) {   // guarda-roupa na parede direita, entre o correio e a cama, portas viradas para a sala
+      const gx = 25.5, gz = 8.1;
+      S.box([gx, 1.15, gz], [.38, 1.15, .8], 24, 0, { faces: 'tnsew' }); S.box([gx, 2.36, gz], [.46, .07, .9], 19, 0, { faces: 'tnsew' }); S.box([gx, .06, gz], [.42, .06, .85], 19, 0, { faces: 'tnsew' });
+      for (const dz of [-.39, .39]) { S.box([gx - .39, 1.2, gz + dz], [.02, .95, .35], p => Math.abs(p[1] - 1.2) > .8 || Math.abs(p[2] - gz - dz) > .3 ? 19 : 23, 0, { faces: 'w' }); S.ell([gx - .43, 1.2, gz + dz * .15], .04, 14, 0, { min: 8 }); }
+      S.box([gx, 2.5, gz], [.12, .07, .12], 14, 0, { faces: 'tnsew' });
+    }
     if (f.estatua) { S.box([9.6, .25, 11.6], [.75, .25, .75], 28, 0, { faces: 'tnsew' }); S.box([9.6, .52, 11.6], [.65, .03, .65], 25, 0, { faces: 'tnsew' }); }
   }
   if (key === 'hub') {
