@@ -63,15 +63,15 @@ function buildHumanoid(c, base, hd) {
   S.tube([[0, 1.42, 0, .08, 3], [0, 1.56, 0, .08, 3]], 0, { sub: 1, noSolid: true });
   S.ell([0, 1.72, 0], [.25, .26, .24], 0, 3);
   for (const sx of [1, -1]) {
-    { const ex = sx * .088, ey = 1.718;   // olho: íris na cor do brilho com contorno escuro, pupila e um brilhinho (sem o branco)
-      S.ell([ex, ey, .233], [.043, .051, .012], 6, 3, { noSolid: true, noCheck: true, min: 18, dm: 3, size: .8 });   // íris
-      S.ell([ex, ey - .006, .243], [.019, .026, .006], 5, 3, { noSolid: true, noCheck: true, min: 10, dm: 3, size: .7 });   // pupila
-      S.ell([ex - sx * .016, ey + .02, .248], [.007, .007, .003], 4, 3, { noSolid: true, noCheck: true, min: 4, size: .35 }); }   // brilhinho
+    { const ex = sx * .085, ey = 1.712;   // olho chibi: oval escuro, íris na cor do brilho na parte de baixo e um brilho em cima
+      S.ell([ex, ey, .232], [.031, .045, .01], 29, 3, { noSolid: true, noCheck: true, min: 20, dm: 4, size: .6 });   // 29: escuro em todas as paletas
+      S.ell([ex, ey - .017, .239], [.018, .019, .006], 6, 3, { noSolid: true, noCheck: true, min: 10, dm: 4, size: .5, em: .7 });
+      S.ell([ex - sx * .009, ey + .018, .243], [.011, .013, .004], 4, 3, { noSolid: true, noCheck: true, min: 6, size: .4 }); }
     S.ell([sx * .25, 1.71, 0], [.045, .065, .05], 0, 3, { noSolid: true });
   }
-  S.ell([0, 1.66, .24], .03, 0, 3, { noSolid: true, noCheck: true, min: 6 });
-  for (const sx of [1, -1]) S.tube([[sx * .045, 1.785, .232, .014, 3], [sx * .095, 1.795, .226, .016, 3], [sx * .14, 1.78, .205, .011, 3]], 1, { sub: 2, noSolid: true, minSeg: 5 });   // sobrancelhas
-  S.tube([[-.045, 1.612, .226, .009, 3], [0, 1.606, .232, .01, 3], [.045, 1.612, .226, .009, 3]], 5, { sub: 2, noSolid: true, minSeg: 4 });   // boca
+  S.ell([0, 1.665, .238], [.02, .016, .014], 0, 3, { noSolid: true, noCheck: true, min: 6, size: .6 });   // nariz pequeno
+  for (const sx of [1, -1]) S.tube([[sx * .052, 1.79, .229, .008, 3], [sx * .088, 1.8, .224, .009, 3], [sx * .12, 1.792, .212, .007, 3]], 1, { sub: 2, noSolid: true, noCheck: true, minSeg: 6, size: .55 });   // sobrancelhas suaves
+  S.tube([[-.032, 1.621, .228, .004, 3], [0, 1.612, .234, .005, 3], [.032, 1.621, .228, .004, 3]], 29, { sub: 4, noSolid: true, noCheck: true, minSeg: 8, size: .32 });   // sorriso
   const cap = () => { S.ell([0, 1.77, -.02], [.275, .25, .27], 1, 3, { noCheck: true, noSolid: true, keep: d => d[1] > -.1 && !(d[2] > .5 && d[1] < .5) });
     for (let i = 0; i < 5; i++) { const x = (i - 2) * .075, z = .2 - Math.abs(x) * .35; S.tube([[x * .9, 1.97, z - .04, .045, 3], [x * 1.05 + .02, 1.89, z + .03, .03, 3], [x * 1.1 + .035, 1.83, z + .05, .01, 3]], 1, { sub: 2, noSolid: true, minSeg: 6 }); }   // franja
     for (let i = 0; i < 7; i++) { const a = (i / 6 - .5) * 2.6; S.tube([[Math.sin(a) * .1, 2.0, -Math.cos(a) * .1 - .02, .03, 3], [Math.sin(a) * .21, 1.93, -Math.cos(a) * .2 - .02, .03, 3], [Math.sin(a) * .27, 1.8, -Math.cos(a) * .27 - .02, .015, 3]], 1, { sub: 2, noSolid: true, minSeg: 6 }); }   // volume em mechas

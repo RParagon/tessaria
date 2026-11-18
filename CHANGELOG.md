@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.20.1 · Rosto refeito
+- **Olhos no estilo chibi:** oval escuro, íris na cor do brilho na parte de baixo e um brilho em cima. Sai o anel brilhante enorme, que parecia um óculos de luz
+- **Sobrancelhas suaves** (antes pareciam bravas), **nariz pequeno** e **sorriso fino** em vez de um borrão
+- Olhos e boca usam a cor escura fixa da paleta, que não se confunde com nenhum tom de pele
+
 ## 0.20.0 · Herói articulado e Guarda-Roupa
 - **Cotovelos e joelhos:** o herói, os outros jogadores e os moradores ganharam antebraços e canelas com articulação. Os braços dobram ao andar, no golpe, no tiro e no lançamento; os joelhos dobram ao correr, na esquiva, ao aterrissar e para sentar de verdade
 - **Mão no cajado:** o Arcano segura o cajado com a mão fechada (dedos em volta do cabo) e o cotovelo dobrado; a Lâmina fecha a mão no cabo da espada. O escudo acompanha o antebraço
