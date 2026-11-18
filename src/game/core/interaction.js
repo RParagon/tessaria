@@ -105,7 +105,7 @@ function updateWilds() {
   if (!RG || !RG.wild || !P) return;
   const z = wZone(P.x / T, P.z / T);
   if (G.wzone === undefined || G.wzone === null) G.wzone = z;
-  else if (z !== G.wzone) { G.wzone = z; const W2 = WZ[z], hot = W2.lv > G.save.lvl + 3; toast(W2.n.toUpperCase(), true, `monstros nível ${W2.lv}` + (hot ? ' · PERIGOSO PARA VOCÊ' : ''), hot ? '#ff6a5a' : W2.c); updateDiffHud(); G.save.wz = Math.max(G.save.wz || 0, wRing(P.x / T, P.z / T)); }   // wz: maior anel alcançado (3 = Ermo Profundo)
+  else if (z !== G.wzone) { G.wzone = z; const W2 = WZ[z], hot = W2.lv > G.save.lvl + 3; if (z === 7) setTimeout(() => toast('SEM ACAMPAMENTOS', false, 'QUANTO MAIS FUNDO, MAIS FORTES OS MONSTROS'), 2400); toast(W2.n.toUpperCase(), true, `monstros nível ${W2.lv}` + (hot ? ' · PERIGOSO PARA VOCÊ' : ''), hot ? '#ff6a5a' : W2.c); updateDiffHud(); G.save.wz = Math.max(G.save.wz || 0, wRing(P.x / T, P.z / T)); }   // wz: maior anel alcançado (3 = Ermo Profundo)
   if (G.bloodT > 0 && Math.random() < .5) spawn({ x: P.x + rr(-9, 9), y: rr(2, 5), z: P.z + rr(-7, 7), vy: -rr(.5, 1.2), life: 1.4, s0: .06, s1: .02, b0: .9, b1: .1, mat: 21 });   // Lua de Sangue
   G.wT = (G.wT || 0) - 1 / 60; if (G.wT > 0) return; G.wT = 1;
   wildsEvents(z);
@@ -118,7 +118,7 @@ function updateWilds() {
   }
 }
 function updateTriggers(dt) {
-  updateWilds(); updateHubLife(dt);
+  updateWilds(); updateHubLife(dt); updateCamps(dt);
   if (inter.some(i => i.taken)) inter = inter.filter(i => !i.taken);
   nearInter = null; let bd = 99;
   for (const it of inter) {
@@ -162,6 +162,7 @@ function interact() {
   if (!nearInter || P.dieT >= 0) return;
   const it = nearInter;
   if (it.kind === 'revive') { coopStartSew(it.id); return; }
+  if (it.kind === 'npc' && it.npc.merc !== undefined) { it.npc.talkT = 3; openWShop(it.npc.merc); return; }
   if (it.kind === 'npc') { const n = it.npc; n.talkT = 4; G.save.met['t_' + n.id] = true; const lines = questLines(n.id) || DIALOG[n.id](); say(lines, () => updateObjective()); }
   else if (it.kind === 'bench') sitBench(it);
   else if (it.kind === 'fish') fishAction();
@@ -251,11 +252,18 @@ function loadRegion(key, atCp) {
   } else if (key === 'home') {
     setupHome();
   } else {
-    const st = RG.start;
+    const st = RG.start; if (RG.wild) RG.camps = [];
     inter.push({ kind: 'portal', to: G.rift && G.rift.cave ? 'wilds' : 'hub', exit: !!(G.rift && G.rift.cave), x: st.wx, z: st.wz - 3.2, r: 2.2, lit: true, model: getModel('portal'), anim: newAnim(getModel('portal')), yaw: 0 });
     RG.rooms.forEach((rm, i) => {
       if (rm.kind === 'shrine') inter.push({ kind: 'shrine', x: rm.wx, z: rm.wz, r: 2, model: getModel('shrine'), anim: newAnim(getModel('shrine')), yaw: 0 });
-      if (rm.kind === 'obelisk') inter.push({ kind: 'obelisk', zone: rm.ob, x: rm.wx, z: rm.wz, r: 2, model: getModel('pylon'), anim: newAnim(getModel('pylon')), yaw: 0 });
+      if (rm.kind === 'obelisk') {
+        inter.push({ kind: 'obelisk', zone: rm.ob, x: rm.wx, z: rm.wz, r: 2, model: getModel('pylon'), anim: newAnim(getModel('pylon')), yaw: 0 });
+        if (RG.wild) {   // acampamento seguro com mercador suspeito
+          (RG.camps = RG.camps || []).push({ x: rm.wx, z: rm.wz, zone: rm.ob });
+          inter.push({ kind: 'camp', x: rm.wx, z: rm.wz + 3.4, r: .01, model: getModel('camp'), anim: newAnim(getModel('camp')), yaw: 0 });
+          const m = makeModel('npc-merc', () => buildHumanoid(MERC_CFG, 128)); npcs.push({ id: 'merc', merc: rm.ob, name: 'Mercador Suspeito', x: rm.wx + 3, z: rm.wz + 1.2, baseYaw: -.6, cfg: MERC_CFG, model: m, anim: newAnim(m), yaw: -.6, talkT: 0, visible: true });
+        }
+      }
       if (rm.kind === 'cave') inter.push({ kind: 'cave', zone: rm.zone, ring: rm.ring, ri: i, x: rm.wx, z: rm.wz, r: 2.2, model: getModel('portal'), anim: newAnim(getModel('portal')), lit: false, yaw: 0 });
       if (rm.chest) { const id = key + '-c' + i, open = G.save.chests.includes(id); inter.push({ kind: 'chest', id, x: rm.wx + (rm.frag !== undefined ? 2 : 0), z: rm.wz - 1, r: 1.8, open, openT: open ? 9 : 0, model: getModel('chest'), anim: newAnim(getModel('chest')), yaw: 0 }); }
       if (rm.frag !== undefined && !G.save.frags.includes(rm.frag)) inter.push({ kind: 'frag', idx: rm.frag, x: rm.wx, z: rm.wz, model: getModel('frag'), anim: newAnim(getModel('frag')), yaw: 0 });
@@ -309,7 +317,8 @@ function rebuildHub() { if (!WORLDS.hub) return; WORLDS.hub.chunks.forEach(freeV
 const MMW = 96, MMH = 80;   // tamanho da janela do minimapa nos Ermos (em ladrilhos)
 function setupMinimap() {
   const cv = $('#mmap'), show = RG && RG.key !== 'hub' && RG.key !== 'home'; cv.hidden = !show; $('#mmapZ').hidden = !show; if (!show) { MM.key = null; return; }
-  const W = RG.W, H = RG.H; cv.width = RG.wild ? MMW : W; cv.height = RG.wild ? MMH : H; MM.key = RG; MM.seen = new Uint8Array(W * H); MM.base = new Uint8ClampedArray(W * H * 4);   // Ermos: o canvas é uma janela em volta do herói
+  const W = RG.W, H = RG.H; cv.width = RG.wild ? MMW : W; cv.height = RG.wild ? MMH : H; MM.key = RG; MM.seen = new Uint8Array(W * H); MM.base = new Uint8ClampedArray(W * H * 4);
+  if (RG.wild && G.save.wseen) seenDecode(G.save.wseen, MM.seen);   // o que você já explorou nos Ermos fica no mapa   // Ermos: o canvas é uma janela em volta do herói
   const pal = curPal || REGPAL.hub, row = (m, i) => { const r = pal.rows[m]; return r ? r[i] : [90, 90, 90]; };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = RG.grid[y][x], o = (y * W + x) * 4; let col;
@@ -321,10 +330,14 @@ function setupMinimap() {
     MM.base[o] = col[0]; MM.base[o + 1] = col[1]; MM.base[o + 2] = col[2]; MM.base[o + 3] = 255;
   }
 }
+/** Explorado dos Ermos no save: sequências alternadas (não visto, visto...) em base 36. */
+function seenEncode(a) { const out = []; let cur = 0, n = 0; for (let i = 0; i < a.length; i++) { if (a[i] === cur) n++; else { out.push(n.toString(36)); cur = a[i]; n = 1; } } out.push(n.toString(36)); return out.join(','); }
+function seenDecode(s, a) { let i = 0, v = 0; for (const t of String(s).split(',')) { const n = parseInt(t, 36) || 0; if (v) a.fill(1, i, Math.min(a.length, i + n)); i += n; v ^= 1; } }
 function updateMinimap(dt) {
   if (!RG || RG.key === 'hub' || RG.key === 'home' || !P) return; if (MM.key !== RG) setupMinimap();
   const W = RG.W, H = RG.H, tx = Math.floor(P.x / T), tz = Math.floor(P.z / T), rad = RG.wild ? 9 : 7;
-  for (let y = tz - rad; y <= tz + rad; y++) for (let x = tx - rad; x <= tx + rad; x++) if (x >= 0 && y >= 0 && x < W && y < H && (x - tx) ** 2 + (y - tz) ** 2 <= rad * rad) MM.seen[y * W + x] = 1;
+  for (let y = tz - rad; y <= tz + rad; y++) for (let x = tx - rad; x <= tx + rad; x++) if (x >= 0 && y >= 0 && x < W && y < H && (x - tx) ** 2 + (y - tz) ** 2 <= rad * rad && !MM.seen[y * W + x]) { MM.seen[y * W + x] = 1; MM.dirty = true; }
+  if (RG.wild && MM.dirty && (MM.saveT = (MM.saveT || 0) - dt) <= 0) { MM.saveT = 4; MM.dirty = false; G.save.wseen = seenEncode(MM.seen); }
   MM.t -= dt; if (MM.t > 0) return; MM.t = .2;
   const VW = RG.wild ? MMW : W, VH = RG.wild ? MMH : H, ox = RG.wild ? clamp(tx - (MMW >> 1), 0, W - MMW) : 0, oy = RG.wild ? clamp(tz - (MMH >> 1), 0, H - MMH) : 0;
   const cv = $('#mmap'), cx = cv.getContext('2d'), img = cx.createImageData(VW, VH), d = img.data;
@@ -337,7 +350,8 @@ function updateMinimap(dt) {
   for (const e of enemies) if (e.dieT < 0 && seenAt(e.x, e.z)) dot(e.x, e.z, e.elite ? '#d07bff' : '#ff5a4a', 1);
   if (boss) dot(boss.x, boss.z, '#ff2020', 3);
   dot(P.x, P.z, '#ffffff', 2);
-  const zl = $('#mmapZ'), z = RG.wild ? WZ[wZone(P.x / T, P.z / T)] : null, txt = z ? z.n.toUpperCase() + ' · NV ' + z.lv : (RG.key === 'rift' ? 'FENDA' : REG[RG.key].name.toUpperCase());
+  if (RG.camps) for (const c of RG.camps) if (seenAt(c.x, c.z)) dot(c.x, c.z, '#ffd27a', 3);
+  const zl = $('#mmapZ'), z = RG.wild ? WZ[wZone(P.x / T, P.z / T)] : null, txt = z ? z.n.toUpperCase() + ' · NV ' + wildLv(P.x, P.z) + (inCamp(P.x, P.z) ? ' · SEGURO' : '') : (RG.key === 'rift' ? 'FENDA' : REG[RG.key].name.toUpperCase());
   if (zl.textContent !== txt) zl.textContent = txt; zl.style.color = z ? z.c : 'var(--bone)';
   zl.style.top = (cv.offsetTop + cv.offsetHeight + 6) + 'px';
 }
@@ -414,6 +428,7 @@ function wildsHazard(x, z, r, dur, mat, dmg, warn) {
 function useObelisk(it) {
   const s = G.save, ob = s.obel = s.obel || [];
   if (!ob.includes(it.zone)) { ob.push(it.zone); writeSave(); sfx('lvl'); burst(it.x, 1.5, it.z, 40, 7, 4, .6, .1); toast('OBELISCO DESPERTO', true, WZ[it.zone].n.toUpperCase() + ' · VIAGEM RÁPIDA LIBERADA', '#9ff6ff'); }
+  G.wmTravel = it.zone; openMenu('wmap'); return;   // mapa de viagem: escolha o destino no mapa
   const dests = RG.rooms.filter(r => r.kind === 'obelisk' && r.ob !== it.zone && ob.includes(r.ob));
   const choices = dests.map(r => ({ t: WZ[r.ob].n + ' · Nv ' + WZ[r.ob].lv, fn: () => obeliskJump(r.wx + 1.6, r.wz + 1.6, WZ[r.ob].n) }));
   choices.push({ t: 'Portão da Vila Brasa', fn: () => obeliskJump(RG.start.wx, RG.start.wz + 1.5, 'Portão da Vila') });
@@ -477,6 +492,13 @@ function updateWorms(dt) {
     if (Math.random() < dt * 3) spawn({ x: x + rr(-.25, .25), y: .15, z: z + rr(-.25, .25), vy: rr(.3, .7), life: .7, s0: .08, s1: .02, b0: 1, b1: .2, mat: 21 });
     if (Math.hypot(P.x - x, P.z - z) < 1.1) { st.got.push(i); st.p = st.got.length; sfx('frag'); burst(x, .2, z, 12, 21, 2, .4, .1); toast('MINHOCA-DE-BRASA', false, st.p + '/' + WORMS.length + ' · LEVE PARA O PESCADOR IVO'); writeSave(); }
   });
+}
+function updateCamps(dt) {
+  if (!RG || !RG.wild || !P) return;
+  const inside = inCamp(P.x, P.z);
+  if (inside && !G.inCamp) { toast('ACAMPAMENTO', false, 'ZONA SEGURA · MERCADOR, FOGUEIRA E VIAGEM PELO OBELISCO'); sfx('ui'); }
+  G.inCamp = inside;
+  if (inside && P.dieT < 0 && P.hp < P.maxHp) P.hp = Math.min(P.maxHp, P.hp + P.maxHp * .03 * dt);
 }
 function updateHubLife(dt) {
   if (!RG || RG.key !== 'hub' || !P) { G.fishing = null; G.fishCatch = null; return; }

@@ -560,6 +560,21 @@ function buildPortalStyle(to) {
   for (const sx of [1, -1]) S.box([sx * 1.25, .15, 0], [.38, .15, .38], to === 'peaks' ? 29 : 11, 0);
   return { bones, data: S.build() };
 }
+/** Acampamento dos Ermos: duas tendas, fogueira cercada de pedras, caixotes, estandarte e um varal de lanternas. */
+function buildCamp() {
+  const S = new SplatSet(77, 700), bones = [{ p: -1, v: [0, 0, 0] }];
+  for (const [tx, tz, m, s] of [[-2.2, -1.2, 16, 1], [2.4, -1.8, 22, .85]]) {
+    S.mem([[[tx - 1.2 * s, 0, tz + 1 * s], [tx + 1.2 * s, 0, tz + 1 * s], [tx, 1.7 * s, tz]], [[tx - 1.2 * s, 0, tz - 1 * s], [tx + 1.2 * s, 0, tz - 1 * s], [tx, 1.7 * s, tz]], [[tx - 1.2 * s, 0, tz + 1 * s], [tx - 1.2 * s, 0, tz - 1 * s], [tx, 1.7 * s, tz]], [[tx + 1.2 * s, 0, tz + 1 * s], [tx + 1.2 * s, 0, tz - 1 * s], [tx, 1.7 * s, tz]]], p => Math.abs(p[0] - tx) < .08 ? 28 : m, () => 0);
+    S.tube([[tx, 0, tz, .04, 0], [tx, 1.9 * s, tz, .03, 0]], 12, { sub: 1, noSolid: true });
+  }
+  for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283; S.ell([Math.cos(a) * .6, .12, 1.6 + Math.sin(a) * .6], [.17, .12, .15], 11, 0); }   // pedras da fogueira
+  for (let k = 0; k < 4; k++) S.tube([[-.5 + k * .3, .08, 1.6 - .3, .06, 0], [.5 - k * .3, .1, 1.6 + .3, .06, 0]], 12, { sub: 1, noSolid: true });
+  for (const [cx, cz] of [[3.4, .9], [3.9, 1.5], [-3.5, 1.2]]) S.box([cx, .3, cz], [.3, .3, .3], 12, 0);
+  S.tube([[-3.6, 0, -2.9, .05, 0], [-3.6, 2.8, -2.9, .05, 0]], 12, { sub: 1 }); S.mem([[[-3.55, 2.7, -2.9], [-2.6, 2.5, -2.9], [-3.55, 1.9, -2.9]]], 151, () => 0);   // estandarte violeta
+  S.tube([[-2.2, 2.2, 1.0, .015, 0], [0, 1.9, 1.2, .015, 0], [2.4, 2.2, .8, .015, 0]], 28, { sub: 4, noSolid: true });
+  for (const [lx, ly, lz] of [[-1.2, 2.0, 1.1], [1.2, 2.0, 1.05]]) S.ell([lx, ly - .15, lz], .1, 14, 0, { noSolid: true, min: 8 });
+  return { bones, data: S.build() };
+}
 function buildBoar() {
   const S = new SplatSet(95, 650), bones = [{ p: -1, v: [0, 0, 0] }, { p: 0, v: [0, .55, 0] }, { p: 1, v: [0, .62, .5] }];
   S.ell([0, .6, -.05], [.42, .4, .66], (p, n) => n[1] < -.4 ? 17 : 16, 1);

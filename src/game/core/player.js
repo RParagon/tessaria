@@ -222,6 +222,7 @@ function drinkPotion() {
 function hurtPlayer(dmg, sx, sz, kb = 7) {
   if (P && P.remote) return coopHurtRemote(dmg, sx, sz, kb);   // co-op: alvo substituto (companheiro)
   if (!P || P.dieT >= 0 || P.down > 0 || P.iframe > 0 || P.dashT > 0 || G.mode !== 'play') return false;
+  if (inCamp(P.x, P.z)) return false;   // acampamento dos Ermos: zona segura
   if (coopIsHost()) dmg *= coopDmgMul();   // co-op: inimigos batem mais forte com mais gente
   dmg = Math.max(1, Math.round(dmg * monsterScale().dmg * (1 - stats().dr)));
   if (P.shield > 0) { const a = Math.min(P.shield, dmg); P.shield -= a; dmg -= a; if (dmg <= 0) { P.iframe = .35; popNum(P.x, 2.2, P.z, 'BLOQUEADO', 'info'); return true; } }

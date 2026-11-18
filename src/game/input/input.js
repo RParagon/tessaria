@@ -25,11 +25,12 @@ addEventListener('keydown', e => {
   keys.add(k);
   if (G.mode === 'dialog') { if (k === 'Space' || k === 'Enter' || k === 'KeyE') advanceDialog(); return; }
   if (G.mode === 'story') { if (k === 'Space' || k === 'Enter' || k === 'KeyE') storyNext(); return; }
-  if (G.mode === 'menu') { if (k === 'Escape' || (k === 'Tab' && !$('#journal').hidden) || (k === 'KeyI' && !$('#inv').hidden)) closeMenus(); return; }
+  if (G.mode === 'menu') { if (k === 'Escape' || (k === 'Tab' && !$('#journal').hidden) || (k === 'KeyI' && !$('#inv').hidden) || (k === 'KeyM' && !$('#wmap').hidden)) { G.wmTravel = null; closeMenus(); } return; }
   if (G.mode !== 'play') return;
   if (k === 'Escape') openMenu('pause');
   else if (k === 'Tab') openMenu('journal');
   else if (k === 'KeyI' || k === 'KeyB') openMenu('inv');
+  else if (k === 'KeyM' && RG && RG.wild) { G.wmTravel = null; openMenu('wmap'); }
   else if (k === 'KeyG') openMenu('skills');
   else if (k === 'Space' || k === 'ShiftLeft' || k === 'ShiftRight') doDash();
   else if (k === 'Equal' || k === 'NumpadAdd') camZoom(-1);

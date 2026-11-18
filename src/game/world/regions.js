@@ -79,6 +79,8 @@ const HUB = {
 /** Bardo do Bairro Leste: fica fora de NPCS (as linhas de paleta dos moradores estão cheias) e usa as linhas 152-159, livres na vila. */
 const BARD = { id: 'bardo', name: 'Bardo Tomé', x: 121.6, z: 27.6, baseYaw: 2.6, cfg: { seed: 81, body: 1, hair: 'longo', hairCol: 2, skin: 3, outfit: 3, trim: 4, glow: 3, acc: 'pena', cape: true, gear: 'alaude' } };
 /** Moradores do Bairro Leste: linhas de paleta próprias (128-143), livres na vila (lá ninguém usa as cores do Cavaleiro e dos monstros). */
+/** Mercador suspeito dos acampamentos dos Ermos (cores nas linhas 128-135, livres nos Ermos). */
+const MERC_CFG = { seed: 85, body: 1, hair: 'careca', hairCol: 0, skin: 5, outfit: 11, trim: 4, glow: 3, acc: 'capuz', cape: true, beard: 'cavanhaque' };
 const EAST_NPCS = [
   { id: 'lucia', name: 'Acendedora Lúcia', x: 93.5, z: 25.5, base: 128, spd: 1.15, wander: [[93.5, 25.5], [111.5, 22.5], [127.5, 22.5], [141.5, 19.5], [141.5, 31.5], [129.5, 41.5], [111.5, 44.5], [93.5, 41.5]],
     cfg: { seed: 83, body: 0, hair: 'coque', hairCol: 0, skin: 4, outfit: 9, trim: 2, glow: 1, acc: 'chapeu', cape: false, gear: 'vara' } },
@@ -116,7 +118,7 @@ const DEF = {
   sentinela: { hp: 170, dmg: 22, r: .55, xp: 36, gold: 14, model: 'sentinel', scale: 1 },
   fantasma: { hp: 190, dmg: 30, r: .45, xp: 40, gold: 15, model: 'phantom', scale: 1.05 },
 };
-const MODEL_FN = { dummy: buildDummy, gosmo: buildGosmo, wisp: buildWisp, skel: buildSkeleton, bat: buildBat, imp: buildImp, beetle: buildBeetle, golem: buildGolem, skull: buildSkullBoss, dragon: buildDragon, shrine: buildShrine, chest: buildChest, frag: buildFragment, portal: buildPortal, riftgate: buildRiftGate, portal_forest: () => buildPortalStyle('forest'), portal_crypt: () => buildPortalStyle('crypt'), portal_peaks: () => buildPortalStyle('peaks'), portal_swamp: () => buildPortalStyle('swamp'), portal_wilds: () => buildPortalStyle('wilds'), portal_glass: () => buildPortalStyle('glass'), pedestal: buildPedestal, chicken: buildChicken, pylon: buildPylon, spider: buildSpider, spiderling: buildSpiderling, eye: buildEye, knight: () => buildHumanoid(KNIGHT_CFG, 128), toad: buildToad, boar: buildBoar, wolf: buildWolf, bear: buildBear, drowned: buildDrowned, sentinel: buildSentinel, phantom: buildPhantom, hydra: buildHydra, reflexo: () => buildHumanoid(reflexCfg(), 152) };
+const MODEL_FN = { dummy: buildDummy, gosmo: buildGosmo, wisp: buildWisp, skel: buildSkeleton, bat: buildBat, imp: buildImp, beetle: buildBeetle, golem: buildGolem, skull: buildSkullBoss, dragon: buildDragon, shrine: buildShrine, chest: buildChest, frag: buildFragment, portal: buildPortal, riftgate: buildRiftGate, camp: () => buildCamp(), portal_forest: () => buildPortalStyle('forest'), portal_crypt: () => buildPortalStyle('crypt'), portal_peaks: () => buildPortalStyle('peaks'), portal_swamp: () => buildPortalStyle('swamp'), portal_wilds: () => buildPortalStyle('wilds'), portal_glass: () => buildPortalStyle('glass'), pedestal: buildPedestal, chicken: buildChicken, pylon: buildPylon, spider: buildSpider, spiderling: buildSpiderling, eye: buildEye, knight: () => buildHumanoid(KNIGHT_CFG, 128), toad: buildToad, boar: buildBoar, wolf: buildWolf, bear: buildBear, drowned: buildDrowned, sentinel: buildSentinel, phantom: buildPhantom, hydra: buildHydra, reflexo: () => buildHumanoid(reflexCfg(), 152) };
 const getModel = k => k === 'reflexo' ? makeModel('reflexo:' + JSON.stringify(G.char), MODEL_FN.reflexo) : makeModel(k, MODEL_FN[k]);
 const CLS = {
   lamina: { label: 'Lâmina', desc: 'Corte em arco de perto. Hab.: Giro Flamejante.', hp: 130, dmg: 17, spd: 5.2, atkCd: .36, skillCd: 6 },
@@ -157,8 +159,8 @@ function genWilds(key, spec) {
   for (let z = 0; z < WZ.length; z++) {
     const zs = rooms.filter(r => r.zone === z && !r.kind); zs.sort(() => R() - .5);
     const take = n => zs.splice(0, Math.min(n, zs.length));
-    take(z === 0 ? 1 : 2).forEach(r => { delete r.en; r.kind = 'shrine'; });
-    take(1).forEach(r => { delete r.en; r.kind = 'obelisk'; r.ob = z; });
+    take(z === 0 ? 1 : z === 7 ? 0 : 2).forEach(r => { delete r.en; r.kind = 'shrine'; });   // no Ermo Profundo não há santuário nem acampamento
+    if (z !== 7) take(1).forEach(r => { delete r.en; r.kind = 'obelisk'; r.ob = z; });
     if (WZ[z].cave) take(1).forEach(r => { delete r.en; r.kind = 'cave'; });
     take(z === 0 ? 1 : z === 7 ? 5 : 2).forEach(r => { r.alpha = true; r.en[WPOOL[z][0]] = (r.en[WPOOL[z][0]] || 0) + 1; });
     take(1).forEach(r => { r.alpha = true; r.lair = WZ[z].lair; r.en[WZ[z].lair[0]] = (r.en[WZ[z].lair[0]] || 0) + 3; });

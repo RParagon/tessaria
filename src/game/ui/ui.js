@@ -57,7 +57,7 @@ function refreshHudVis() {
   $('#keys').hidden = G.touch; $('#abar').hidden = G.touch;
   { const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); $('#poseBar').hidden = !pv; if (!pv) { G.pvPose = null; G.pvZoom = 1; document.querySelectorAll('#poseBar button').forEach(x => x.classList.remove('on')); } }
 }
-function showOnly(id) { for (const s of ['#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail']) $(s).hidden = s !== id; }
+function showOnly(id) { for (const s of ['#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap']) $(s).hidden = s !== id; }
 function openMenu(which) {
   if (G.mode !== 'play' && !(G.mode === 'dialog' && (which === 'forge' || which === 'shop'))) return;
   $('#dialog').hidden = true; DLG.q = []; DLG.cur = null;
@@ -66,6 +66,7 @@ function openMenu(which) {
   if (which === 'skills') renderSkills(); if (which === 'board') renderBoard(); if (which === 'riftm') renderRiftMenu();
   if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; renderShop(); }
   if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; resetMailOnline(); renderMail(); }
+  if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap();
   if (which === 'forge') renderForge(); if (which === 'journal') renderJournal(); if (which === 'pause') renderPause();
   showOnly('#' + which); refreshHudVis();
 }
@@ -126,6 +127,69 @@ function ensureShop() {
   const s = G.save, nb = ['forest', 'crypt', 'peaks', 'swamp', 'glass'].filter(k => s.bosses[k]).length, stamp = nb * 10 + (s.diff || 0);
   if (!s.shop || s.shop.stamp !== stamp) { const tier = Math.min(5, nb + 1) + curDiff().tier * .6; s.shop = { stamp, items: [makeItem('weapon', tier, rollRar(1)), makeItem('armor', tier, rollRar(1)), makeItem('charm', tier, rollRar(1)), makeItem(pick(['weapon', 'armor', 'charm']), tier, Math.max(2, rollRar(2)))] }; writeSave(); }
 }
+/* ---- Ermos: mercador suspeito (estoque e preços mudam a cada hora, iguais para todos) e mapa de viagem ---- */
+let wsZone = 0, wsSel = null;
+function openWShop(zone) { wsZone = zone; wsSel = null; openMenu('wshop'); }
+function wsStock(zone) {
+  const hour = Math.floor(villageTime() / 3600), key = zone + ':' + hour;
+  if (G.wsCache && G.wsCache.key === key) return G.wsCache;
+  const tb = Math.max(1, Math.round(wildTierBase(zone))), items = withSeed(9001 + zone * 97 + hour * 7919, () => {
+    const out = [];
+    for (let i = 0; i < 5; i++) {
+      const r = Math.random(), rar = r < .35 ? 1 : r < .7 ? 2 : r < .93 ? 3 : 4, slot = ['weapon', 'armor', 'charm'][Math.floor(Math.random() * 3)];
+      const it = makeItem(slot, Math.min(5, tb + (Math.random() < .3 ? 1 : 0)), rar), mood = .55 + Math.random() * 1.15;
+      out.push({ it, price: Math.round([0, 90, 220, 520, 1500][rar] * (1 + it.tier * .6) * mood), mood });
+    }
+    return out;
+  });
+  return (G.wsCache = { key, hour, items, potPrice: 30 + zone * 12 });
+}
+function renderWShop() {
+  const s = G.save, st = stats(), S2 = wsStock(wsZone), bought = (s.wbuy = s.wbuy || {})[S2.key] || [];
+  const left = 3600 - (villageTime() % 3600), mm = Math.floor(left / 60);
+  $('#wsSub').innerHTML = `"Psst. Coisa boa, preço justo… quase sempre." Você tem <b style="color:var(--gold)">${s.gold}</b> Centelhas. Estoque novo em <b>${mm} min</b>.`;
+  const list = $('#wsList'); list.innerHTML = '';
+  const pr = document.createElement('div'); pr.className = 'shoprow';
+  pr.innerHTML = `<div class="slot" style="--rc:#d9433a"><img src="${icon('potion')}" alt=""></div><div class="nm">Poção de procedência duvidosa<small>Enche uma poção · você tem ${s.potions}/${st.maxPot}</small></div>`;
+  const pb = document.createElement('button'); pb.className = 'px gold'; pb.textContent = S2.potPrice + ' Centelhas'; pb.disabled = s.gold < S2.potPrice || s.potions >= st.maxPot;
+  pb.onclick = () => { spend(S2.potPrice); s.potions++; sfx('pick'); writeSave(); renderWShop(); }; pr.appendChild(pb); list.appendChild(pr);
+  S2.items.forEach((o, i) => {
+    const row = document.createElement('div'), sold = bought.includes(i); row.className = 'shoprow';
+    row.appendChild(slotBtn(o.it, () => { wsSel = i; renderWShop(); }, wsSel === i));
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.innerHTML = `<span style="color:${RAR[o.it.rar].c}">${o.it.name}</span><small>${o.mood < .8 ? 'uma pechincha, ele jura' : o.mood > 1.35 ? 'caro, mas ele "não negocia"' : 'preço de mercado… do mercado dele'}</small>`; row.appendChild(nm);
+    const b = document.createElement('button'); b.className = 'px' + (!sold && s.gold >= o.price ? ' gold' : ''); b.textContent = sold ? 'Vendido' : o.price + ' ✦'; b.disabled = sold || s.gold < o.price || s.inv.length >= 20;
+    b.onclick = () => { spend(o.price); const it = JSON.parse(JSON.stringify(o.it)); it.id = it.id + '-' + Date.now().toString(36); takeItem(it); (s.wbuy[S2.key] = s.wbuy[S2.key] || []).push(i); const ks = Object.keys(s.wbuy); if (ks.length > 12) delete s.wbuy[ks[0]]; sfx('lvl'); writeSave(); renderWShop(); };
+    row.appendChild(b); list.appendChild(row);
+  });
+  const det = $('#wsDet'); if (wsSel === null) det.innerHTML = '<p class="sub">Toque num item para ver os detalhes e comparar com o que você usa.</p>';
+  else { const it = S2.items[wsSel].it; det.innerHTML = `<h3 style="color:${RAR[it.rar].c}">${it.name}</h3><div class="meta">${SLOTN[it.slot]} · ${RAR[it.rar].n} · Poder ${itemScore(it)}</div><ul>${itemLinesHTML(it, s.eq[it.slot])}</ul>`; }
+}
+$('#wsClose').onclick = () => closeMenus();
+/** Mapa dos Ermos: o que você explorou, obeliscos e acampamentos. Num obelisco, toque num obelisco desperto para viajar. */
+function renderWMap() {
+  if (!RG || !RG.wild) { closeMenus(); return; }
+  if (MM.key !== RG) setupMinimap();
+  const W = RG.W, H = RG.H, cv = $('#wmCv'); cv.width = W; cv.height = H;
+  const cx = cv.getContext('2d'), img = cx.createImageData(W, H), d = img.data;
+  for (let i = 0; i < W * H; i++) { const o = i * 4; if (MM.seen[i]) { d[o] = MM.base[o]; d[o + 1] = MM.base[o + 1]; d[o + 2] = MM.base[o + 2]; } else { d[o] = 10; d[o + 1] = 8; d[o + 2] = 18; } d[o + 3] = 255; }
+  cx.putImageData(img, 0, 0);
+  const travel = G.wmTravel !== undefined && G.wmTravel !== null, ob = G.save.obel || [], pins = $('#wmPins'), list = $('#wmList'); pins.innerHTML = ''; list.innerHTML = '';
+  $('#wmSub').textContent = travel ? 'Toque num obelisco aceso para viajar. Os apagados ainda precisam ser despertos.' : 'O que você já explorou. Obeliscos acesos permitem viagem rápida (use um obelisco). Tecla M abre este mapa.';
+  const pin = (x, z, cls, label, fn) => { const b = document.createElement(fn ? 'button' : 'div'); b.className = 'wpin ' + cls; b.style.left = (x / T / W * 100) + '%'; b.style.top = (z / T / H * 100) + '%'; if (label) { const s2 = document.createElement('span'); s2.textContent = label; b.appendChild(s2); } if (fn) { b.onclick = fn; b.setAttribute('aria-label', label); } pins.appendChild(b); return b; };
+  const go = (x, z, name) => { G.wmTravel = null; closeMenus(); obeliskJump(x, z, name); };
+  for (const rm of RG.rooms) {
+    if (rm.kind !== 'obelisk') continue;
+    const on = ob.includes(rm.ob), seen = MM.seen[Math.floor(rm.wz / T) * W + Math.floor(rm.wx / T)];
+    if (!on && !seen) continue;
+    const here = travel && rm.ob === G.wmTravel, fn = travel && on && !here ? () => go(rm.wx + 1.6, rm.wz + 1.6, WZ[rm.ob].n) : null;
+    pin(rm.wx, rm.wz, (on ? 'on' : '') + (here ? ' here' : ''), WZ[rm.ob].n, fn);
+    if (fn) { const b = document.createElement('button'); b.className = 'px gold'; b.textContent = WZ[rm.ob].n + ' · Nv ' + WZ[rm.ob].lv; b.onclick = fn; list.appendChild(b); }
+  }
+  if (travel) { const b = document.createElement('button'); b.className = 'px'; b.textContent = 'Portão da Vila Brasa'; b.onclick = () => go(RG.start.wx, RG.start.wz + 1.5, 'Portão da Vila'); list.appendChild(b); }
+  pin(RG.start.wx, RG.start.wz, 'camp', 'Vila', null);
+  if (P) pin(P.x, P.z, 'me', 'você', null);
+}
+$('#wmClose').onclick = () => { G.wmTravel = null; closeMenus(); };
 function renderShop() {
   ensureShop();
   const s = G.save, st = stats(); $('#sGold').textContent = s.gold;

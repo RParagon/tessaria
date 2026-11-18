@@ -45,7 +45,7 @@ test('Ermos 2.0: mapa grande com 8 biomas, obelisco, covil com volta na boca e e
   await page.evaluate(() => window.__T.travel('wilds'));
   await page.waitForFunction(() => window.__T.RG.key === 'wilds' && window.__T.ev("G.mode === 'play'"), null, { timeout: 60_000 });
   const info = await ev("({ W: RG.W, H: RG.H, biomas: [...new Set(RG.rooms.filter(r => r.zone !== undefined).map(r => r.zone))].length, obel: RG.rooms.filter(r => r.kind === 'obelisk').length, cav: RG.rooms.filter(r => r.kind === 'cave').length, covis: RG.rooms.filter(r => r.lair).length })");
-  expect(info).toEqual({ W: 300, H: 260, biomas: 8, obel: 8, cav: 7, covis: 8 });
+  expect(info).toEqual({ W: 300, H: 260, biomas: 8, obel: 7, cav: 7, covis: 8 });   // o Ermo Profundo não tem obelisco (nem acampamento)
   await ev('P.hp = P.maxHp = 1e9');
 
   // o Brejo (bioma 3) não pode dar o feito do Ermo Profundo
@@ -56,10 +56,21 @@ test('Ermos 2.0: mapa grande com 8 biomas, obelisco, covil com volta na boca e e
   // obelisco da Campina: desperta e leva ao portão da vila
   await ev("(r => { P.x = r.wx + 1; P.z = r.wz + 1; })(RG.rooms.find(r => r.kind === 'obelisk' && r.ob === 0))");
   await page.waitForFunction(() => window.__T.nearInter?.kind === 'obelisk', null, { timeout: 5000 });
+  // acampamento: zona segura (sem dano) e mercador suspeito com estoque da hora
+  expect(await ev('[inCamp(P.x, P.z), hurtPlayer(50, P.x + 1, P.z)]')).toEqual([true, false]);
+  await ev("(n => { P.x = n.x - 1; P.z = n.z + .5; })(npcs.find(n => n.merc === 0))");
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'npc' && window.__T.nearInter.npc.merc === 0, null, { timeout: 5000 });
   await page.keyboard.press('e');
-  await expect(page.locator('#dialog')).toBeVisible();
+  await expect(page.locator('#wshop')).toBeVisible();
+  await expect(page.locator('#wsList .shoprow')).toHaveCount(6);
+  await page.click('#wsClose');
+  // obelisco: desperta e abre o mapa de viagem; o portão da vila fica na lista
+  await ev("(r => { P.x = r.wx + 1; P.z = r.wz + 1; })(RG.rooms.find(r => r.kind === 'obelisk' && r.ob === 0))");
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'obelisk', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await expect(page.locator('#wmap')).toBeVisible();
   expect(await ev('G.save.obel')).toEqual([0]);
-  await page.locator('#dialog button', { hasText: 'Portão da Vila Brasa' }).click();
+  await page.locator('#wmList button', { hasText: 'Portão da Vila Brasa' }).click();
   await page.waitForFunction(() => window.__T.ev('Math.hypot(P.x - RG.start.wx, P.z - RG.start.wz) < 3'), null, { timeout: 5000 });
 
   // covil: entra numa caverna fixa e o portal de saída devolve na boca dela

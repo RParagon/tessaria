@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.26.0 · Ermos: acampamentos, mercador e mapa de viagem
+- **Acampamentos:** cada obelisco dos Ermos virou um acampamento com tendas, fogueira, estandarte e lanternas. É **zona segura**: monstros não entram, ninguém leva dano e a vida volta aos poucos. O minimapa mostra "SEGURO"
+- **Mercador Suspeito:** em cada acampamento, um vendedor encapuzado com 5 itens do nível do bioma e uma poção "de procedência duvidosa". O **estoque e os preços mudam a cada hora** (iguais para todos os jogadores), de pechincha a caro; o que você compra sai do estoque da hora
+- **Mapa dos Ermos (tecla M):** mostra o que você já explorou, os obeliscos e os acampamentos. Num obelisco, o mapa abre em modo viagem: toque num obelisco aceso para ir até ele (ou no portão da vila)
+- **Minimapa com memória:** o que você explorou nos Ermos fica salvo e não some mais ao sair e voltar
+- **Ermo Profundo:** sem acampamentos nem santuários, e os monstros ficam mais fortes quanto mais fundo você vai (até +30 níveis). O minimapa mostra o nível real do ponto em que você está
+
 ## 0.25.0 · Portais com estilo
 - **Cada portal da vila tem a cara do destino:** Bosque Sussurrante (arco de galhos e raízes, copa de folhas e flores, faíscas verdes), Ossuário Real (pedra e ossos com caveiras e velas), Picos de Cinza (basalto pontiagudo com rachaduras de lava e brasas), Pântano (madeira afogada com musgo pendurado e juncos), Ermos (arco de pedra em blocos com bandeira e lampião) e Cidadela de Vidro (prismas de cristal)
 

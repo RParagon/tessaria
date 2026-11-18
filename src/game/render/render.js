@@ -173,6 +173,7 @@ function render(dt) {
       if (it.kind === 'chest') { if (it.open) it.openT += dt; it.anim[1].rx = -1.9 * sm(0, .35, it.openT); }
       if (it.kind === 'pylon') { it.anim[1].ry = t * 1.5; it.anim[1].ty = Math.sin(t * 2) * .12; if (!it.used) { const B = BUFFS[it.bt]; for (let k = 0; k < 14; k++) { const a = t * 1.4 + k / 14 * 6.283; dyn(it.x + Math.cos(a) * 1.0, .07, it.z + Math.sin(a) * 1.0, .7, B.mat, .16); } if (Math.random() < .5) spawn({ x: it.x + rr(-.25, .25), y: 1.7, z: it.z + rr(-.25, .25), vy: rr(.5, 1.2), life: .8, s0: .1, s1: .02, b0: 1, b1: .2, mat: B.mat }); } }
       drawModel(it.model, it.anim, it.x, it.y || 0, it.z, it.yaw, it.scale || 1, { glow: it.used ? .2 : 1 });
+      if (it.kind === 'camp') { if (Math.random() < .7) spawn({ x: it.x + rr(-.3, .3), y: .25, z: it.z + 1.6 + rr(-.3, .3), vx: rr(-.15, .15), vy: rr(1, 1.8), life: rr(.35, .6), s0: .18, s1: .03, b0: 1, b1: .15, mat: 21, drag: 1 }); dyn(it.x - 1.2, 1.85, it.z + 1.1, .9, 14, .14); dyn(it.x + 1.2, 1.85, it.z + 1.05, .9, 14, .14); }
       if (it.kind === 'riftportal') {   // portal sombrio: véu girando, redemoinho para dentro e estilhaços em órbita
         it.anim[1].rz = t * (it.lit ? .7 : .1);
         const on = it.lit ? 1 : .25, cy = .32 + 2.3 * .8;

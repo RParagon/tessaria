@@ -178,6 +178,7 @@ function uploadPalette(regKey) {
   rows[125] = METAL[arR]; rows[126] = RAR[arR].ramp; rows[127] = RAR[chR].ramp;
   NPCS.forEach((n, k) => { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[32 + k * 8 + i] = r[i]; });
   for (const k in XROWS) rows[k] = XROWS[k];
+  if (regKey === 'wilds') { const r = charRows(MERC_CFG); for (let i = 0; i < 8; i++) rows[128 + i] = r[i]; }   // mercador dos acampamentos
   if (regKey === 'hub') for (const n of EAST_NPCS) { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[n.base + i] = r[i]; }   // moradores do Bairro Leste (só na vila)
   for (const k in REMOTE_ROWS) rows[k] = REMOTE_ROWS[k];
   if (regKey !== 'hub') { const rf = charRows({ ...G.char, skin: 5, outfit: 11, trim: 3, glow: 2 }); for (let i = 0; i < 8; i++) rows[152 + i] = rf[i]; }   // Reflexo (fora da vila; na vila as linhas são do Bardo)

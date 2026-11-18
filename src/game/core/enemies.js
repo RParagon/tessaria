@@ -36,7 +36,8 @@ function hurtEnemy(e, dmg, dx, dz, crit, kbm = 1) {
   }
 }
 function dropGold(x, z, n) { for (let i = 0; i < n; i++) { const a = rr(0, 6.28), s = rr(1, 3); pickups.push({ kind: 'gold', x, y: .8, z, vx: Math.cos(a) * s, vy: rr(3, 5), vz: Math.sin(a) * s, t: 0, v: 1 }); } }
-function moveEnt(e, vx, vz, dt) { const mm = (e.spdMul || 1) * (e.slowT > 0 ? .5 : 1), kl = Math.hypot(e.kx, e.kz); if (kl > 18) { e.kx *= 18 / kl; e.kz *= 18 / kl; } moveSafe(e, (vx * mm + e.kx) * dt, (vz * mm + e.kz) * dt, Math.max(.3, e.def.r * e.scale)); e.kx *= Math.exp(-dt * 6); e.kz *= Math.exp(-dt * 6); }
+function campPush(e) { if (!RG || !RG.camps) return; for (const c of RG.camps) { const dx = e.x - c.x, dz = e.z - c.z, d = Math.hypot(dx, dz); if (d < CAMP_R + .6 && d > 1e-3) { const k = (CAMP_R + .6) / d; e.x = c.x + dx * k; e.z = c.z + dz * k; } } }   // monstro não entra no acampamento
+function moveEnt(e, vx, vz, dt) { const mm = (e.spdMul || 1) * (e.slowT > 0 ? .5 : 1), kl = Math.hypot(e.kx, e.kz); if (kl > 18) { e.kx *= 18 / kl; e.kz *= 18 / kl; } moveSafe(e, (vx * mm + e.kx) * dt, (vz * mm + e.kz) * dt, Math.max(.3, e.def.r * e.scale)); e.kx *= Math.exp(-dt * 6); e.kz *= Math.exp(-dt * 6); if (RG && RG.camps) campPush(e); }
 function updateEnemy(e, dt) {
   if (e.dummy) { e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.kx = e.kz = 0; e.hitT = (e.hitT || 0) - dt; return; }   // boneco de treino
   e.t += dt; e.flash = Math.max(0, e.flash - dt * 6); e.actT += dt;

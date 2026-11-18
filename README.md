@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.25.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.26.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -27,7 +27,7 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
 - **HUD com retrato e ícones 3D:** o seu herói aparece no canto do HUD e os ícones são modelos desenhados pelo motor do jogo; itens de missão têm feixe de luz e uma seta no chão aponta para o mais perto.
 - **Herói em destaque:** esqueleto com cotovelos e joelhos (o Arcano segura o cajado com a mão fechada), superfície lisa em alta definição, rosto chibi com olhos escuros, íris colorida e brilho, sobrancelhas e sorriso, cabelo em mechas, roupa com gola, punhos e botas, e capa que esvoaça ao correr. Espelho na bolsa e na criação em alta definição, com poses e zoom; no jogo, zoom da câmera pela roda do mouse (ou + e −) e um anel que marca o seu herói no grupo.
 - **Dois atos de história, com finais diferentes.** Ato I: Bosque Sussurrante, Ossuário Real e Picos de Cinza. Ato II: Pântano Afogado e Cidadela de Vidro, com O Reflexo, uma cópia sombria do seu próprio herói.
-- **Ermos de Tessária:** um mapa aberto enorme em volta da vila, com **oito biomas** (da Campina Brasa ao Ermo Profundo, passando pela Teia Funda das aranhas, o Brejo Cinzento, as Colinas Partidas, o Cemitério Esquecido e o Planalto de Cinzas), covis com Alfas nomeados, cavernas, obeliscos de viagem rápida, Lua de Sangue e emboscadas.
+- **Ermos de Tessária:** um mapa aberto enorme em volta da vila, com **oito biomas** (da Campina Brasa ao Ermo Profundo, passando pela Teia Funda das aranhas, o Brejo Cinzento, as Colinas Partidas, o Cemitério Esquecido e o Planalto de Cinzas), covis com Alfas nomeados, cavernas, acampamentos seguros com o Mercador Suspeito (estoque que muda a cada hora), obeliscos de viagem pelo Mapa dos Ermos (tecla M), um Ermo Profundo cada vez mais difícil, Lua de Sangue e emboscadas.
 - **Fendas do Tear** geradas a cada vez, com mapas novos, afixos e guardiões. É onde o jogo continua sem fim.
 - **Progressão estilo ARPG:**
   - sete dificuldades, até Tormento III;

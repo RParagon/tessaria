@@ -128,7 +128,11 @@ const WREMAP = [null, null,
   { 8: 154, 10: 24, 13: 24, 22: 154, 9: 154, 12: 29 },           // Cemitério: pedra azulada, árvores mortas
   { 8: 155, 9: 155, 10: 156, 11: 156, 23: 155, 25: 156, 21: 158 },// Planalto: cinza, rocha queimada, brasas
   null];
-const wildLv = (x, z) => WZ[wZone(x / T, z / T)].lv;
+/** Nível dos monstros num ponto. No Ermo Profundo (bioma 7), sobe com a distância da vila: até +30. */
+const wildLv = (x, z) => { const b = wZone(x / T, z / T), lv = WZ[b].lv; return b === 7 ? lv + Math.min(30, Math.floor(Math.max(0, wDist(x / T, z / T) - 96) * .4)) : lv; };
+/** Acampamentos (zona segura em volta de cada obelisco dos Ermos). */
+const CAMP_R = 10;
+const inCamp = (x, z) => !!(RG && RG.wild && RG.camps && RG.camps.some(c => Math.hypot(c.x - x, c.z - z) < CAMP_R));
 const REGBASE = { hub: 1, forest: 1, crypt: 4, peaks: 8, swamp: 13, glass: 16 };
 const curDiff = () => DIFFS[ELO && Number.isInteger(ELO.diff) ? ELO.diff : (G.save && G.save.diff) || 0] || DIFFS[0];   // na instância do grupo vale a dificuldade do grupo
 const diffOk = d => !!G.save && G.save.lvl >= d.lvl && (!d.act2 || !!G.save.bosses.glass);
