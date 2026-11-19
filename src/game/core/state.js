@@ -145,7 +145,7 @@ const diffOk = d => !!G.save && G.save.lvl >= d.lvl && (!d.act2 || !!G.save.boss
 const monLevel = () => { if (!G.save) return 1; if (RG && RG.wild && P) return wildLv(P.x, P.z); if (G.rift) return (ELO && ELO.ref ? ELO.ref : G.save.lvl) + G.rift.L; return Math.max(REGBASE[RG ? RG.key : 'hub'] || 1, G.save.lvl); };
 function monsterScale() {
   const D = curDiff();
-  if (RG && RG.wild) { const zl = P ? wildLv(P.x, P.z) : 2; return { hp: D.hp * (1 + .1 * (zl - 1)), dmg: D.dmg * (1 + .06 * (zl - 1)), xp: D.xp * (1 + .08 * (zl - 1)) * (G.bloodT > 0 ? 1.5 : 1) }; }   // Lua de Sangue: +50% de XP
+  if (RG && RG.wild) { const zl = P ? wildLv(P.x, P.z) : 2; const nk = typeof nightK === 'function' ? nightK() : 0; return { hp: D.hp * (1 + .1 * (zl - 1)), dmg: D.dmg * (1 + .06 * (zl - 1)) * (1 + .15 * nk), xp: D.xp * (1 + .08 * (zl - 1)) * (G.bloodT > 0 ? 1.5 : 1) * (1 + .25 * nk) }; }   // Lua de Sangue: +50% de XP · noite: +15% de dano dos monstros e +25% de XP
   if (G.rift) return { hp: G.rift.hm * D.hp, dmg: G.rift.dm * D.dmg, xp: D.xp };
   const base = REGBASE[RG ? RG.key : 'hub'] || 1, over = Math.max(0, (G.save ? G.save.lvl : 1) - base - 2), n = G.save && G.save.diff ? 1 : .6;
   return { hp: D.hp * (1 + .08 * n * over), dmg: D.dmg * (1 + .05 * n * over), xp: D.xp * (1 + .05 * over) };

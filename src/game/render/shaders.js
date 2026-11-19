@@ -14,6 +14,8 @@ uniform vec3 u_cam, u_light, u_player, u_pclip;
 uniform float u_aspect;
 uniform float u_proj, u_sizeMul, u_dissolve, u_dmat, u_flash, u_glow, u_near, u_range, u_time, u_xray;
 uniform vec4 u_shadow[8];
+uniform float u_night;
+uniform vec4 u_lamps[12];   // luzes da noite: x, z, raio, força (lampiões, janelas, fogueiras, o herói)
 out float v_mat; out float v_shade; out float v_flash; out float v_depth;
 float hash(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
 void kill(){ gl_Position=vec4(2.0,2.0,2.0,1.0); gl_PointSize=0.0; }
@@ -23,7 +25,9 @@ void main(){
   vec4 wp=M*vec4(a_pos,1.0);
   if(u_xray>0.0 && (flags&8)!=0){
     vec4 cp=u_vp*wp; vec2 dd=(cp.xy/cp.w-u_pclip.xy)*vec2(u_aspect,1.0);
-    if(cp.w<u_pclip.z-0.8 && dot(dd,dd)<0.07){ kill(); return; }
+    // Recorte em volta do herói: some de vez no meio e vai se desfazendo em pontilhado na borda (a casa não fica "oca" de repente)
+    float rr2=dot(dd,dd)/0.085;
+    if(cp.w<u_pclip.z-0.8 && rr2<1.0){ float keep=smoothstep(0.45,1.0,rr2); if(hash(a_pos*5.3)>=keep){ kill(); return; } }
   }
   float mat=a_info.x, size=a_info.z*u_sizeMul, shade;
   if((flags&2)!=0){
@@ -38,6 +42,11 @@ void main(){
     float diff=max(dot(n,u_light),0.0);
     float rim=pow(1.0-clamp(nv,0.0,1.0),3.0);
     shade=0.17+0.72*diff+0.18*rim;
+    if(u_night>0.0){
+      float L=0.0;
+      for(int i=0;i<12;i++){ vec4 l=u_lamps[i]; if(l.z<=0.0) continue; float d=length(wp.xz-l.xy)/l.z; if(d<1.0){ float f=1.0-d; L+=l.w*f*f; } }
+      shade=shade*(1.0-0.45*u_night)+u_night*min(L,0.5)*(0.45+0.55*max(n.y,diff));
+    }
     if((flags&16)!=0) shade*=0.82+0.22*sin(u_time*1.8+wp.x*1.3+wp.z*0.9);
     if((flags&4)!=0){
       float sh=1.0;
@@ -78,7 +87,7 @@ const FS_POST = `#version 300 es
 precision highp float;
 precision highp int;
 uniform sampler2D u_fb, u_pal;
-uniform float u_px, u_dither, u_time, u_fade, u_hurt;
+uniform float u_px, u_dither, u_time, u_fade, u_hurt, u_night, u_dusk;
 uniform vec2 u_res;
 uniform int u_outlineOn;
 uniform int u_icon;   // 1: assando ícone (fundo transparente)
@@ -105,7 +114,8 @@ void main(){
       float f=(1.0-uv.y)*2.0+(b-0.5)*0.9;
       int i=clamp(int(floor(f+0.5)),0,2); col=i==0?u_bg0:(i==1?u_bg1:u_bg2);
       float hs=h21(vec2(lp));
-      if(uv.y>0.35 && hs>0.996){ float tw=sin(u_time*2.5+hs*300.0); if(tw>-0.2) col=mix(col,u_star,tw>0.6?1.0:0.55); }
+      col=mix(col,col*vec3(0.28,0.32,0.62),u_night); col=mix(col,col*vec3(1.15,0.78,0.6),u_dusk*0.5);
+      if(uv.y>0.35 && hs>(0.996-0.004*u_night)){ float tw=sin(u_time*2.5+hs*300.0); if(tw>-0.2) col=mix(col,u_star,tw>0.6?1.0:0.55); }
     }
   } else {
     int m=int(d.r*255.0+0.5);
@@ -116,6 +126,11 @@ void main(){
         vec4 q=texelFetch(u_fb,clamp(lp+OFF[k],ivec2(0),R),0);
         if(q.a>0.0 && q.a<d.a-0.06 && !isEm(int(q.r*255.0+0.5))){ col=mix(texelFetch(u_pal,ivec2(0,m),0).rgb,u_outline,0.55); break; }
       }
+    }
+    if(!isEm(m)){   // noite: azul onde a luz não chega (o que os lampiões acendem fica quente); entardecer: alaranjado
+      float nk=u_night*(1.0-smoothstep(0.56,0.9,d.g));
+      col=mix(col,col*vec3(0.34,0.41,0.8)+vec3(0.0,0.008,0.035),nk);
+      col=mix(col,col*vec3(1.12,0.82,0.62),u_dusk*0.5);
     }
     if(d.b>0.0 && d.b*1.05>b) col=vec3(1.0);
   }

@@ -13,6 +13,7 @@ async function onlinePlayer(browser: Browser, cls = 'lamina') {
   page.on('console', m => { if (m.type() === 'error' && !/fonts\.g|favicon/.test(m.text())) errors.push(m.text()); });
   await page.goto('/?debug=1');
   await page.waitForSelector('#mOnline:not([hidden])', { timeout: 30_000 });
+  await page.evaluate(() => { (window as any).__T.G.forceHour = 12; });   // meio-dia (a noite muda dano, XP e loot)
   await page.click('#mOnline');
   await page.click('.net-tabs button:nth-child(3)');
   await page.click('.net-form button.gold');

@@ -17,6 +17,8 @@ export interface FishSpecies {
   p: number;
   /** Raro: entra no bônus das iscas e do nível. */
   rare?: number;
+  /** Peixe da noite: chance multiplicada à noite (e dividida de dia). */
+  night?: number;
 }
 
 export const FISH: FishSpecies[] = [
@@ -26,10 +28,10 @@ export const FISH: FishSpecies[] = [
   { id: 'bagre', n: 'Bagre-Velho', c: '#8a7a5a', g: 34, fx: 7, w: 2, rod: 1, lv: 3, at: ['rio', 'remanso'], p: 16 },
   { id: 'carpa', n: 'Carpa Dourada', c: '#ffbf3d', g: 45, fx: 9, w: 2, rod: 0, lv: 1, at: ['lago', 'remanso'], p: 9, rare: 1 },
   { id: 'dourado', n: 'Dourado-do-Rio', c: '#ffd27a', g: 70, fx: 14, w: 3, rod: 1, lv: 5, at: ['rio'], p: 6, rare: 1 },
-  { id: 'enguia', n: 'Enguia-de-Fio', c: '#9cf6ff', g: 95, fx: 18, w: 2, rod: 2, lv: 8, at: ['remanso'], p: 5, rare: 2 },
+  { id: 'enguia', n: 'Enguia-de-Fio', c: '#9cf6ff', g: 95, fx: 18, w: 2, rod: 2, lv: 8, at: ['remanso'], p: 5, rare: 2, night: 4 },
   { id: 'salmao', n: 'Salmão-Brasa', c: '#ff8a5a', g: 120, fx: 22, w: 3, rod: 2, lv: 10, at: ['rio', 'remanso'], p: 3, rare: 2 },
-  { id: 'lua', n: 'Peixe-Lua', c: '#c07bff', g: 160, fx: 30, w: 2, rod: 0, lv: 1, at: ['lago'], p: .9, rare: 3 },
-  { id: 'rei', n: 'Rei-do-Rio', c: '#ff5a7a', g: 600, fx: 90, w: 4, rod: 3, lv: 15, at: ['remanso'], p: .35, rare: 4 },
+  { id: 'lua', n: 'Peixe-Lua', c: '#c07bff', g: 160, fx: 30, w: 2, rod: 0, lv: 1, at: ['lago'], p: .9, rare: 3, night: 4 },
+  { id: 'rei', n: 'Rei-do-Rio', c: '#ff5a7a', g: 600, fx: 90, w: 4, rod: 3, lv: 15, at: ['remanso'], p: .35, rare: 4, night: 2 },
 ];
 export const fishById = (id: string) => FISH.find(f => f.id === id);
 
@@ -60,10 +62,11 @@ export const fisherXpFor = (lv: number) => (lv - 1) ** 2 * 12;
 export type Water = 'lago' | 'rio' | 'remanso';
 
 /** Sorteia o peixe de um lançamento. */
-export function rollFish(water: Water, fisherLv: number, baitId: string | null, rng: () => number = Math.random): FishSpecies {
+/** night: 0 a 1 (quão noite está): os peixes da noite aparecem muito mais. */
+export function rollFish(water: Water, fisherLv: number, baitId: string | null, rng: () => number = Math.random, night = 0): FishSpecies {
   const b = baitId ? baitById(baitId) : null, rareMul = (b ? b.rare : 1) * (1 + fisherLv * .03);
   const pool = FISH.filter(f => f.at.includes(water) && fisherLv >= f.lv && !(f.id === 'rei' && (!b || b.id !== 'fio')));
-  const wt = pool.map(f => f.p * (f.rare ? rareMul ** Math.min(2, f.rare * .6) : 1));
+  const wt = pool.map(f => f.p * (f.rare ? rareMul ** Math.min(2, f.rare * .6) : 1) * (f.night ? (night > .5 ? f.night : 1 / f.night) : 1));
   let r = rng() * wt.reduce((a, x) => a + x, 0);
   for (let i = 0; i < pool.length; i++) { if (r < wt[i]) return pool[i]; r -= wt[i]; }
   return pool[0];

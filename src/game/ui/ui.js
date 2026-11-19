@@ -20,6 +20,7 @@ function setTxt(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textC
 function updateHud() {
   if (!P) return;
   const s = G.save, st = stats();
+  setTxt('#hClock', outdoors() ? (nightK() > .5 ? '☾ ' : '☀ ') + hourStr() : ''); { const ck = $('#hClock'); if (ck) ck.style.color = nightK() > .5 ? '#9cb8ff' : duskK() > .3 ? '#ff9a5a' : '#ffd27a'; }
   setTxt('#hName', G.char.name); setTxt('#hLv', eloLvl(s) !== s.lvl ? s.lvl + '→' + eloLvl(s) : eloMentor() ? s.lvl + '★' : s.lvl);
   $('#hHp').style.width = clamp(P.hp / P.maxHp, 0, 1) * 100 + '%'; setTxt('#hHpT', `${Math.ceil(P.hp)} / ${P.maxHp}`);
   $('#hXp').style.width = clamp(s.xp / xpNeed(s.lvl), 0, 1) * 100 + '%';
@@ -227,8 +228,8 @@ function renderFishery() {
     const WN = { lago: 'lago', rio: 'rio', remanso: 'remanso' };
     for (const f of TF.FISH) {
       const c = s.fcount && s.fcount[f.id], r = document.createElement('div'); r.className = 'shoprow';
-      r.innerHTML = c ? `<span class="fish-dot" style="--fc:${f.c}"></span><div class="nm"><span style="color:${f.c}">${f.n}</span><small>${c} pescados · ${f.at.map(w => WN[w]).join(', ')}${f.w > 1 ? ' · briga ' + f.w + '×' : ''}</small></div>`
-        : `<span class="fish-dot unk"></span><div class="nm">???<small>${f.at.map(w => WN[w]).join(', ')}${f.lv > 1 ? ' · Pescador ' + f.lv : ''}${f.rod ? ' · ' + TF.RODS[f.rod].n : ''}${f.id === 'rei' ? ' · só com Isca de Fio' : ''}</small></div>`;
+      r.innerHTML = c ? `<span class="fish-dot" style="--fc:${f.c}"></span><div class="nm"><span style="color:${f.c}">${f.n}</span><small>${c} pescados · ${f.at.map(w => WN[w]).join(', ')}${f.w > 1 ? ' · briga ' + f.w + '×' : ''}${f.night ? ' · mais à noite' : ''}</small></div>`
+        : `<span class="fish-dot unk"></span><div class="nm">???<small>${f.at.map(w => WN[w]).join(', ')}${f.lv > 1 ? ' · Pescador ' + f.lv : ''}${f.night ? ' · de noite' : ''}${f.rod ? ' · ' + TF.RODS[f.rod].n : ''}${f.id === 'rei' ? ' · só com Isca de Fio' : ''}</small></div>`;
       grid.appendChild(r);
     }
   }

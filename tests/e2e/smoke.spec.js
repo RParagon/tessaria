@@ -254,3 +254,27 @@ test('Pesqueiro: rio com píeres, iscas e varas na banca, peixe pesado que arreb
   await expect(page.locator('#fsList')).toContainText('Bagre-Velho');
   expect(errors).toEqual([]);
 });
+
+test('dia e noite: relógio no HUD, noite nos Ermos com monstros mais fortes e mais XP, peixes e crianças da noite', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  // meio-dia na vila: relógio com sol; à noite, lua e as crianças na porta da taverna
+  await expect(page.locator('#hClock')).toContainText('☀ 12:00');
+  expect(await ev('[nightK(), duskK() < .1]')).toEqual([0, true]);
+  await ev('G.forceHour = 23');
+  await expect(page.locator('#hClock')).toContainText('☾ 23:00');
+  expect(await ev('nightK()')).toBe(1);
+  await page.waitForFunction(() => window.__T.ev('(n => Math.hypot(n.x - 31.6, n.z - 26.2) < .1)(npcs.find(n => n.id === "kiko"))'), null, { timeout: 5000 });
+  // peixes da noite: a Enguia-de-Fio aparece muito mais no Remanso
+  const enguias = await ev("(() => { let d = 0, n = 0; for (let i = 0; i < 3000; i++) { if (TessFish.rollFish('remanso', 10, null, Math.random, 0).id === 'enguia') d++; if (TessFish.rollFish('remanso', 10, null, Math.random, 1).id === 'enguia') n++; } return [d, n]; })()");
+  expect(enguias[1]).toBeGreaterThan(enguias[0] * 4);
+  // nos Ermos: de noite os monstros batem mais e dão mais XP; dentro de lugar coberto (Fenda) não é noite
+  await ev("G.forceHour = 12"); await page.evaluate(() => window.__T.travel('wilds'));
+  await page.waitForFunction(() => window.__T.RG.key === 'wilds' && window.__T.ev("G.mode === 'play'"), null, { timeout: 60_000 });
+  const dia = await ev('monsterScale()'); await ev('G.forceHour = 1'); const noite = await ev('monsterScale()');
+  expect(noite.dmg / dia.dmg).toBeCloseTo(1.15, 2); expect(noite.xp / dia.xp).toBeCloseTo(1.25, 2);
+  await expect(page.locator('#hClock')).toContainText('☾ 01:00');
+  expect(errors).toEqual([]);
+});

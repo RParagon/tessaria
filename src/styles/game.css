@@ -417,3 +417,7 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 .fbar i{display:block;height:100%;background:linear-gradient(90deg,#3fb6c9,#9cf6ff)}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
 .fgrid .shoprow{padding:6px}
+
+/* relógio do dia e da noite */
+.pname .clk:empty{display:none}
+.pname .clk{margin-left:4px}

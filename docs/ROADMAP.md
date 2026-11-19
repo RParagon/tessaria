@@ -81,3 +81,21 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
 - [ ] Google Play: conta de desenvolvedor, APK assinado, ficha da loja, classificação etária
 - [ ] Política de privacidade (LGPD), termos de uso e exclusão de conta
 - [ ] Idiomas: português, inglês e espanhol
+
+## Próximas melhorias (planejamento, 0.36.0)
+
+Vila e mundo:
+- [x] Ciclo de dia e noite com efeito no jogo (0.36.0)
+- [x] Casas com interior visível pelo recorte e teto do banco fechado (0.36.0)
+- [ ] Entrar nas casas dos moradores e na taverna (interior jogável, como a casa do jogador)
+- [ ] Chuva e neblina leves (o clima muda o que aparece nos Ermos e no Pesqueiro)
+- [ ] Moradores com rotina de dia e de noite para todos (dormir, abrir e fechar as bancas)
+- [ ] Relevo de verdade na vila (subidas e mirantes)
+
+Pesqueiro:
+- [ ] Torneio de pesca semanal com ranking online
+- [ ] Receitas: cozinhar peixe na fogueira para bônus curtos
+
+Online:
+- [ ] Monstros compartilhados nas salas públicas dos Ermos (o servidor simula)
+- [ ] Troca direta e mercado da vila (docs/ONLINE.md)

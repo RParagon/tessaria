@@ -22,7 +22,7 @@ function frame(now) {
       updateProjectiles(gdt); updateTelegraphs(gdt); updatePickups(gdt); coopTick(dt);
       if (G.rift && !G.rift.done) G.rift.t += gdt; updateLater(gdt); updateZones(gdt);
       for (const k in G.buffs) G.buffs[k] -= gdt;
-      updateStreak(gdt); checkFeats(dt); updateMinimap(dt);
+      updateStreak(gdt); checkFeats(dt); updateMinimap(dt); updateDayNight();
       if (G.pickT > 0) { G.pickT -= dt; if (G.pickT <= 0) G.pickN = 0; }
       if (P.dieT < 0 && P.hp / P.maxHp < .3) { G.beatT = (G.beatT || 0) - dt; if (G.beatT <= 0) { G.beatT = .85; sfx('beat'); G.hurt = Math.max(G.hurt, .5); } }
       if (P.dieT < 0) updateTriggers(gdt);

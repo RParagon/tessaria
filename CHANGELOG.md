@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.36.0 · Dia e noite e vila mais completa
+- **Ciclo de dia e noite:** 1 minuto real = 1 hora na Tessária (o dia dura 24 min), pela hora do servidor, então todos veem a mesma hora. Noite das 20h às 5h, com entardecer alaranjado e amanhecer. Vale ao ar livre (vila, Ermos, bosque, pântano e picos); Fendas e covis não mudam
+- **Luz da noite:** onde a luz não chega fica azul-escuro; lampiões, janelas, lanternas, a forja, a fogueira e os acampamentos dos Ermos iluminam em volta, e o herói carrega uma luz (maior nos Ermos). Vaga-lumes aparecem muito mais à noite
+- **A noite muda o jogo:** nos Ermos, monstros com +15% de dano, mais elites, +25% de XP e +40% de chance de item; a Lua de Sangue só nasce à noite. No Pesqueiro, a Enguia-de-Fio, o Peixe-Lua e o Rei-do-Rio aparecem muito mais. Na vila, Kiko e Nina ficam na porta da taverna ouvindo histórias
+- **Relógio no HUD:** ☀ ou ☾ com a hora, ao lado do nome, e avisos quando anoitece e amanhece
+- **Casas por dentro:** quem passa por trás de uma casa vê pelo recorte o assoalho, o tapete, a cama, a mesa com banquetas, o baú e a lareira acesa (na taverna, balcão, mesas e barris; na ferraria, bigorna, barras de ferro e tina). O recorte agora se desfaz em pontilhado na borda, em vez de abrir um buraco seco
+- **Banco do Tear:** o teto não fica mais vazado (laje de mármore em volta da cúpula, cornija e pináculos dourados) e as janelas viraram vitrais com moldura dourada
+- **Vila mais completa:** floreiras nas janelas, lenha empilhada, arbustos floridos, carroças de feira com abóboras e maçãs, placas nos caminhos, cercas e lanternas no Pesqueiro
+
 ## 0.35.0 · Pesqueiro e Ermos por faixa
 - **Pesqueiro do Ivo:** a vila cresceu para o leste. Uma passagem ao sul da rua principal leva a um rio que desce do lago (o riacho tem ponte de tábuas), com a casa do Ivo, a banca de peixes e quatro píeres: do Norte, da Corredeira, do Salgueiro e o Remanso Fundo. O Ivo agora pesca no rio
 - **Dez peixes:** Lambari, Tilápia-de-Brasa, Truta-Prateada, Bagre-Velho, Carpa Dourada, Dourado-do-Rio, Enguia-de-Fio, Salmão-Brasa, Peixe-Lua e o Rei-do-Rio, que vive no Remanso e só sobe para a Isca de Fio. Cada água tem os seus

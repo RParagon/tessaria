@@ -31,7 +31,7 @@ function hurtEnemy(e, dmg, dx, dz, crit, kbm = 1) {
       dropGold(e.x, e.z, e.def.gold + Math.floor(rr(0, 3)));
       if (Math.random() < .07) pickups.push({ kind: 'heart', x: e.x, y: .5, z: e.z, vx: 0, vy: 3, vz: 0, t: 0 });
       COOP.noItems = !!coopNet();   // co-op: itens dos monstros vêm do servidor
-      try { if (Math.random() < .08 * stats().itemFind) dropItem(e.x, e.z, rollRar(G.rift && G.rift.L >= 4 ? 1 : 0)); onEnemyKilled(e); } finally { COOP.noItems = false; }
+      try { if (Math.random() < .08 * stats().itemFind * (RG && RG.wild ? 1 + .4 * nightK() : 1)) dropItem(e.x, e.z, rollRar(G.rift && G.rift.L >= 4 ? 1 : 0)); onEnemyKilled(e); } finally { COOP.noItems = false; }
     } else coopFarKill(e);   // co-op: longe e sem ter acertado: só o progresso da Fenda
     coopKilled(e);
   }

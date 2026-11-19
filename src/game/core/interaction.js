@@ -12,6 +12,34 @@ function spawnCritters() {
 // com sorteio por semente. Todos os jogadores fazem a mesma conta e veem a mesma vila, sem trocar mensagens.
 // Offline, vale a hora do aparelho.
 function villageTime() { const n = window.TessNet; return (n && n.enabled && n.connected ? n.serverNow() : Date.now()) / 1000; }
+// ---------- dia e noite ----------
+// 1 minuto real = 1 hora na Tessária: o dia inteiro dura 24 min, igual para todos (hora do servidor).
+// Noite das 20h às 5h (com entardecer e amanhecer de 2 h). Vale ao ar livre: vila, Ermos, bosque, pântano e picos.
+const DAY_S = 24 * 60;
+function dayHour() { if (G.forceHour !== undefined && G.forceHour !== null) return G.forceHour; return (((villageTime() % DAY_S) + DAY_S) % DAY_S) / 60; }
+const sm01 = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const nightAt = h => (h >= 12 ? sm01(18.5, 20.5, h) : 1 - sm01(5, 7, h));
+const duskAt = h => Math.max(0, 1 - Math.abs(h - 19) / 1.6) + Math.max(0, 1 - Math.abs(h - 6) / 1.3) * .7;
+const OUTDOOR = { hub: 1, wilds: 1, forest: 1, swamp: 1, peaks: 1 };
+const outdoors = () => !!(RG && OUTDOOR[RG.key] && !G.rift);
+/** Quão noite está aqui (0 dia, 1 noite fechada); 0 em lugar coberto. */
+function nightK() { return outdoors() ? nightAt(dayHour()) : 0; }
+function duskK() { return outdoors() ? duskAt(dayHour()) : 0; }
+const isNight = () => nightK() > .5;
+const hourStr = () => { const h = dayHour(), hh = Math.floor(h), mm = Math.floor((h - hh) * 6) * 10; return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); };
+/** Avisos quando anoitece e amanhece, e os efeitos da noite em cada região. */
+function updateDayNight() {
+  if (!RG || !P) return;
+  const n = isNight();
+  if (G.wasNight === undefined) { G.wasNight = n; return; }
+  if (n !== G.wasNight) {
+    G.wasNight = n;
+    if (!outdoors()) return;
+    if (n) toast('ANOITECEU', true, RG.wild ? 'MONSTROS MAIS FORTES E MAIS ELITES · +25% DE XP E MAIS LOOT' : RG.key === 'hub' ? 'LAMPIÕES ACESOS · PEIXES DA NOITE NO RIO · O BARDO TOCA NA FOGUEIRA' : 'OS MONSTROS FICAM MAIS FORTES', '#9cb8ff');
+    else toast('AMANHECEU', false, 'O SOL VOLTA À TESSÁRIA', '#ffd27a');
+    sfx('ui');
+  }
+}
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h | 0; }
 const legRand = (seed, k) => rng(seed ^ Math.imul(k | 0, 2654435761))();
 /** Onde o morador deve estar na hora t: anda do ponto do trecho anterior até o do trecho atual e espera o resto. */
@@ -24,11 +52,14 @@ function npcScheduled(n, t) {
   if (f < dur && d > .01) { const u = f / dur; return { x: A[0] + (B[0] - A[0]) * u, z: A[1] + (B[1] - A[1]) * u, yaw: Math.atan2(B[0] - A[0], B[1] - A[1]), moving: true, walk: f * sp * 2.6 }; }
   return { x: B[0], z: B[1], yaw: null, moving: false, walk: 0 };
 }
+/** Onde cada morador fica à noite (x, z, para onde olha). */
+const NIGHT_SPOT = { kiko: [31.6, 26.2, 0], nina: [34.4, 26.2, 0] };
 function updateNPCs(dt) {
   if (!RG || RG.key !== 'hub') return;
-  const vt = villageTime();
+  const vt = villageTime(), night = isNight();
   for (const n of npcs) {
     if (!n.visible || !n.wander) continue;
+    if (night && NIGHT_SPOT[n.id] && !(n.talkT > 0)) { const [nx, nz, ny] = NIGHT_SPOT[n.id]; n.x = nx; n.z = nz; n.wyaw = ny; n.baseYaw = ny; n.moveAmt = lerp(n.moveAmt || 0, 0, .15); continue; }   // à noite: as crianças ouvem histórias na porta da taverna
     const talking = n.talkT > 0 || (G.mode === 'dialog' && DLG.cur && DLG.cur.who === n.name);
     if (talking) { n.moveAmt = lerp(n.moveAmt || 0, 0, .2); n.backT = 20; continue; }
     n.backT = Math.max(0, (n.backT || 0) - dt);
@@ -151,7 +182,7 @@ function updateTriggers(dt) {
         e.elite.name = rm.lair ? rm.lair[1] : ENAME[e.type] + ' Alfa'; e.hp = e.maxHp = Math.round(e.maxHp * (rm.lair ? 4 : 1.5));
         if (rm.lair) { e.lair = true; e.scale *= 1.55; }
       }
-      else if (grp.length && Math.random() < (RG.wild ? (G.bloodT > 0 ? .45 : .1) + (rm.zone === 7 ? .15 : 0) : G.rift ? .65 : .35) + .05 * (G.save.diff || 0)) makeElite(pick(grp));   // Ermos: Lua de Sangue e Ermo Profundo têm mais elites
+      else if (grp.length && Math.random() < (RG.wild ? (G.bloodT > 0 ? .45 : .1) + (rm.zone === 7 ? .15 : 0) + .12 * nightK() : G.rift ? .65 : .35) + .05 * (G.save.diff || 0)) makeElite(pick(grp));   // Ermos: Lua de Sangue e Ermo Profundo têm mais elites
       if (grp.length >= 5 && (G.save.diff || 0) >= 3 && Math.random() < .35) makeElite(pick(grp.filter(e => !e.elite)));
       if (!RG.thiefDone && rm.kind !== 'boss' && Math.random() < .14) { RG.thiefDone = true; spawnThief(rm); }
     }
@@ -416,7 +447,7 @@ function wildsEvents(b) {
   // Lua de Sangue: de tempos em tempos, 75 s com muito mais elites e +50% de XP
   G.bloodCD = (G.bloodCD ?? 360 + rr(0, 240)) - 1;
   if (G.bloodT > 0) { G.bloodT -= 1; if (G.bloodT <= 0) toast('A lua volta ao normal', false, 'FIM DA LUA DE SANGUE'); }
-  else if (G.bloodCD <= 0) { G.bloodT = 75; G.bloodCD = 540 + rr(0, 300); toast('LUA DE SANGUE', true, 'MAIS ELITES E +50% DE XP POR 75 SEGUNDOS', '#ff4a5a'); sfx('roar'); G.shake = Math.max(G.shake, .3); }
+  else if (G.bloodCD <= 0 && isNight()) { G.bloodT = 75;   /* a Lua de Sangue só nasce à noite */ G.bloodCD = 540 + rr(0, 300); toast('LUA DE SANGUE', true, 'MAIS ELITES E +50% DE XP POR 75 SEGUNDOS', '#ff4a5a'); sfx('roar'); G.shake = Math.max(G.shake, .3); }
   // Emboscada (fora da Campina): monstros do bioma cercam o herói; vencer dá recompensa
   const A = G.amb;
   if (A) {
@@ -487,7 +518,7 @@ function fishAction(spot = 0) {
     G.fishSpot = spot; const sp = HUB.fishSpots[spot] || HUB.fishSpots[0];
     s.bait = s.bait || {}; let bait = s.baitSel && (s.bait[s.baitSel] || 0) > 0 ? TF.baitById(s.baitSel) : null;
     if (bait) s.bait[bait.id]--;
-    const f = TF.rollFish(sp.water, fishLv(), bait ? bait.id : null);
+    const f = TF.rollFish(sp.water, fishLv(), bait ? bait.id : null, Math.random, nightK());   // de noite: Enguia, Peixe-Lua e Rei-do-Rio aparecem muito mais
     P.yaw = Math.atan2(sp.x + 4 - P.x, sp.z - P.z);
     G.fishing = { t: 0, spot, f, bait: bait ? bait.id : null, pulls: 0, biteAt: (2.6 + Math.random() * 4) * (bait ? bait.bite : 1), bite: false };
     P.emote = null; sfx('ui');

@@ -80,7 +80,15 @@ const HUB = {
     [101.6, 38.6, 'barrel'], [102.3, 39.4, 'crate'], [113.2, 38.4, 'crate'], [113.8, 39.3, 'barrel'], [123, 12, 'well'], [96, 30, 'flowers'], [104, 28, 'flowers'], [134, 33, 'flowers'], [140, 40, 'flowers'], [116, 20, 'flowers'],
     [142, 25, 'hay'], [143.2, 26.3, 'hay'], [101, 46.5, 'line'], [120.5, 51.6, 'crate'], [121.3, 52.3, 'barrel'], [136, 20.5, 'crate'],
     // Pesqueiro: caixotes de peixe, barris de isca, redes e varal de peixe seco
-    [161, 28.4, 'barrel'], [161.8, 29.2, 'crate'], [171, 28.6, 'crate'], [156, 21, 'barrel'], [157, 21.8, 'crate'], [154, 44, 'hay'], [160, 60, 'flowers'], [156, 34, 'line'], [168, 40, 'barrel']],
+    [161, 28.4, 'barrel'], [161.8, 29.2, 'crate'],
+    // vila mais completa: floreiras nas janelas, lenha, arbustos, carroça da feira, placas, cercas e lanternas
+    [12.3, 22.7, 'planter'], [22.3, 22.7, 'planter'], [58.3, 22.7, 'planter'], [12.3, 46.7, 'planter'], [22.3, 50.7, 'planter'], [70.3, 46.7, 'planter'], [96.3, 16.7, 'planter'], [106.3, 16.7, 'planter'], [98.3, 52.7, 'planter'],
+    [7.2, 19.2, 'wood'], [25, 19.2, 'wood'], [61, 19.2, 'wood'], [7.2, 43.2, 'wood'], [153.6, 15, 'wood'],
+    [6.6, 23.4, 'bush'], [25.6, 23.4, 'bush'], [52.4, 23.4, 'bush'], [6.6, 47.4, 'bush'], [17.4, 51.4, 'bush'], [64.6, 47.4, 'bush'], [93.2, 17.6, 'bush'], [109, 17.6, 'bush'], [94, 53.6, 'bush'], [163, 18, 'bush'], [176, 46, 'bush'],
+    [62.5, 27.5, 'cart'], [108.8, 34, 'cart'],
+    [41, 52, 'sign'], [147.5, 35, 'sign'], [86, 34.5, 'sign'], [150, 41, 'sign'],
+    [11, 56, 'fence'], [14.2, 56, 'fence'], [17.4, 56, 'fence'], [155, 48, 'fencev'], [155, 51.2, 'fencev'],
+    [158.5, 44, 'lantern'], [168.5, 66, 'lantern'], [158.5, 22, 'lantern'], [163, 31.6, 'lantern'], [169, 31.6, 'lantern'], [171, 28.6, 'crate'], [156, 21, 'barrel'], [157, 21.8, 'crate'], [154, 44, 'hay'], [160, 60, 'flowers'], [156, 34, 'line'], [168, 40, 'barrel']],
 };
 /** Rio do Pesqueiro (ladrilhos): centro e meia largura em cada linha; o remanso é o poço largo ao sul. */
 const riverX = ty => 94 + Math.sin(ty * .22) * 1.6 + Math.sin(ty * .07 + 1) * 1.0;
@@ -516,6 +524,30 @@ function buildWorld(key, G) {
       S.tube([[D[0] - .05, ry + .06, cz, .09, 0], [C[0] + .05, ry + .06, cz, .09, 0]], 12, { sub: 1, flags: 8 });
       for (const ez of [z0 - o, z0 + d + o]) S.tube([[x0 - o, ey - .04, ez, .055, 0], [x0 + w + o, ey - .04, ez, .055, 0]], 12, { sub: 1, flags: 8 });
       for (const gx of [x0 + .15, x0 + w - .15]) S.mem([[[gx, ey, z0 + .15], [gx, ey, z0 + d - .15], [gx, ry - .05, cz]]], p => (Math.abs(p[2] - cz) < .05 || Math.abs(p[1] - 3.1) < .05) ? 12 : plaster, () => 0, { flags: 8 });
+      // Interior: aparece pelo recorte quando o herói passa por trás da casa (assoalho, tapete e móveis baixos, que não tampam o herói)
+      { const fy = .46, v = hi % 3, L = x0 + .2, Rt = x0 + w - .2, N = z0 + .2;
+        S.box([cx, fy, cz], [hw - .02, .02, hd - .02], p => frac(p[0] * 2.4) < .07 ? 29 : (h.forge ? 11 : 12), 0, { faces: 't' });   // assoalho (pedra na ferraria)
+        for (const [ax, az, f] of [[cx, N, 's'], [L, cz, 'e'], [Rt, cz, 'w']]) S.box([ax, fy + .45, az], f === 's' ? [hw - .05, .45, .02] : [.02, .45, hd - .05], p => p[1] < fy + .12 ? 12 : plaster, 0, { faces: f, flags: 8 });   // rodapé e metade de baixo das paredes por dentro
+        const leg = (lx, lz, hh) => S.box([lx, fy + hh / 2, lz], [.035, hh / 2, .035], 12, 0, { faces: 'nsew' });
+        if (h.tavern) {
+          S.box([x0 + 1.2, fy + .5, N + .45], [.9, .5, .25], p => p[1] > fy + .95 ? 12 : 29, 0, { faces: 'tnsew' });   // balcão
+          for (const [tx2, tz2] of [[cx, cz], [cx + 2.2, cz + .8], [cx - 1.6, cz + 1.1]]) { S.ell([tx2, fy + .62, tz2], [.45, .04, .45], 12, 0, { noSolid: true, min: 26 }); leg(tx2, tz2, .6); S.ell([tx2 + .12, fy + .72, tz2], [.06, .08, .06], 14, 0, { min: 8 }); for (const a of [0, 2.1, 4.2]) S.box([tx2 + Math.cos(a) * .7, fy + .2, tz2 + Math.sin(a) * .7], [.13, .2, .13], 12, 0, { faces: 'tnsew' }); }
+          for (let k = 0; k < 3; k++) S.ell([Rt - .4, fy + .32, N + .4 + k * .7], [.28, .32, .28], p => Math.abs(p[1] - fy - .32) < .04 ? 29 : 12, 0, { min: 20 });   // barris
+        } else if (h.forge) {
+          S.box([cx + .6, fy + .3, cz + .4], [.3, .12, .14], 29, 0, { faces: 'tnsew' }); S.box([cx + .6, fy + .12, cz + .4], [.14, .12, .12], 29, 0, { faces: 'tnsew' });   // bigorna de dentro
+          for (let k = 0; k < 4; k++) S.box([Rt - .3, fy + .2 + k * .06, N + .5 + k * .2], [.2, .03, .08], 11, 0, { faces: 'tnsew' });   // barras de ferro
+          S.ell([cx - .8, fy + .25, cz - .4], [.35, .25, .35], 12, 0, { min: 18 }); S.ell([cx - .8, fy + .5, cz - .4], [.3, .02, .3], 15, 0, { noSolid: true });   // tina
+        } else {
+          S.box([L + .5, fy + .2, N + .8], [.45, .18, .75], 12, 0, { faces: 'tnsew' }); S.box([L + .5, fy + .4, N + .95], [.42, .05, .58], [16, 18, 26][v], 0, { faces: 'tnsew' }); S.box([L + .5, fy + .42, N + .28], [.34, .06, .13], 28, 0, { faces: 'tnsew' });   // cama, colcha e travesseiro
+          S.box([cx + .5, fy + .62, cz + .1], [.5, .035, .34], 12, 0, { faces: 'tnsew' }); for (const [lx, lz] of [[-.42, -.27], [.42, -.27], [-.42, .27], [.42, .27]]) leg(cx + .5 + lx, cz + .1 + lz, .6);   // mesa
+          for (const sx of [-.85, .85]) S.box([cx + .5 + sx, fy + .25, cz + .1], [.15, .25, .15], 12, 0, { faces: 'tnsew' });   // banquetas
+          S.ell([cx + .35, fy + .7, cz + .05], [.07, .07, .07], [14, 16, 17][v], 0, { min: 8 }); S.box([cx + .7, fy + .66, cz + .15], [.14, .01, .1], 28, 0, { faces: 't' });   // caneca e carta
+          S.box([cx, fy + .025, cz + .9], [.9, .01, .6], [17, 16, 18][v], 0, { faces: 't' }); S.box([cx, fy + .03, cz + .9], [.7, .01, .42], 28, 0, { faces: 't' });   // tapete
+          S.box([Rt - .45, fy + .25, cz + 1.0], [.35, .25, .22], p => Math.abs(p[1] - fy - .4) < .03 ? 14 : 12, 0, { faces: 'tnsew' });   // baú
+          S.box([Rt - .5, fy + .35, N + .3], [.45, .35, .18], 11, 0, { faces: 'tnsew' }); S.box([Rt - .5, fy + .2, N + .48], [.25, .15, .01], 29, 0, { faces: 's' }); S.pt([Rt - .5, fy + .12, N + .45], [.9, 0, 0], 21, 0, .22, 16);   // lareira baixa com brasa
+          if (v === 1) for (let k = 0; k < 3; k++) S.ell([L + 1.5 + k * .3, fy + .14, N + .35], [.12, .14, .12], [13, 16, 17][k], 0, { min: 8 });   // vasos
+        }
+      }
       if (h.forge) {
         S.box([cx, .45, fz + .85], [.4, .25, .2], 29, 0); S.box([cx, .15, fz + .85], [.18, .15, .15], 29, 0); S.box([cx - .45, .6, fz + .85], [.08, .05, .12], 29, 0);
         S.box([x0 + .6, .5, fz + .3], [.45, .5, .3], 11, 0); S.pt([x0 + .6, 1.02, fz + .3], [0, 1, 0], 14, 0, .5);
@@ -594,6 +626,18 @@ function buildWorld(key, G) {
     { const pd = HUB.pond, wx0 = (pd.x - pd.rx) * T + .4, wz = pd.y * T; S.box([wx0 + 1.6, .14, wz], [1.7, .06, .45], 12, 0, { faces: 'tnsew' }); for (let i = 0; i < 4; i++) for (const sz of [-.4, .4]) S.tube([[wx0 + .2 + i * 1.05, -.3, wz + sz, .06, 0], [wx0 + .2 + i * 1.05, .3, wz + sz, .06, 0]], 12, { sub: 1 }); }
     for (const [px, pz, kind] of HUB.props) {
       if (kind === 'crate') { S.box([px, .35, pz], [.35, .35, .35], p => (Math.abs(frac((p[0] + p[1] + p[2]) / .7) - .5) < .07) ? 19 : 12, 0); }
+      else if (kind === 'cart') {   // carroça de feira
+        S.box([px, .62, pz], [.95, .1, .55], p => frac(p[0] * 2.5) < .1 ? 19 : 12, 0, { faces: 'tnsew' }); for (const sz of [-.55, .55]) S.box([px, .82, pz + sz], [.95, .14, .03], 12, 0, { faces: 'nsew' });
+        for (const sz of [-.62, .62]) { const r = []; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; r.push([px - .3 + Math.cos(a) * .36, .38 + Math.sin(a) * .36, pz + sz, .045, 0]); } S.tube(r, 12, { closed: true, sub: 2 }); S.tube([[px - .3, .02, pz + sz, .03, 0], [px - .3, .74, pz + sz, .03, 0]], 12, { sub: 1 }); }
+        S.tube([[px + .9, .6, pz - .3, .03, 0], [px + 1.8, .3, pz - .3, .03, 0]], 12, { sub: 1 }); S.tube([[px + .9, .6, pz + .3, .03, 0], [px + 1.8, .3, pz + .3, .03, 0]], 12, { sub: 1 });
+        for (const [ox, oz, m] of [[-.4, -.2, 16], [-.1, .15, 17], [.3, -.1, 13], [.5, .25, 16]]) S.ell([px + ox, .82, pz + oz], [.16, .14, .16], m, 0, { min: 10 });   // abóboras e maçãs
+      }
+      else if (kind === 'sign') { S.tube([[px, 0, pz, .06, 0], [px, 1.6, pz, .05, 0]], 12, { sub: 1 }); S.box([px + .25, 1.35, pz], [.55, .14, .04], p => Math.abs(p[1] - 1.35) < .03 && Math.abs(p[0] - px - .2) < .35 ? 28 : 12, 0, { faces: 'nsew' }); S.cone([px + .8, 1.35, pz], [px + 1.0, 1.35, pz], .14, 12, 0); S.box([px - .2, 1.0, pz], [.45, .12, .04], p => Math.abs(p[1] - 1.0) < .03 && Math.abs(p[0] - px + .2) < .28 ? 28 : 12, 0, { faces: 'nsew' }); }   // placa de caminhos
+      else if (kind === 'fence' || kind === 'fencev') { const along = kind === 'fence', L = 1.6; for (const d of [-L, 0, L]) S.tube([[px + (along ? d : 0), 0, pz + (along ? 0 : d), .05, 0], [px + (along ? d : 0), .75, pz + (along ? 0 : d), .045, 0]], 12, { sub: 1 }); for (const y of [.35, .62]) S.tube([[px - (along ? L : 0), y, pz - (along ? 0 : L), .03, 0], [px + (along ? L : 0), y, pz + (along ? 0 : L), .03, 0]], 12, { sub: 1 }); }
+      else if (kind === 'planter') { S.box([px, .2, pz], [.55, .2, .2], 12, 0, { faces: 'tnsew' }); for (let k = 0; k < 6; k++) S.ell([px - .45 + k * .18, .45 + (k % 2) * .06, pz], [.1, .1, .1], [16, 17, 13, 16, 26, 17][k], 0, { min: 8 }); S.ell([px, .4, pz], [.5, .08, .16], 10, 0, { min: 20 }); }   // floreira na janela
+      else if (kind === 'wood') { for (let k = 0; k < 9; k++) { const row = Math.floor(k / 3), c = k % 3; S.tube([[px - .5, .12 + row * .22, pz - .22 + c * .22 + (row % 2) * .1, .1, 0], [px + .5, .12 + row * .22, pz - .22 + c * .22 + (row % 2) * .1, .1, 0]], k % 2 ? 19 : 12, { sub: 1 }); } }   // lenha empilhada
+      else if (kind === 'lantern') { S.tube([[px, 0, pz, .04, 0], [px, .9, pz, .035, 0]], 29, { sub: 1 }); S.box([px, 1.05, pz], [.13, .15, .13], 14, 0, { faces: 'nsew' }); S.box([px, 1.24, pz], [.17, .04, .17], 29, 0, { faces: 'tnsew' }); emitters.push({ t: 'glow', x: px, y: 1.05, z: pz }); }   // lanterna baixa
+      else if (kind === 'bush') { for (let k = 0; k < 4; k++) S.ell([px + (k % 2 - .5) * .5, .35 + (k > 1 ? .2 : 0), pz + (k > 1 ? .1 : -.1)], [.42, .36, .38], k % 2 ? 10 : 13, 0, { dm: .8 }); if ((px | 0) % 3 === 0) for (let k = 0; k < 5; k++) S.ell([px - .4 + k * .2, .62 + (k % 2) * .1, pz + .3], .05, 16, 0, { min: 5 }); }   // arbusto (alguns com flor)
       else if (kind === 'barrel') S.ell([px, .45, pz], [.3, .45, .3], p => (Math.abs(p[1] - .2) < .05 || Math.abs(p[1] - .7) < .05) ? 11 : 12, 0);
       else if (kind === 'well') { S.tube([[px, 0, pz, .85, 0], [px, .85, pz, .85, 0]], 11, { sub: 1 }); S.ell([px, .82, pz], [.72, .03, .72], 15, 0, { noSolid: true }); for (const sx of [-.8, .8]) S.tube([[px + sx, .8, pz, .06, 0], [px + sx, 2.2, pz, .06, 0]], 12, { sub: 1 }); S.mem([[[px - 1.1, 2.1, pz - .7], [px + 1.1, 2.1, pz - .7], [px, 2.7, pz]], [[px - 1.1, 2.1, pz + .7], [px + 1.1, 2.1, pz + .7], [px, 2.7, pz]]], 22, () => 0); S.tube([[px - .8, 1.8, pz, .04, 0], [px + .8, 1.8, pz, .04, 0]], 12, { sub: 1 }); S.box([px + .1, 1.35, pz], [.14, .16, .14], 12, 0); }
       else if (kind === 'flowers') { S.box([px, .12, pz], [1.0, .12, .5], 12, 0, { faces: 'tnsew' }); S.box([px, .25, pz], [.92, .02, .42], 9, 0, { faces: 't' }); for (let k = 0; k < 14; k++) { const fx = px - .8 + (k % 7) * .27, fz = pz - .2 + Math.floor(k / 7) * .4; S.tube([[fx, .25, fz, .015, 0], [fx, .5, fz, .015, 0]], 13, { sub: 1 }); S.ell([fx, .54, fz], .07, [16, 17, 28, 18][k % 4], 0, { min: 6 }); } }
@@ -662,9 +706,12 @@ function buildWorld(key, G) {
   if (key === 'hub') {   // Banco do Tear: mármore, colunas, frontão com moeda e cúpula dourada
     const { x: bx, z: bz } = HUB.bank, fz = bz + 2.7;
     S.box([bx, .15, bz + .4], [4.3, .15, 3.6], 11, 0, { faces: 'tnsew' });
-    S.box([bx, 1.85, bz - .2], [3.6, 1.7, 2.6], (p, n) => (n[2] > .5 || n[0] !== 0) && Math.abs(p[1] - 2.1) < .55 && frac((p[0] - bx + p[2]) / 1.6) < .32 ? 29 : (Math.abs(p[1] - .3) < .08 ? 24 : 28), 0, { faces: 'nsew', flags: 8 });
+    S.box([bx, 1.85, bz - .2], [3.6, 1.7, 2.6], (p, n) => { if ((n[2] > .5 || n[0] !== 0) && Math.abs(p[1] - 2.1) < .6) { const u = frac((p[0] - bx + p[2]) / 1.6); if (u < .34) return (u < .04 || u > .3 || Math.abs(p[1] - 2.1) > .52) ? 14 : 15; } return Math.abs(p[1] - .3) < .08 ? 24 : 28; }, 0, { faces: 'nsew', flags: 8 });
     for (const cx of [-2.7, -1, 1, 2.7]) { S.tube([[bx + cx, .3, fz, .27, 0], [bx + cx, 3.5, fz, .24, 0]], (p) => frac(Math.atan2(p[2] - fz, p[0] - bx - cx) * 1.3) < .2 ? 24 : 28, { sub: 1, flags: 8 }); S.box([bx + cx, 3.62, fz], [.36, .1, .36], 24, 0, { flags: 8 }); S.box([bx + cx, .38, fz], [.34, .08, .34], 24, 0); emitters.push({ t: 'glow', x: bx + cx, y: 3.2, z: fz + .3 }); }
     S.box([bx, 3.82, fz - .1], [3.3, .12, .5], 24, 0, { faces: 'tnsew', flags: 8 });
+    S.box([bx, 3.6, bz - .2], [3.75, .1, 2.75], p => frac((p[0] + p[2]) * 1.2) < .1 ? 24 : 28, 0, { faces: 'tnsew', flags: 8 });   // laje do telhado (fecha em volta da cúpula)
+    S.box([bx, 3.48, bz - .2], [3.85, .06, 2.85], 24, 0, { faces: 'nsew', flags: 8 });   // cornija
+    for (const sx of [-3.4, 3.4]) for (const sz of [-2.4, 1.8]) S.ell([bx + sx, 3.85, bz + sz], [.22, .22, .22], 14, 0, { flags: 8, min: 14 });   // pináculos dourados
     S.mem([[[bx - 3.3, 3.95, fz + .3], [bx + 3.3, 3.95, fz + .3], [bx, 5.0, fz + .3]]], 28, () => 0, { flags: 8 });   // frontão
     S.ell([bx, 4.35, fz + .34], [.36, .36, .06], 14, 0, { noSolid: true, min: 30, flags: 8 }); S.ell([bx, 4.35, fz + .4], [.2, .2, .03], 17, 0, { noSolid: true, min: 16, flags: 8 });   // moeda
     S.ell([bx, 3.5, bz - .2], [2.7, 1.7, 2.2], (p, n) => frac(Math.atan2(p[2] - bz + .2, p[0] - bx) * 2.5) < .12 ? 14 : 17, 0, { keep: d => d[1] > 0, flags: 8 });   // cúpula
@@ -687,7 +734,7 @@ function buildWorld(key, G) {
     const [ax, az] = sc.arch;   // arco da entrada (a oeste, o caminho passa por baixo)
     for (const dz of [-2.9, 2.9]) { S.box([ax, 2.2, az + dz], [.5, 2.2, .5], 29, 0, { faces: 'tnsew' }); S.ell([ax, 4.5, az + dz], .3, 151, 0, { min: 16 }); emitters.push({ t: 'voidflame', x: ax, y: 4.6, z: az + dz }); }
     S.box([ax, 4.55, az], [.5, .35, 3.6], 29, 0, { faces: 'tnsew' }); for (let i = -2; i <= 2; i++) S.ell([ax + .52, 4.55, az + i * 1.2], .1, 151, 0, { min: 8 });
-    for (const [fx, fz] of [[126, 42], [138, 44], [130, 52], [118, 31], [100, 30]]) emitters.push({ t: 'fly', x: fx, y: .8, z: fz });   // vaga-lumes no lago e na fogueira
+    for (const [fx, fz] of [[126, 42], [138, 44], [130, 52], [118, 31], [100, 30], [61, 51], [12, 30], [36, 42], [166, 40], [176, 60], [160, 70], [24, 62]]) emitters.push({ t: 'fly', x: fx, y: .8, z: fz });   // vaga-lumes (bem mais à noite): lagos, fogueira, praça e Pesqueiro
     for (let k = 0; k < 5; k++) emitters.push({ t: 'voidmist', x: gx + (k - 2) * 1.6, y: .35, z: gz + 1.5 + (k % 2) });
   }
   if (key === 'hub') for (let k = 0; k < 16; k++) { const a = k * 2.4, ry = 1.95 + (k % 4) * .22, rad = 1.12 - Math.abs(ry - 2.3) * .4; S.ell([25 + Math.cos(a) * rad, ry, 53 + Math.sin(a) * rad], .1, 16, 0, { min: 8 }); }

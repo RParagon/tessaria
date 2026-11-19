@@ -2,7 +2,22 @@
 /* =========================================================
    RENDER
    ========================================================= */
-let dpr = 1, pxDev = 4, VP = null;
+let dpr = 1, pxDev = 4, VP = null, NIGHT = 0, DUSK = 0;
+/** Luzes da noite perto da câmera (lampiões, janelas, fogueiras, forja, acampamentos) e a do próprio herói. Refeitas a cada meio segundo. */
+const LAMP_BUF = new Float32Array(48); let lampT = -1;
+const LIGHT_T = { torch: [5, .65], glow: [6, .75], forge: [6, .8], candle: [3.5, .45] };
+function nightLamps(c) {
+  if (G.time - lampT > .5 || lampT < 0) {
+    lampT = G.time; const L = [];
+    if (WD) for (const e of WD.emitters) { const k = LIGHT_T[e.t]; if (k) { const d = Math.hypot(e.x - c[0], e.z - c[2]); if (d < 34) L.push([d, e.x, e.z, k[0], k[1]]); } }
+    if (RG && RG.wild && RG.camps) for (const cp of RG.camps) { const d = Math.hypot(cp.x - c[0], cp.z - c[2]); if (d < 40) L.push([d, cp.x, cp.z, 11, 1]); }
+    if (RG && RG.key === 'hub') { const d = Math.hypot(HUB.fire[0] - c[0], HUB.fire[1] - c[2]); if (d < 40) L.push([d - 50, HUB.fire[0], HUB.fire[1], 7.5, .8]); }
+    L.sort((a, b) => a[0] - b[0]); LAMP_BUF.fill(0);
+    L.slice(0, 11).forEach((l, i) => LAMP_BUF.set([l[1], l[2], l[3], l[4]], (i + 1) * 4));
+  }
+  if (P && P.dieT < 0) LAMP_BUF.set([P.x, P.z, RG && RG.wild ? 7.5 : 5, RG && RG.wild ? .62 : .45], 0); else LAMP_BUF.set([0, 0, 0, 0], 0);   // o herói carrega uma luz (maior nos Ermos)
+  return LAMP_BUF;
+}
 const EMOTES_PV = ['acenar', 'comemorar', 'dancar', 'sentar'];   // poses do espelho
 const IVO_BOB = [IVO_PIER[0] + 5.6, IVO_PIER[1] + .3];   // boia do Ivo, no rio do Pesqueiro
 /** Auras cosméticas: partículas em volta do herói (o seu e os dos outros jogadores). */
@@ -108,6 +123,7 @@ function render(dt) {
   gl.uniformMatrix4fv(U.u_vp, false, VP); gl.uniform3fv(U.u_cam, eye); gl.uniform3fv(U.u_light, light); gl.uniform3fv(U.u_player, player); gl.uniform1f(U.u_aspect, asp);
   { const pc = [VP[0] * player[0] + VP[4] * 1.0 + VP[8] * player[2] + VP[12], VP[1] * player[0] + VP[5] * 1.0 + VP[9] * player[2] + VP[13], VP[3] * player[0] + VP[7] * 1.0 + VP[11] * player[2] + VP[15]]; gl.uniform3fv(U.u_pclip, [pc[0] / pc[2], pc[1] / pc[2], pc[2]]); }
   gl.uniform1f(U.u_proj, FB.h / (2 * Math.tan(fov / 2))); gl.uniform1f(U.u_time, G.time);
+  { const preview0 = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); NIGHT = preview0 ? 0 : nightK(); DUSK = preview0 ? 0 : duskK() * (1 - NIGHT * .6); gl.uniform1f(U.u_night, NIGHT); if (NIGHT > 0) gl.uniform4fv(U.u_lamps, nightLamps(tgt)); }
   const camD = V.len(V.sub(eye, tgt)); gl.uniform1f(U.u_near, Math.max(.1, camD - 14)); gl.uniform1f(U.u_range, 30);
   // sombras
   const shadows = new Float32Array(32); let si = 0;
@@ -271,7 +287,7 @@ function render(dt) {
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, FB.tex); gl.uniform1i(Q.u_fb, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, palTex); gl.uniform1i(Q.u_pal, 1);
   gl.uniform1f(Q.u_px, pxDev); gl.uniform2f(Q.u_res, FB.w, FB.h); gl.uniform1f(Q.u_dither, G.settings.dither); gl.uniform1f(Q.u_time, G.time);
-  gl.uniform1i(Q.u_outlineOn, G.settings.outline ? 1 : 0); gl.uniform1f(Q.u_fade, G.fade || 0); gl.uniform1f(Q.u_hurt, G.hurt || 0);
+  gl.uniform1i(Q.u_outlineOn, G.settings.outline ? 1 : 0); gl.uniform1f(Q.u_fade, G.fade || 0); gl.uniform1f(Q.u_hurt, G.hurt || 0); gl.uniform1f(Q.u_night, NIGHT); gl.uniform1f(Q.u_dusk, DUSK);
   const bgp = preview ? { bg: ['#0c0a18', '#1a1430', '#2e2048'], outline: '#06050b', star: '#ffe9c9' } : regPal;
   gl.uniform3fv(Q.u_outline, hex1(bgp.outline)); gl.uniform3fv(Q.u_star, hex1(bgp.star));
   gl.uniform3fv(Q.u_bg0, hex1(bgp.bg[0])); gl.uniform3fv(Q.u_bg1, hex1(bgp.bg[1])); gl.uniform3fv(Q.u_bg2, hex1(bgp.bg[2]));
@@ -329,13 +345,13 @@ function bakeModel(model, A, S, eye, tgt, yaw = 0, fov = 30) {
   const fv = fov * Math.PI / 180, VPi = mMul(mPersp(fv, 1, .1, 50), mLook(eye, tgt, [0, 1, 0]));
   gl.bindFramebuffer(gl.FRAMEBUFFER, F.fbo); gl.viewport(0, 0, S, S); gl.clearColor(0, 0, 0, 0); gl.clearDepth(1); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.useProgram(PS.p); U = PS.u;
+  gl.useProgram(PS.p); U = PS.u; gl.uniform1f(U.u_night, 0);   // ícones e retratos: sempre de dia
   gl.uniformMatrix4fv(U.u_vp, false, VPi); gl.uniform3fv(U.u_cam, eye); gl.uniform3fv(U.u_light, V.norm([-.5, .9, .7])); gl.uniform3fv(U.u_player, [0, -99, 0]); gl.uniform1f(U.u_aspect, 1);
   gl.uniform3fv(U.u_pclip, [0, 0, -9]); gl.uniform1f(U.u_proj, S / (2 * Math.tan(fv / 2))); gl.uniform1f(U.u_time, 0);
   const d = V.len(V.sub(eye, tgt)); gl.uniform1f(U.u_near, Math.max(.1, d - 2)); gl.uniform1f(U.u_range, 4); gl.uniform4fv(U.u_shadow, new Float32Array(32));
   drawModel(model, A, 0, 0, 0, yaw, 1, {});
   gl.bindFramebuffer(gl.FRAMEBUFFER, F.out); gl.viewport(0, 0, S, S); gl.disable(gl.DEPTH_TEST); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.useProgram(PP.p); const Q = PP.u;
+  gl.useProgram(PP.p); const Q = PP.u; gl.uniform1f(Q.u_night, 0); gl.uniform1f(Q.u_dusk, 0);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, F.tex); gl.uniform1i(Q.u_fb, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, palTex); gl.uniform1i(Q.u_pal, 1);
   gl.uniform1f(Q.u_px, 1); gl.uniform2f(Q.u_res, S, S); gl.uniform1f(Q.u_dither, .6); gl.uniform1f(Q.u_time, 0); gl.uniform1i(Q.u_outlineOn, 1); gl.uniform1f(Q.u_fade, 0); gl.uniform1f(Q.u_hurt, 0); gl.uniform1i(Q.u_icon, 1);
