@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.36.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.37.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -36,7 +36,7 @@ O Sol se apagou e Tessária está se desfazendo em pixels soltos. Você nasceu c
   - loot com raridades e lendários com poderes;
   - runas, talentos e itens aprimorados até +10.
 - **Vila Brasa:** o hub, com o Bairro Leste (fogueira com bancos, feira da Dora, a Acendedora Lúcia, patos no lago, o Bardo Tomé e seus rumores, arena com bonecos que mostram o seu dano por segundo e o lago de pesca), o **Pesqueiro** e o **Santuário da Fenda**, uma praça de obsidiana e runas violeta com o portal sombrio da Fenda do Tear.
-- **Dia e noite:** um dia inteiro dura 24 minutos (1 minuto real = 1 hora), igual para todos os jogadores. À noite a vila escurece e os lampiões, janelas, lanternas e a fogueira iluminam em volta; o herói carrega uma luz. Nos Ermos, a noite deixa os monstros 15% mais fortes, com mais elites, +25% de XP e mais itens, e a Lua de Sangue só nasce à noite. No rio, a Enguia-de-Fio, o Peixe-Lua e o Rei-do-Rio aparecem muito mais. O relógio fica ao lado do nome no HUD.
+- **Dia e noite:** um dia inteiro dura 24 minutos (1 minuto real = 1 hora), igual para todos os jogadores. À noite a vila escurece e os lampiões, janelas, lanternas e a fogueira iluminam em volta; o herói carrega uma luz. Nos Ermos, a noite deixa os monstros 15% mais fortes, com mais elites, +25% de XP e mais itens, e a Lua de Sangue só nasce à noite. No rio, a Enguia-de-Fio, o Peixe-Lua e o Rei-do-Rio aparecem muito mais. O relógio fica ao lado do nome no HUD. No fim da tarde, a Acendedora Lúcia sai pelas ruas acendendo os postes um por um, e ao amanhecer refaz a ronda apagando.
 - **Pesqueiro do Ivo:** a leste do Bairro Leste, um rio que desce do lago, com quatro píeres (o de baixo dá no Remanso Fundo) e dez peixes, do Lambari ao lendário Rei-do-Rio. A missão do Ivo dá a vara. Na banca: **iscas** (Minhoca, Grilo-de-Brasa, Isca de Fio) e **varas** melhores (peixe pesado briga e pede vários puxões; com vara fraca, a linha arrebenta). O peixe vai para o cesto, dá **XP de Pescador** (nível 1 a 30: mais peixe raro e mais tempo para puxar) e entra na coleção. Vende no **mercado de peixes**: cada peixe vendido baixa o preço daquele peixe, que se recupera com o tempo, e a tendência muda a cada hora. Online, o mercado é um só para todos os jogadores.
 - **Banco do Tear:** prédio de mármore na praça; o que fica no cofre não se perde. Nos Ermos, morrer derruba o que você carrega por 5 minutos, e online qualquer jogador pode pegar.
 - **Itens com peso:** a raridade máxima depende da área (Lendário só nas áreas fundas, nos Tormentos e com chefes) e itens fortes pedem nível para equipar.

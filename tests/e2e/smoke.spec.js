@@ -267,6 +267,16 @@ test('dia e noite: relógio no HUD, noite nos Ermos com monstros mais fortes e m
   await expect(page.locator('#hClock')).toContainText('☾ 23:00');
   expect(await ev('nightK()')).toBe(1);
   await page.waitForFunction(() => window.__T.ev('(n => Math.hypot(n.x - 31.6, n.z - 26.2) < .1)(npcs.find(n => n.id === "kiko"))'), null, { timeout: 5000 });
+  // postes: apagados de dia, todos acesos à noite; no fim da tarde a Lúcia faz a ronda e acende um por um, pelas ruas
+  expect(await ev('HUB.lamps.every((l, i) => lampLit(i))')).toBe(true);
+  await ev('G.forceHour = 12'); expect(await ev('HUB.lamps.some((l, i) => lampLit(i))')).toBe(false);
+  const R = await ev('(R => ({ dur: R.dur, at: R.at }))(lampRoute())');
+  expect(R.at.every(a => a > 0)).toBe(true); expect(R.dur / 60).toBeLessThan(3.5);   // a ronda inteira cabe no entardecer
+  const i0 = R.at.indexOf(Math.min(...R.at));
+  await ev(`G.forceHour = LAMP_LIGHT_H + (${R.at[i0]} - 1) / 60`); expect(await ev(`[lampLit(${i0}), !!luciaRound()]`)).toEqual([false, true]);
+  await ev(`G.forceHour = LAMP_LIGHT_H + (${R.at[i0]} + 1) / 60`); expect(await ev(`[lampLit(${i0}), HUB.lamps.filter((l, i) => lampLit(i)).length]`)).toEqual([true, 1]);
+  await page.waitForFunction(() => window.__T.ev('(n => !!n.round && Math.hypot(n.x - luciaRound().x, n.z - luciaRound().z) < .3)(npcs.find(n => n.id === "lucia"))'), null, { timeout: 5000 });
+  await ev('G.forceHour = 23');
   // peixes da noite: a Enguia-de-Fio aparece muito mais no Remanso
   const enguias = await ev("(() => { let d = 0, n = 0; for (let i = 0; i < 3000; i++) { if (TessFish.rollFish('remanso', 10, null, Math.random, 0).id === 'enguia') d++; if (TessFish.rollFish('remanso', 10, null, Math.random, 1).id === 'enguia') n++; } return [d, n]; })()");
   expect(enguias[1]).toBeGreaterThan(enguias[0] * 4);

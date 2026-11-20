@@ -66,7 +66,10 @@ const HUB = {
     // Pesqueiro: a casa do Ivo (iscas e varas)
     { x: 78, y: 8, w: 4, h: 3, roof: 11 }],
   fountain: [44, 32], portals: [{ to: 'forest', x: 24, z: 9 }, { to: 'crypt', x: 44, z: 8 }, { to: 'peaks', x: 64, z: 9 }, { to: 'swamp', x: 9, z: 33, yaw: 1.57 }, { to: 'wilds', x: 44, z: 56, yaw: 3.14 }, { to: 'glass', x: 145, z: 33, yaw: -1.57 }],
-  lamps: [[34, 24], [54, 24], [34, 40], [54, 40], [24, 15], [64, 15], [40, 14], [48, 14], [18, 32], [70, 32], [92, 24], [92, 40], [110, 21], [126, 21], [110, 43], [140, 30], [128, 40], [140, 18], [158, 22], [158, 50], [172, 36], [166, 66], [176, 14]],
+  // Postes nas beiras das ruas: rua principal (norte e sul alternados a cada 12 m), em volta da fonte e da fogueira, ruas norte-sul, praça dos portais e trilha do Pesqueiro.
+  // A Acendedora Lúcia acende um por um no fim da tarde, nesta ordem de ronda, e apaga ao amanhecer (lampLit, em core/interaction.js).
+  lamps: [[10, 29.2], [22, 36.8], [34, 29.2], [36.6, 24.6], [40.2, 39.6], [51.4, 39.4], [56, 36.8], [68, 29.2], [80, 36.8], [92, 29.2], [104, 36.8], [111.6, 24.6], [124.4, 24.6], [110.8, 37.6], [124.4, 37.4], [132, 29.2],
+    [47.6, 18], [40.4, 50], [14, 14.6], [34, 14.6], [54, 14.6], [74, 14.6], [121.6, 14], [114.4, 48], [152, 35.4], [157.6, 46], [164.4, 58]],
   spawn: [44, 42], stalls: [[26, 12, 16], [29, 12, 18], [52, 18, 15], [55, 18, 22], [82, 14, 16], [84, 14, 15]], /* as duas últimas: feira do Bairro Leste */ trees: [[3, 14], [17, 20], [39, 14], [38, 27], [3, 27], [12, 26], [36, 3], [72, 5], [72, 27], [46, 15], [58, 27], [63, 5]],
   pond: { x: 30.5, y: 25.5, rx: 2.8, ry: 1.6 }, lake: { x: 66, y: 23.6, rx: 4.4, ry: 2.4 },
   // Bairro Leste (coordenadas do mundo): fogueira com bancos, arena com bonecos, ponto de pesca
@@ -669,7 +672,7 @@ function buildWorld(key, G) {
     S.ell([fx, 1.5, fz], [.62, .15, .62], 11, 0);
     S.cone([fx, 2.15, fz], [fx, 2.7, fz], .24, 31, 0); S.cone([fx, 2.15, fz], [fx, 1.7, fz], .24, 31, 0);
     emitters.push({ t: 'crystal', x: fx, y: 2.2, z: fz });
-    for (const [lx, lz] of HUB.lamps) { S.tube([[lx, 0, lz, .07, 0], [lx, 2.2, lz, .06, 0]], 12, { sub: 1, flags: 8 }); S.ell([lx, 2.32, lz], .16, 14, 0, { min: 20 }); emitters.push({ t: 'glow', x: lx, y: 2.35, z: lz }); S.tube([[lx, 2.0, lz, .03, 0], [lx + .48, 2.0, lz, .03, 0]], 12, { sub: 1 }); S.mem([[[lx + .1, 1.96, lz], [lx + .44, 1.96, lz], [lx + .44, 1.35, lz]], [[lx + .1, 1.96, lz], [lx + .44, 1.35, lz], [lx + .1, 1.35, lz]]], p => p[1] < 1.48 ? 17 : (Math.round(lx) % 4 < 2 ? 22 : 23), () => 0); }
+    for (const [lx, lz] of HUB.lamps) { S.tube([[lx, 0, lz, .07, 0], [lx, 2.2, lz, .06, 0]], 12, { sub: 1, flags: 8 }); S.box([lx, 2.04, lz], [.15, .03, .15], 29, 0, { faces: 'tnsew' }); S.box([lx, 2.6, lz], [.19, .04, .19], 29, 0, { faces: 'tnsew' }); S.cone([lx, 2.62, lz], [lx, 2.8, lz], .14, 29, 0); for (const [ox, oz] of [[-.14, -.14], [.14, -.14], [-.14, .14], [.14, .14]]) S.tube([[lx + ox, 2.05, lz + oz, .018, 0], [lx + ox, 2.58, lz + oz, .018, 0]], 29, { sub: 1 }); S.ell([lx, 2.32, lz], [.11, .2, .11], 28, 0, { min: 14, noSolid: true });   /* lanterna de ferro com vidro; a chama é desenhada só quando a Lúcia acende (render.js) */ S.tube([[lx, 2.0, lz, .03, 0], [lx + .48, 2.0, lz, .03, 0]], 12, { sub: 1 }); S.mem([[[lx + .1, 1.96, lz], [lx + .44, 1.96, lz], [lx + .44, 1.35, lz]], [[lx + .1, 1.96, lz], [lx + .44, 1.35, lz], [lx + .1, 1.35, lz]]], p => p[1] < 1.48 ? 17 : (Math.round(lx) % 4 < 2 ? 22 : 23), () => 0); }
   }
   if (st === 'home') {
     const f = (gsave() && gsave().house && gsave().house.f) || {}, B = gsave() ? gsave().bosses : {}, gk = (gsave() && gsave().st && gsave().st.gk) || [];

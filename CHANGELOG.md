@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.37.0 · A ronda da Lúcia e postes nas ruas
+- **A Acendedora Lúcia acende a vila:** às 17h12 ela sai de casa e corre pelas ruas de poste em poste, para, ergue a vara e acende cada lanterna (com faíscas); a ronda leva cerca de 3 minutos e termina quando a noite fecha. Às 4h24 ela refaz o caminho apagando, e os postes ficam apagados de dia. Fora da ronda, ela passeia como antes
+- **Todos veem a mesma ronda:** sai da hora do servidor, então a Lúcia está no mesmo lugar e os mesmos postes estão acesos para todos os jogadores
+- **Postes organizados:** 27 postes nas beiras das ruas: dos dois lados da rua principal (alternando a cada 12 m), em volta da fonte e da fogueira, nas ruas norte-sul, na praça dos portais e na trilha do Pesqueiro. As lanternas viraram gaiolas de ferro com vidro, e só têm chama quando acesas
+- A luz da noite agora vem dos postes que a Lúcia acendeu (antes todos brilhavam sempre)
+
 ## 0.36.0 · Dia e noite e vila mais completa
 - **Ciclo de dia e noite:** 1 minuto real = 1 hora na Tessária (o dia dura 24 min), pela hora do servidor, então todos veem a mesma hora. Noite das 20h às 5h, com entardecer alaranjado e amanhecer. Vale ao ar livre (vila, Ermos, bosque, pântano e picos); Fendas e covis não mudam
 - **Luz da noite:** onde a luz não chega fica azul-escuro; lampiões, janelas, lanternas, a forja, a fogueira e os acampamentos dos Ermos iluminam em volta, e o herói carrega uma luz (maior nos Ermos). Vaga-lumes aparecem muito mais à noite

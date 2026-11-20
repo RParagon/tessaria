@@ -27,6 +27,42 @@ function nightK() { return outdoors() ? nightAt(dayHour()) : 0; }
 function duskK() { return outdoors() ? duskAt(dayHour()) : 0; }
 const isNight = () => nightK() > .5;
 const hourStr = () => { const h = dayHour(), hh = Math.floor(h), mm = Math.floor((h - hh) * 6) * 10; return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); };
+// ---------- a ronda da Acendedora Lúcia ----------
+// No fim da tarde ela sai de casa e corre de poste em poste, para e acende cada um; ao amanhecer refaz a ronda apagando.
+// Tudo sai da hora do dia (dayHour): todos os jogadores veem os mesmos postes acesos e a Lúcia no mesmo lugar.
+const LAMP_LIGHT_H = 17.2, LAMP_DOUSE_H = 4.4, LUCIA_SPD = 4.2, LUCIA_STOP = 1.8;   // horas de saída, velocidade (m/s) e parada em cada poste (s)
+let LROUTE = null;
+/** Roteiro da ronda pelas ruas: número = poste (para e acende), [x, z] = esquina por onde ela passa. */
+const LUCIA_PATH = [[93.5, 33], 9, 8, 7, 6, 5, 4, 17, 3, 2, 1, 0, [10, 33], [44, 33], 16, 19, 18, 20, 21, [78, 33], 10, 13, 11, 22, 12, 14, 23, 15, [146, 38.5], 24, 25, 26, [161, 40], [150, 38.5], [132, 33], [100, 33]];
+/** Linha do tempo da ronda: [t, x, z, parada?] em segundos desde a saída, e quando cada poste acende. */
+function lampRoute() {
+  if (LROUTE && LROUTE.n === HUB.lamps.length) return LROUTE;
+  const L = EAST_NPCS.find(n => n.id === 'lucia'), home = [L.x, L.z], key = [[0, home[0], home[1], 0]], at = new Array(HUB.lamps.length).fill(0);
+  let t = 0, cur = home;
+  const go = (x, z) => { t += Math.hypot(x - cur[0], z - cur[1]) / LUCIA_SPD; key.push([t, x, z, 0]); cur = [x, z]; };
+  for (const st of LUCIA_PATH.concat([home])) {
+    if (Array.isArray(st)) { go(st[0], st[1]); continue; }
+    const [lx, lz] = HUB.lamps[st]; go(lx - .9, lz);   // para ao lado do poste: a vara alcança a lanterna
+    at[st] = t + LUCIA_STOP * .6; t += LUCIA_STOP; key.push([t, lx - .9, lz, 1]);
+  }
+  return (LROUTE = { n: HUB.lamps.length, key, at, dur: t });
+}
+/** O poste i está aceso agora? Acende quando a Lúcia passa no fim da tarde e apaga quando ela passa ao amanhecer. */
+function lampLit(i) {
+  const R = lampRoute(), h = dayHour(), on = LAMP_LIGHT_H + R.at[i] / 60, off = LAMP_DOUSE_H + R.at[i] / 60;
+  return h >= on || h < off;
+}
+/** Onde a Lúcia está na ronda (ou null fora da ronda). */
+function luciaRound() {
+  const R = lampRoute(), h = dayHour();
+  for (const h0 of [LAMP_LIGHT_H, LAMP_DOUSE_H]) {
+    const t = (h - h0) * 60; if (t < 0 || t > R.dur) continue;
+    const K = R.key; let k = 1; while (k < K.length - 1 && K[k][0] < t) k++;
+    const A = K[k - 1], B = K[k], u = B[0] > A[0] ? clamp((t - A[0]) / (B[0] - A[0]), 0, 1) : 1, moving = !B[3] && Math.hypot(B[1] - A[1], B[2] - A[2]) > .05;
+    return { x: A[1] + (B[1] - A[1]) * u, z: A[2] + (B[2] - A[2]) * u, yaw: moving ? Math.atan2(B[1] - A[1], B[2] - A[2]) : Math.PI / 2, moving, dousing: h0 === LAMP_DOUSE_H, t };
+  }
+  return null;
+}
 /** Avisos quando anoitece e amanhece, e os efeitos da noite em cada região. */
 function updateDayNight() {
   if (!RG || !P) return;
@@ -59,6 +95,7 @@ function updateNPCs(dt) {
   const vt = villageTime(), night = isNight();
   for (const n of npcs) {
     if (!n.visible || !n.wander) continue;
+    if (n.id === 'lucia' && !(n.talkT > 0)) { const r = luciaRound(); if (r) { n.x = r.x; n.z = r.z; if (r.moving) { n.wyaw = r.yaw; n.moveAmt = lerp(n.moveAmt || 0, 1, .2); n.walkPh = r.t * LUCIA_SPD * 2.2; } else { n.wyaw = r.yaw; n.moveAmt = lerp(n.moveAmt || 0, 0, .25); } n.round = r; n.backT = 0; continue; } n.round = null; }   // ronda dos lampiões
     if (night && NIGHT_SPOT[n.id] && !(n.talkT > 0)) { const [nx, nz, ny] = NIGHT_SPOT[n.id]; n.x = nx; n.z = nz; n.wyaw = ny; n.baseYaw = ny; n.moveAmt = lerp(n.moveAmt || 0, 0, .15); continue; }   // à noite: as crianças ouvem histórias na porta da taverna
     const talking = n.talkT > 0 || (G.mode === 'dialog' && DLG.cur && DLG.cur.who === n.name);
     if (talking) { n.moveAmt = lerp(n.moveAmt || 0, 0, .2); n.backT = 20; continue; }

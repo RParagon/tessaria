@@ -11,7 +11,7 @@ function nightLamps(c) {
     lampT = G.time; const L = [];
     if (WD) for (const e of WD.emitters) { const k = LIGHT_T[e.t]; if (k) { const d = Math.hypot(e.x - c[0], e.z - c[2]); if (d < 34) L.push([d, e.x, e.z, k[0], k[1]]); } }
     if (RG && RG.wild && RG.camps) for (const cp of RG.camps) { const d = Math.hypot(cp.x - c[0], cp.z - c[2]); if (d < 40) L.push([d, cp.x, cp.z, 11, 1]); }
-    if (RG && RG.key === 'hub') { const d = Math.hypot(HUB.fire[0] - c[0], HUB.fire[1] - c[2]); if (d < 40) L.push([d - 50, HUB.fire[0], HUB.fire[1], 7.5, .8]); }
+    if (RG && RG.key === 'hub') { const d = Math.hypot(HUB.fire[0] - c[0], HUB.fire[1] - c[2]); if (d < 40) L.push([d - 50, HUB.fire[0], HUB.fire[1], 7.5, .8]); HUB.lamps.forEach(([lx, lz], i) => { if (!lampLit(i)) return; const dl = Math.hypot(lx - c[0], lz - c[2]); if (dl < 34) L.push([dl - 3, lx, lz, 7.5, .8]); }); }   // postes acesos pela Lúcia
     L.sort((a, b) => a[0] - b[0]); LAMP_BUF.fill(0);
     L.slice(0, 11).forEach((l, i) => LAMP_BUF.set([l[1], l[2], l[3], l[4]], (i + 1) * 4));
   }
@@ -19,6 +19,18 @@ function nightLamps(c) {
   return LAMP_BUF;
 }
 const EMOTES_PV = ['acenar', 'comemorar', 'dancar', 'sentar'];   // poses do espelho
+/** Chamas dos postes da vila: só nos acesos (a Lúcia acende no fim da tarde e apaga ao amanhecer). Ao acender, faíscas. */
+const LAMP_ON = [];
+function drawLamps(t) {
+  HUB.lamps.forEach(([lx, lz], i) => {
+    const on = lampLit(i);
+    if (LAMP_ON[i] !== undefined && LAMP_ON[i] !== on) { if (on) burst(lx, 2.32, lz, 14, 14, 2, .5, .08); else burst(lx, 2.4, lz, 8, 29, .8, .9, .1); if (P && Math.hypot(P.x - lx, P.z - lz) < 10) sfx(on ? 'clink' : 'ui'); }
+    LAMP_ON[i] = on;
+    if (!on) return;
+    const fl = .85 + .15 * Math.sin(t * 9 + i * 1.7) * Math.sin(t * 5.3 + i);
+    dyn(lx, 2.3, lz, fl, 14, .26); dyn(lx, 2.38, lz, 1, 21, .13); dyn(lx, 2.32, lz, .35 * fl, 14, .5);
+  });
+}
 const IVO_BOB = [IVO_PIER[0] + 5.6, IVO_PIER[1] + .3];   // boia do Ivo, no rio do Pesqueiro
 /** Auras cosméticas: partículas em volta do herói (o seu e os dos outros jogadores). */
 function auraFx(x, z, aura, t, dt) {
@@ -156,6 +168,7 @@ function render(dt) {
     drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
     auraFx(0, 0, G.char.aura, t, dt);   /* a aura também aparece no espelho e no inventário */
   } else {
+    if (RG && RG.key === 'hub') drawLamps(t);
     drawRemotes(dt, t);
     for (const n of npcs) {
       if (!n.visible) continue;
@@ -170,8 +183,8 @@ function render(dt) {
       n.cls = n.cfg.cls; poseHuman(n.anim, n, t + n.x);
       if (n.id === 'lio' && !talking) { n.anim[5].rx = -.9 + Math.sin(t * 9) * .18; n.anim[4].rx = -.75; n.anim[4].ry = -.6; n.anim[3].rz = Math.sin(t * 2) * .08; }
       if (n.id === 'brann') { n.anim[2].rx += .22; n.anim[3].rx -= .1; }
-      if (n.id === 'lucia' && !talking && (n.moveAmt || 0) < .2) {   // parada num lampião: ergue a vara e acende
-        n.anim[5].rx = -2.3 + Math.sin(t * 3) * .1; n.anim[3].rx = -.3; if (n.W && Math.random() < .25) { const tip = tp(n.W[8], [-.38, 1.6, 1.76]); spawn({ x: tip[0], y: tip[1], z: tip[2], vx: rr(-.5, .5), vy: rr(.5, 1.5), vz: rr(-.5, .5), life: .5, s0: .07, s1: .02, b0: 1, b1: .2, mat: 14 }); }
+      if (n.id === 'lucia' && !talking && n.round && !n.round.moving) {   // na ronda, parada num poste: ergue a vara e acende (ou abafa a chama ao amanhecer)
+        n.anim[5].rx = -2.3 + Math.sin(t * 3) * .1; n.anim[3].rx = -.3; if (n.W && !n.round.dousing && Math.random() < .25) { const tip = tp(n.W[8], [-.38, 1.6, 1.76]); spawn({ x: tip[0], y: tip[1], z: tip[2], vx: rr(-.5, .5), vy: rr(.5, 1.5), vz: rr(-.5, .5), life: .5, s0: .07, s1: .02, b0: 1, b1: .2, mat: 14 }); }
       }
       if (n.id === 'dora' && !talking) { const ph = Math.sin(t * 1.3); n.anim[4].rx = -.7 + ph * .25; n.anim[5].rx = -.7 - ph * .25; n.anim[2].rx += .15; if (Math.sin(t * .35) > .92) { n.act = 'wave'; } }   // arruma a banca
       if (n.id === 'ivo' && !talking) { n.anim[5].rx = -.75 + Math.sin(t * .8) * .05; }

@@ -1,6 +1,6 @@
 {
   "name": "fios-de-tessaria",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "private": true,
   "description": "RPG de ação em pixel art 3D feito de splats. Web e Android.",
   "type": "module",
