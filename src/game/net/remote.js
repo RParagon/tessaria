@@ -215,7 +215,7 @@ function drawRemotes(dt, t) {
     { const stepN = Math.floor(r.walkPh / Math.PI); if (stepN !== r.lastStep) { r.lastStep = stepN; if (r.m > .55 && !(r.dashT > 0) && Math.hypot(r.x - P.x, r.z - P.z) < 24) { const sd = stepN % 2 ? .15 : -.15, cx = Math.cos(r.yaw), sx2 = -Math.sin(r.yaw); for (let i = 0; i < 3; i++) spawn({ x: r.x + cx * sd + rr(-.08, .08), y: .08, z: r.z + sx2 * sd + rr(-.08, .08), vx: rr(-.3, .3), vy: rr(.2, .5), vz: rr(-.3, .3), life: rr(.3, .5), s0: .09, s1: .18, b0: .3, b1: .05, mat: 120, drag: 2 }); } } }
     poseRemote(r, t);
     if (r.ghosts) for (const g of r.ghosts) if (g.t < .18) drawModel(s.model, r.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
-    r.W = drawModel(s.model, r.anim, r.x, 0, r.z, r.yaw, 1, {}); auraFx(r.x, r.z, r.look.aura, t, dt);
+    r.W = drawModel(s.model, r.anim, r.x, groundAt(r.x, r.z), r.z, r.yaw, 1, {}); auraFx(r.x, r.z, r.look.aura, t, dt);
     if (r.emote === 'comemorar' && r.emoteT < 2 && Math.random() < .5) spawn({ x: r.x + rr(-.4, .4), y: rr(.5, 2), z: r.z + rr(-.4, .4), vy: rr(1, 2), life: .7, s0: .1, s1: .02, b0: 1, b1: .2, mat: 30 });
   }
 }
@@ -401,6 +401,11 @@ window.TessGame = {
   remoteChat: (id, text) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.chat = text; r.chatT = 0; } },
   myEmote: e => { if (!P) return; P.emote = e; P.emoteT = 0; },
   pvpHurt,
+  // troca direta
+  tradeInvite: from => { const n = NETON(); if (!n) return; if (G.mode !== 'play' || G.trade) { n.tradeAnswer(from, false); return; } sfx('ui'); say([{ who: 'Troca', text: from + ' quer trocar itens com você.', choices: [{ t: 'Aceitar', fn: () => n.tradeAnswer(from, true) }, { t: 'Recusar', fn: () => n.tradeAnswer(from, false) }] }]); },
+  tradeState: m => { const first = !G.trade; G.trade = m; if (first) { trSel = new Set(); $('#trGold').value = '0'; if (G.mode === 'dialog') { $('#dialog').hidden = true; DLG.q = []; DLG.cur = null; G.mode = 'play'; } if (G.mode === 'play') openMenu('trade'); } if (G.menu === 'trade') renderTrade(); },
+  tradeDone: m => { const s = G.save; if (!s) return; s.inv = s.inv.filter(it => !m.gave.includes(it.id)).concat(m.got); s.gold += m.gold; G.trade = null; writeSave(); if (G.menu === 'trade') closeMenus(); sfx('legend'); toast('TROCA FEITA COM ' + m.with.toUpperCase(), true, m.got.length + ' ITEM(NS) RECEBIDO(S)' + (m.gold ? ' · ' + (m.gold > 0 ? '+' : '') + m.gold + ' CENTELHAS' : ''), '#ffbf3d'); },
+  tradeEnd: reason => { G.trade = null; if (G.menu === 'trade') closeMenus(); toast('Troca encerrada', false, String(reason).toUpperCase()); },
   lootSid: id => { if (G.save && G.save.wloot) { G.save.wloot.sid = id; writeSave(); } },
   lootGot,
   lootLost,

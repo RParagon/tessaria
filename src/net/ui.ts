@@ -308,6 +308,7 @@ export function mountOnlineUI(net: Net) {
     if (!name || !net.inRoom) return;
     const inMine = !!net.party?.members.some(m => m.name === name), items: Array<[string, () => void]> = [];
     if (!inMine && (!net.party || (net.isLeader && net.party.members.length < PARTY_MAX))) items.push(['Convidar para o grupo', () => net.invite(name)]);
+    if (net.inRoom) items.push(['Propor troca', () => net.tradePropose(name)]);
     if (!net.isFriend(name)) items.push(['Adicionar amigo', () => void friendAct(() => net.addFriend(name), `Pedido enviado para ${name}.`)]);
     let armed = false;
     items.push(['Bloquear', () => {

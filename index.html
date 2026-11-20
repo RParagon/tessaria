@@ -222,10 +222,31 @@
     </div>
   </section>
 
+  <section id="market" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Mercado da Vila</h2>
+      <div class="ftabs" role="tablist"><button class="px" data-mt="comprar">Comprar</button><button class="px" data-mt="vender">Vender</button><button class="px" data-mt="meus">Meus anúncios</button></div>
+      <p class="sub" id="mkSub"></p>
+      <div id="mkList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="idet" id="mkDet"></div>
+      <button class="px" id="mkClose">Fechar</button>
+    </div>
+  </section>
+
+  <section id="trade" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2 id="trTitle">Troca</h2>
+      <p class="sub" id="trSub">Toque nos itens da sua bolsa para oferecer. Quando os dois confirmarem, a troca acontece.</p>
+      <div class="trcols"><div><h3>Sua oferta</h3><div class="trbag" id="trMine"></div><label class="set">Centelhas <input id="trGold" type="number" min="0" step="10" value="0"></label><div id="trMineSt" class="sub"></div></div>
+      <div><h3 id="trTheirsH">A oferta</h3><div class="trbag" id="trTheirs"></div><div id="trTheirsSt" class="sub"></div></div></div>
+      <div class="trbtns"><button class="px gold" id="trReady">Confirmar troca</button><button class="px" id="trCancel">Cancelar</button></div>
+    </div>
+  </section>
+
   <section id="fishery" class="screen modal" hidden>
     <div class="mbox panel">
       <h2>Pesqueiro do Ivo</h2>
-      <div class="ftabs" role="tablist"><button class="px" data-ft="mercado">Mercado</button><button class="px" data-ft="loja">Iscas e varas</button><button class="px" data-ft="pescador">Pescador</button></div>
+      <div class="ftabs" role="tablist"><button class="px" data-ft="mercado">Mercado</button><button class="px" data-ft="loja">Iscas e varas</button><button class="px" data-ft="pescador">Pescador</button><button class="px" data-ft="torneio">Torneio</button></div>
       <p class="sub" id="fsSub"></p>
       <div id="fsList" style="display:flex;flex-direction:column;gap:8px"></div>
       <button class="px" id="fsClose">Fechar</button>

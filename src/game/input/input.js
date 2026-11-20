@@ -30,7 +30,7 @@ addEventListener('keydown', e => {
   if (k === 'Escape') openMenu('pause');
   else if (k === 'Tab') openMenu('journal');
   else if (k === 'KeyI' || k === 'KeyB') openMenu('inv');
-  else if (k === 'KeyM') { if (!hasMap()) toast('Você não tem mapa', false, 'O MERCADOR OTTO VENDE O MAPA DO CARTÓGRAFO'); else if (RG && RG.key !== 'home') { G.wmTravel = null; openMenu('wmap'); } }
+  else if (k === 'KeyM') { if (!hasMap()) toast('Você não tem mapa', false, 'O MERCADOR OTTO VENDE O MAPA DO CARTÓGRAFO'); else if (RG && RG.key !== 'home' && !isIndoor(RG.key)) { G.wmTravel = null; openMenu('wmap'); } }
   else if (k === 'KeyG') openMenu('skills');
   else if (k === 'Space' || k === 'ShiftLeft' || k === 'ShiftRight') doDash();
   else if (k === 'Equal' || k === 'NumpadAdd') camZoom(-1);

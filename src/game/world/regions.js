@@ -39,6 +39,8 @@ const REG = {
       { x: 38, y: 20, r: 5.5, en: { imp: 3, beetle: 2 }, pool: true }, { x: 16, y: 15, r: 3.8, frag: 7, en: { imp: 2, beetle: 1 } }, { x: 48, y: 25, r: 4, chest: 1, en: { imp: 3 } },
       { x: 47, y: 10, r: 2.8, frag: 8 }, { x: 28, y: 9, r: 7, kind: 'boss' }],
     links: [[0, 1], [1, 2], [1, 3], [3, 4], [4, 5], [3, 6], [6, 8], [8, 9], [6, 7], [6, 10]] },
+  casa: { name: 'Casa', sub: 'Um lar da Vila Brasa', style: 'home', W: 12, H: 10, seed: 78, torch: 14, rooms: [{ x: 6, y: 5, w: 4, h: 3, shape: 'rect', kind: 'start' }], links: [] },
+  taverna: { name: 'Taverna da Mel', sub: 'Pão quente de dia, música e conversa à noite', style: 'home', W: 18, H: 12, seed: 79, torch: 14, rooms: [{ x: 9, y: 6, w: 7, h: 3.5, shape: 'rect', kind: 'start' }], links: [] },
   home: { name: 'Casa do Tecelão', sub: 'Seu canto em Tessária', style: 'home', W: 16, H: 13, seed: 77, torch: 14, rooms: [{ x: 8, y: 6.5, w: 5, h: 3.5, shape: 'rect', kind: 'start' }], links: [] },
   wilds: { name: 'Ermos de Tessária', sub: 'As terras selvagens ao redor da vila', style: 'wilds', W: 400, H: 350, seed: 61, torch: 21, rooms: [], links: [] },
   swamp: { name: 'Pântano Afogado', sub: 'Onde as vozes afundam', style: 'swamp', W: 52, H: 42, seed: 41, torch: 21, boss: 'hydra', fio: 'FIO DE ÁGUA',
@@ -99,6 +101,21 @@ const riverHW = ty => 1.9 + 1.7 * Math.exp(-(((ty - 33) / 3) ** 2));
 /** Pontos de pesca: o píer do lago e quatro píeres no rio (o de baixo dá no remanso). x, z: começo do píer; a boia cai 4,2 adiante. */
 HUB.fishSpots = [{ x: HUB.fish[0], z: HUB.fish[1], water: 'lago', n: 'Lago do Bairro Leste' }].concat([[10, 'rio', 'Píer do Norte'], [19.5, 'rio', 'Píer da Corredeira'], [26.5, 'rio', 'Píer do Salgueiro'], [33, 'remanso', 'Remanso Fundo']].map(([ty, water, n]) => ({ x: Math.round(((riverX(ty) - riverHW(ty)) * T - 1.2) * 10) / 10, z: ty * T, water, n })));
 /** Píer do Ivo (não é ponto de pesca do jogador): ele pesca ali, perto da casa. */
+/** Casas com morador (índice em HUB.houses → morador). A 7 é a sua; a 6 é a forja; a 2 é a taverna. */
+const HOUSE_OWNER = { 0: 'tarsa', 1: 'ysolde', 3: 'otto', 4: 'kiko', 5: 'brann', 8: 'lucia', 9: 'dora', 10: 'lio', 11: 'bardo', 12: 'ivo' };
+const HOUSE_DOOR = Object.keys(HOUSE_OWNER).map(Number);
+/** Portas das casas com morador e da taverna (mundo): onde o herói entra (x, z) e o nome. */
+HUB.doors = HUB.houses.map((h, i) => {
+  const x0 = h.x * T, w = h.w * T, z0 = h.y * T, d = h.h * T, cx = x0 + w / 2;
+  if (h.tavern) return { i, taverna: true, x: cx - .4, z: z0 + d + .8, name: 'Taverna da Mel' };
+  return { i, x: cx - .6, z: z0 + d + .9 };
+}).filter(dr => dr.taverna || HOUSE_DOOR.includes(dr.i));
+/** Morro do Mirante (mundo), ao sul do Pesqueiro, de frente para o Remanso: dá para subir por qualquer lado. */
+const HILL = { x: 164, z: 63, r: 9, h: 3.4 };
+/** Altura do chão da vila num ponto (0 fora do morro; topo achatado). */
+function hubHill(x, z) { const d = Math.hypot(x - HILL.x, (z - HILL.z) * 1.1) / HILL.r; if (d >= 1) return 0; const k = Math.min(1, (1 - d) / .7); return HILL.h * k * k * (3 - 2 * k); }
+/** Altura do chão onde está uma pessoa (só a vila tem relevo). */
+const groundAt = (x, z) => (RG && RG.key === 'hub' ? hubHill(x, z) : 0);
 /** Ponte de tábuas sobre o riacho (mundo): liga o norte ao sul do Pesqueiro. */
 const HUB_BRIDGE = [161, 49.2];
 const IVO_PIER = [Math.round(((riverX(14.5) - riverHW(14.5)) * T - 1.2) * 10) / 10, 29];
@@ -219,6 +236,42 @@ function hubLakeD(px, pz) {
   if (ty > 2 && ty < 46 && tx > 84) best = Math.min(best, Math.abs(tx - riverX(ty)) / riverHW(ty) + wob);   // rio do Pesqueiro
   if (tx > 69.5 && tx < riverX(24)) best = Math.min(best, Math.abs(ty - (24.3 + Math.sin(tx * .5) * .45)) / .8 + wob);   // riacho: o lago desce até o rio
   return best;
+}
+/** Mobília dos interiores: a taverna da Mel e a casa de cada morador (INDOOR diz de quem é; cada um tem os seus objetos). */
+function buildInterior(key, S, emitters) {
+  const rm = REG[key].rooms[0], cx = rm.x * T, cz = rm.y * T, x0 = (rm.x - rm.w) * T, x1 = (rm.x + rm.w) * T, z0 = (rm.y - rm.h) * T, z1 = (rm.y + rm.h) * T;
+  const leg = (x, z, h) => S.box([x, h / 2, z], [.04, h / 2, .04], 12, 0, { faces: 'nsew' });
+  const table = (x, z, w2 = .6, d2 = .4) => { S.box([x, .78, z], [w2, .04, d2], 12, 0, { faces: 'tnsew' }); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) leg(x + a * (w2 - .08), z + b * (d2 - .08), .76); };
+  const stool = (x, z) => { S.box([x, .42, z], [.18, .04, .18], 12, 0, { faces: 'tnsew' }); leg(x, z, .4); };
+  const shelf = (x, z, items) => { S.box([x, 1.2, z], [.9, 1.2, .2], 19, 0, { faces: 'tnsew' }); for (const y of [.5, 1.1, 1.7]) S.box([x, y, z + .05], [.85, .03, .18], 12, 0, { faces: 'tnsew' }); items.forEach((m, k) => S.ell([x - .6 + (k % 4) * .4, .62 + Math.floor(k / 4) * .6, z + .08], [.1, .12, .1], m, 0, { min: 8 })); };
+  const fire = (x, z) => { S.box([x, 1.1, z], [1.0, 1.1, .4], (p, n) => n[2] > .5 && Math.abs(p[0] - x) < .5 && p[1] < .9 ? 29 : 11, 0, { faces: 'tsew' }); S.box([x, 2.25, z + .1], [1.15, .07, .5], 12, 0, { faces: 'tnsew' }); for (let k = 0; k < 3; k++) S.pt([x - .2 + k * .2, .25, z + .3], [.9, 0, 0], 21, 0, .3, 16); emitters.push({ t: 'torch', x, y: .4, z: z + .3 }); };
+  const window_ = x => { S.box([x, 2.0, z0 + .06], [.7, .55, .05], p => (Math.abs(p[0] - x) < .05 || Math.abs(p[1] - 2.0) < .05) ? 24 : 27, 0, { faces: 's' }); S.box([x, 1.38, z0 + .2], [.85, .06, .16], 24, 0, { faces: 'tsew' }); };
+  const bed = (x, z, m, small) => { const k = small ? .7 : 1; S.box([x, .28, z], [.55 * k, .28, 1.0 * k], 12, 0, { faces: 'tnsew' }); S.box([x, .6, z + .15 * k], [.5 * k, .08, .8 * k], m, 0, { faces: 'tnsew' }); S.box([x, .64, z - .75 * k], [.4 * k, .08, .18], 28, 0, { faces: 'tnsew' }); S.box([x, .7, z - 1.0 * k], [.55 * k, .4, .05], 12, 0, { faces: 'nsew' }); };
+  if (key === 'taverna') {
+    S.box([x0 + 3.2, .55, z0 + 1.6], [2.6, .55, .4], (p, n) => p[1] > 1.0 ? 12 : (frac(p[0] * 1.5) < .1 ? 29 : 19), 0, { faces: 'tnsew' });   // balcão
+    S.box([x0 + 3.2, 1.75, z0 + .25], [2.6, 1.2, .2], 19, 0, { faces: 'tnsew' }); for (let k = 0; k < 8; k++) S.ell([x0 + 1.0 + k * .6, 2.0 + (k % 2) * .5, z0 + .5], [.12, .18, .12], [14, 16, 13, 27, 17, 14, 26, 13][k], 0, { min: 8 });   // prateleira de garrafas
+    for (let k = 0; k < 3; k++) S.ell([x0 + .9, .45, z0 + 3 + k * 1.1], [.38, .45, .38], p => Math.abs(p[1] - .45) < .05 ? 29 : 12, 0, { min: 20 });   // barris
+    for (const [tx, tz] of [[cx - 2, cz + .5], [cx + 2.5, cz - 1.5], [cx + 5, cz + 2], [cx - 5, cz + 3]]) { table(tx, tz, .6, .6); for (const [a, b] of [[-.9, 0], [.9, 0], [0, .9]]) stool(tx + a, tz + b); S.ell([tx + .2, .86, tz], [.07, .09, .07], 14, 0, { min: 8 }); S.box([tx - .2, .83, tz + .1], [.14, .01, .1], 28, 0, { faces: 't' }); }
+    S.box([x1 - 2.4, .2, z0 + 2.6], [1.8, .2, 1.4], 12, 0, { faces: 'tnsew' });   // palco do bardo
+    fire(cx + 1, z0 + .4); window_(cx - 6); window_(cx + 6);
+    for (const [hx, hz] of [[cx - 3, z0 + 3], [cx + 4, z0 + 3]]) { S.tube([[hx, 3.2, hz, .02, 0], [hx, 2.6, hz, .02, 0]], 29, { sub: 1 }); S.ell([hx, 2.5, hz], [.15, .18, .15], 14, 0, { min: 10 }); emitters.push({ t: 'glow', x: hx, y: 2.5, z: hz }); }   // lampiões pendurados
+    emitters.push({ t: 'candle', x: cx - 2, y: .95, z: cz + .5 }); emitters.push({ t: 'candle', x: cx + 2.5, y: .95, z: cz - 1.5 });
+    return;
+  }
+  const own = (typeof INDOOR !== 'undefined' && INDOOR && INDOOR.owner) || 'brann', kids = own === 'kiko';
+  window_(cx - 3); fire(cx + 3.2, z0 + .4); table(cx - .6, cz + .6); stool(cx - 1.5, cz + .6); stool(cx + .3, cz + .6);
+  S.ell([cx - .8, .86, cz + .5], [.07, .08, .07], 14, 0, { min: 8 }); emitters.push({ t: 'candle', x: cx - .4, y: .95, z: cz + .7 });
+  if (kids) { bed(x0 + 1, z0 + 2.2, 16, true); bed(x0 + 2.4, z0 + 2.2, 18, true); for (let k = 0; k < 5; k++) S.ell([cx + 1 + k * .3, .12, cz + 2], [.12, .12, .12], [16, 17, 13, 26, 18][k], 0, { min: 8 }); }   // duas caminhas e brinquedos
+  else bed(x0 + 1.3, z0 + 2.2, { tarsa: 18, ysolde: 26, otto: 16, brann: 23, lucia: 17, dora: 16, lio: 26, bardo: 22, ivo: 18 }[own] || 16);
+  const X = { tarsa: () => { for (let k = 0; k < 3; k++) S.tube([[x1 - .4, .1, z0 + 1 + k * .5, .03, 0], [x1 - .4, 1.6, z0 + 1 + k * .5, .02, 0]], 28, { sub: 1 }); S.ell([x1 - .35, 1.1, cz + 1.2], [.08, .45, .45], 25, 0, { min: 20 }); },   // armas e escudo
+    ysolde: () => { shelf(x1 - 1, z0 + .3, [23, 27, 26, 28, 23, 26, 27, 23]); S.ell([cx - .6, 1.0, cz + .6], [.14, .14, .14], 26, 0, { min: 12 }); emitters.push({ t: 'glow', x: cx - .6, y: 1.0, z: cz + .6 }); },   // livros e cristal
+    otto: () => { for (let k = 0; k < 4; k++) S.box([x1 - .7 - (k % 2) * .75, .35 + Math.floor(k / 2) * .7, z0 + .8], [.35, .35, .35], 12, 0, { faces: 'tnsew' }); S.ell([cx + 1.2, .9, cz + .5], [.2, .03, .2], 14, 0); },   // caixotes e balança
+    kiko: () => {}, brann: () => { S.box([x1 - 1.2, .45, cz + .8], [.4, .05, .4], 12, 0, { faces: 'tnsew' }); S.box([x1 - 1.2, .8, cz + 1.15], [.4, .35, .05], 12, 0, { faces: 'nsew' }); for (let k = 0; k < 6; k++) S.ell([x1 - .6 + (k % 3) * .2, .4, z0 + 1.2 + Math.floor(k / 3) * .2], [.1, .1, .1], 16, 0, { min: 8 }); },   // cadeira de balanço e maçãs
+    lucia: () => { for (let k = 0; k < 4; k++) { S.ell([x1 - .5, .3 + k * .45, z0 + .6], [.12, .16, .12], 14, 0, { min: 10 }); } emitters.push({ t: 'glow', x: x1 - .5, y: 1.0, z: z0 + .6 }); },   // lanternas de reserva
+    dora: () => { for (let k = 0; k < 4; k++) { S.ell([x1 - .6 - k * .7, .25, z0 + .9], [.3, .2, .3], 12, 0, { min: 14 }); for (let j = 0; j < 4; j++) S.ell([x1 - .6 - k * .7 + (j - 1.5) * .12, .45, z0 + .9], .09, [16, 13, 17, 16][k], 0, { min: 6 }); } },   // cestos de frutas
+    lio: () => { S.ell([x1 - .5, 1.5, cz], [.08, .3, .22], 12, 0, { min: 14 }); S.tube([[x1 - .5, 1.75, cz, .03, 0], [x1 - .5, 2.3, cz, .025, 0]], 12, { sub: 1 }); },   // alaúde na parede
+    bardo: () => X.lio(), ivo: () => { for (let k = 0; k < 3; k++) S.tube([[x1 - .4, .1, z0 + 1 + k * .5, .02, 0], [x1 - .4, 2.2, z0 + .8 + k * .5, .012, 0]], 12, { sub: 1 }); S.box([x1 - .3, 1.4, cz + 1], [.04, .5, .9], 28, 0, { faces: 'w', flags: 1 }); } };   // varas e rede
+  (X[own] || X.brann)();
 }
 function genRegion(key) {
   if (REG[key].style === 'wilds') return genWilds(key, REG[key]);
@@ -350,8 +403,9 @@ function buildWorld(key, G) {
           if (mat === 8 && vnoise(px * .4, pz * .4) > .72) mat = 10;
           const cs = c === ',' ? .7 : 1, hh = hash2(Math.floor(px / cs) * 1.3, Math.floor(pz / cs) * 2.1); nrm = [(hh - .5) * .35, 1, (hash2(Math.floor(pz / cs), Math.floor(px / cs)) - .5) * .35];
         } else if (st === 'home') {
-          const rug = Math.abs(px - 16) < 3.6 && Math.abs(pz - 13.4) < 2.4, rugE = rug && (Math.abs(px - 16) > 3.2 || Math.abs(pz - 13.4) > 2.0);
-          mat = rug ? (rugE ? 17 : (Math.abs(frac((px - 16) * .6 + (pz - 13.4) * .6) - .5) < .12 ? 16 : 22)) : (frac(pz / .55) < .07 || frac(px / 2.2 + Math.floor(pz / .55) * .37) < .025 ? 9 : 8);
+          const rc = key === 'home' ? [16, 13.4] : [REG[key].rooms[0].x * T, REG[key].rooms[0].y * T + .6], rw = key === 'casa' ? 2.4 : 3.6, rh = key === 'casa' ? 1.6 : 2.4;   // tapete no meio da sala
+          const rug = Math.abs(px - rc[0]) < rw && Math.abs(pz - rc[1]) < rh, rugE = rug && (Math.abs(px - rc[0]) > rw - .4 || Math.abs(pz - rc[1]) > rh - .4);
+          mat = rug ? (rugE ? (key === 'taverna' ? 18 : 17) : (Math.abs(frac((px - rc[0]) * .6 + (pz - rc[1]) * .6) - .5) < .12 ? 16 : (key === 'taverna' ? 23 : 22))) : (frac(pz / .55) < .07 || frac(px / 2.2 + Math.floor(pz / .55) * .37) < .025 ? 9 : 8);
           nrm = [0, 1, 0];
         } else if (st === 'wilds') {
           const zz = WZ[wZone(px / T + (vnoise(px * .2, pz * .2) - .5) * 5, pz / T + (vnoise(pz * .2, px * .2 + 9) - .5) * 5)].style, n0 = vnoise(px * .3 + 2, pz * .3);
@@ -624,6 +678,13 @@ function buildWorld(key, G) {
       }
       for (let k = 0; k < 4; k++) S.ell([A.x - A.w + 1 + k * 4, .02, A.z], [1.2, .02, 1.2], 9, 0);   // chão batido da arena
       for (const [qx, qz] of HUB.fishSpots.map(f => [f.x, f.z]).concat([IVO_PIER])) { S.box([qx + 1.4, .14, qz], [1.6, .06, .5], 12, 0, { faces: 'tnsew' }); for (const d of [0, 1.4, 2.8]) for (const sz of [.45, -.45]) S.tube([[qx + d, -.3, qz + sz, .07, 0], [qx + d, .14, qz + sz, .07, 0]], 12, { sub: 1 }); }   // píeres: lago, rio e o do Ivo
+      { const tx = HILL.x, tz = HILL.z;   // topo do Mirante: banco, luneta de latão e bandeira (o relevo levanta tudo depois)
+        S.box([tx - 1.6, .42, tz + .9], [1.0, .06, .3], 12, 0, { faces: 'tnsew' }); for (const d of [-.8, .8]) S.box([tx - 1.6 + d, .2, tz + .9], [.07, .2, .2], 12, 0, { faces: 'nsew' });
+        for (const [a, b] of [[-.25, -.2], [.25, -.2], [0, .25]]) S.tube([[tx + 1, 0, tz, .03, 0], [tx + 1 + a, 1.0, tz + b, .025, 0]], 12, { sub: 1 });
+        S.tube([[tx + .7, 1.05, tz + .25, .07, 0], [tx + 1.35, 1.3, tz - .4, .05, 0]], 14, { sub: 2 }); S.ell([tx + 1.4, 1.32, tz - .45], .07, 28, 0, { min: 8 });
+        S.tube([[tx - .4, 0, tz - 1.5, .05, 0], [tx - .4, 3.2, tz - 1.5, .04, 0]], 12, { sub: 1 }); S.box([tx + .1, 2.9, tz - 1.5], [.5, .28, .02], p => frac(p[1] * 4) < .5 ? 16 : 14, 0, { faces: 'ns', flags: 1 });
+        for (let k = 0; k < 9; k++) { const a = k / 9 * 6.283; S.ell([tx + Math.cos(a) * 3.3, .15, tz + Math.sin(a) * 2.9], [.32, .2, .28], 11, 0, { min: 10 }); }   // pedras em volta do topo
+      }
       { const [bx, bz] = HUB_BRIDGE; S.box([bx, .2, bz], [1.3, .07, 3.3], p => frac(p[2] * 1.4) < .12 ? 11 : 12, 0, { faces: 'tnsew' }); for (const sx of [-1.25, 1.25]) { S.tube([[bx + sx, .2, bz - 3.3, .05, 0], [bx + sx, .75, bz - 3.3, .05, 0]], 12, { sub: 1 }); S.tube([[bx + sx, .2, bz + 3.3, .05, 0], [bx + sx, .75, bz + 3.3, .05, 0]], 12, { sub: 1 }); S.tube([[bx + sx, .72, bz - 3.3, .04, 0], [bx + sx, .8, bz, .04, 0], [bx + sx, .72, bz + 3.3, .04, 0]], 12, { sub: 3 }); } }   // ponte de tábuas sobre o riacho
     }
     { const pd = HUB.pond, wx0 = (pd.x - pd.rx) * T + .4, wz = pd.y * T; S.box([wx0 + 1.6, .14, wz], [1.7, .06, .45], 12, 0, { faces: 'tnsew' }); for (let i = 0; i < 4; i++) for (const sz of [-.4, .4]) S.tube([[wx0 + .2 + i * 1.05, -.3, wz + sz, .06, 0], [wx0 + .2 + i * 1.05, .3, wz + sz, .06, 0]], 12, { sub: 1 }); }
@@ -674,7 +735,8 @@ function buildWorld(key, G) {
     emitters.push({ t: 'crystal', x: fx, y: 2.2, z: fz });
     for (const [lx, lz] of HUB.lamps) { S.tube([[lx, 0, lz, .07, 0], [lx, 2.2, lz, .06, 0]], 12, { sub: 1, flags: 8 }); S.box([lx, 2.04, lz], [.15, .03, .15], 29, 0, { faces: 'tnsew' }); S.box([lx, 2.6, lz], [.19, .04, .19], 29, 0, { faces: 'tnsew' }); S.cone([lx, 2.62, lz], [lx, 2.8, lz], .14, 29, 0); for (const [ox, oz] of [[-.14, -.14], [.14, -.14], [-.14, .14], [.14, .14]]) S.tube([[lx + ox, 2.05, lz + oz, .018, 0], [lx + ox, 2.58, lz + oz, .018, 0]], 29, { sub: 1 }); S.ell([lx, 2.32, lz], [.11, .2, .11], 28, 0, { min: 14, noSolid: true });   /* lanterna de ferro com vidro; a chama é desenhada só quando a Lúcia acende (render.js) */ S.tube([[lx, 2.0, lz, .03, 0], [lx + .48, 2.0, lz, .03, 0]], 12, { sub: 1 }); S.mem([[[lx + .1, 1.96, lz], [lx + .44, 1.96, lz], [lx + .44, 1.35, lz]], [[lx + .1, 1.96, lz], [lx + .44, 1.35, lz], [lx + .1, 1.35, lz]]], p => p[1] < 1.48 ? 17 : (Math.round(lx) % 4 < 2 ? 22 : 23), () => 0); }
   }
-  if (st === 'home') {
+  if (key === 'casa' || key === 'taverna') buildInterior(key, S, emitters);
+  if (key === 'home') {
     const f = (gsave() && gsave().house && gsave().house.f) || {}, B = gsave() ? gsave().bosses : {}, gk = (gsave() && gsave().st && gsave().st.gk) || [];
     for (const x0 of [9.5, 22.5]) { S.box([x0, 2.1, 6.06], [.9, .7, .05], p => (Math.abs(p[0] - x0) < .05 || Math.abs(p[1] - 2.1) < .05) ? 24 : 27, 0, { faces: 's' }); S.box([x0, 1.32, 6.25], [1.05, .08, .2], 24, 0, { faces: 'tsew' }); }
     S.box([16, .02, 19.3], [1.0, .02, .55], 16, 0, { faces: 't' });
@@ -761,6 +823,11 @@ function buildWorld(key, G) {
   }
   if (G.wild) return lazyWorld(G, S, emitters, tileAt, seed => { S = new SplatSet(seed, 22, null, true); R = S.R; return S; });
   const data = S.build();
+  if (key === 'hub') for (let i = 0; i < data.length; i += STRIDE) {   // relevo: o Morro do Mirante levanta o chão (e o que está nele) e inclina a luz da encosta
+    const hh = hubHill(data[i], data[i + 2]); if (hh <= 0) continue;
+    data[i + 1] += hh;
+    if (data[i + 4] > .75 && !(data[i + 9] & 2)) { const e = .3, gx = (hubHill(data[i] + e, data[i + 2]) - hubHill(data[i] - e, data[i + 2])) / (2 * e), gz = (hubHill(data[i], data[i + 2] + e) - hubHill(data[i], data[i + 2] - e)) / (2 * e), l = Math.hypot(gx, 1, gz); data[i + 3] = -gx / l; data[i + 4] = 1 / l; data[i + 5] = -gz / l; }
+  }
   const CS = 16, ncx = Math.ceil(G.W * T / CS), ncz = Math.ceil(G.H * T / CS), buckets = [];
   for (let i = 0; i < ncx * ncz; i++) buckets.push([]);
   for (let i = 0; i < data.length; i += STRIDE) {

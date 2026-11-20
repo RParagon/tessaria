@@ -42,6 +42,25 @@ export interface Store {
   tombstoned(accountId: string, itemIds: string[]): Promise<string[]>;
   /** Grava lápides (itens que saíram da conta por outro caminho, como o espólio dos Ermos pego por outro jogador). */
   addTombstones(accountId: string, itemIds: string[]): Promise<void>;
+  /** Torneio de pesca: soma os pontos da semana e guarda a melhor pesca (a de mais pontos). */
+  addFishCatch(week: number, accountId: string, points: number, fish: string, kg: number): Promise<number>;
+  fishTop(week: number, n: number): Promise<FishScore[]>;
+  fishMine(week: number, accountId: string): Promise<(FishScore & { rank: number; claimed: boolean }) | null>;
+  /** Marca o prêmio da semana como resgatado (false se já estava). */
+  claimFishPrize(week: number, accountId: string): Promise<boolean>;
+  // ---------- mercado da vila e troca direta (mexem nos saves da nuvem, de forma atômica) ----------
+  /** Tira o item da bolsa do vendedor (lápide) e cria o anúncio. */
+  marketList(sellerId: string, sellerName: string, itemId: string, price: number, maxActive: number): Promise<{ ok: true; rev: number; id: number } | { ok: false; reason: 'sem-save' | 'sem-item' | 'equipado' | 'limite' }>;
+  marketActive(limit: number): Promise<Listing[]>;
+  marketMine(sellerId: string): Promise<Listing[]>;
+  /** Cobra o comprador (Centelhas do save) e põe o item na bolsa dele. */
+  marketBuy(buyerId: string, id: number): Promise<{ ok: true; rev: number; item: any; price: number } | { ok: false; reason: 'nao-encontrado' | 'vendido' | 'proprio' | 'sem-save' | 'sem-ouro' | 'bolsa-cheia' }>;
+  /** Devolve o item do anúncio para a bolsa do vendedor. */
+  marketCancel(sellerId: string, id: number): Promise<{ ok: true; rev: number; item: any } | { ok: false; reason: 'nao-encontrado' | 'vendido' | 'sem-save' | 'bolsa-cheia' }>;
+  /** Paga ao vendedor o que já foi vendido e ainda não foi recebido (menos a taxa). */
+  marketCollect(sellerId: string, tax: number): Promise<{ ok: true; rev: number; gold: number; n: number } | { ok: false; reason: 'nada' | 'sem-save' }>;
+  /** Troca direta: itens (ids da bolsa) e Centelhas dos dois lados, tudo ou nada. */
+  tradeExecute(aId: string, bId: string, aItems: string[], aGold: number, bItems: string[], bGold: number): Promise<{ ok: true; revA: number; revB: number; fromA: any[]; fromB: any[] } | { ok: false; reason: string }>;
   /** Registra itens sorteados pelo servidor. */
   grantItems(accountId: string, itemIds: string[], source: string): Promise<void>;
   /** Dos ids dados, os que o servidor concedeu (para qualquer conta). */
@@ -71,3 +90,6 @@ export interface Store {
   logChat(accountId: string, room: string, text: string): Promise<void>;
   counts(): Promise<{ accounts: number; saves: number; mail: number }>;
 }
+
+export interface FishScore { name: string; points: number; bestFish: string; bestKg: number; bestPts: number }
+export interface Listing { id: number; sellerName: string; item: any; price: number; createdAt: Date; sold: boolean; paid: boolean; buyerName?: string | null }

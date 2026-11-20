@@ -89,3 +89,6 @@ REGPAL.glass = { bg: ['#05050e', '#121833', '#2c3a6a'], outline: '#03030a', star
   8: rp(215, .22, .52), 9: rp(228, .22, .3), 10: rp(195, .32, .6), 11: rp(230, .18, .4), 12: rp(240, .15, .24), 13: rp(200, .42, .66), 14: CYANE, 15: rp(250, .4, .1),
   16: rp(210, .14, .76), 17: rp(222, .28, .4), 18: rp(262, .28, .3), 19: rp(45, .6, .58), 20: CYANE, 21: VIOLET, 22: rp(220, .3, .5), 23: rp(200, .3, .7), 24: rp(240, .3, .2), 25: rp(45, .6, .6), 26: CYANE, 27: VIOLET, 28: rp(210, .15, .88), 29: rp(240, .3, .08) } };
 REGPAL.hubDay = { ...REGPAL.hub, bg: ['#3d63a8', '#e8a070', '#ffe2a8'], outline: '#1a1020', star: '#ffe2a8' };
+
+/* Interiores (casas dos moradores e taverna): as cores da casa do jogador. */
+REGPAL.casa = REGPAL.home; REGPAL.taverna = REGPAL.home;

@@ -11,7 +11,7 @@ function nightLamps(c) {
     lampT = G.time; const L = [];
     if (WD) for (const e of WD.emitters) { const k = LIGHT_T[e.t]; if (k) { const d = Math.hypot(e.x - c[0], e.z - c[2]); if (d < 34) L.push([d, e.x, e.z, k[0], k[1]]); } }
     if (RG && RG.wild && RG.camps) for (const cp of RG.camps) { const d = Math.hypot(cp.x - c[0], cp.z - c[2]); if (d < 40) L.push([d, cp.x, cp.z, 11, 1]); }
-    if (RG && RG.key === 'hub') { const d = Math.hypot(HUB.fire[0] - c[0], HUB.fire[1] - c[2]); if (d < 40) L.push([d - 50, HUB.fire[0], HUB.fire[1], 7.5, .8]); HUB.lamps.forEach(([lx, lz], i) => { if (!lampLit(i)) return; const dl = Math.hypot(lx - c[0], lz - c[2]); if (dl < 34) L.push([dl - 3, lx, lz, 7.5, .8]); }); }   // postes acesos pela Lúcia
+    if (RG && RG.key === 'hub') { const d = Math.hypot(HUB.fire[0] - c[0], HUB.fire[1] - c[2]); if (d < 40) L.push([d - 50, HUB.fire[0], HUB.fire[1], 7.5, .8]); HUB.lamps.forEach(([lx, lz], i) => { if (!lampLit(i)) return; const dl = Math.hypot(lx - c[0], lz - c[2]); if (dl < 34) L.push([dl - 3, lx, lz, 7.5, .8]); }); const tar = npcs.find(n => n.id === 'tarsa'); if (tar && tar.visible) L.push([-60, tar.x, tar.z, 6, .7]); }   // postes acesos e a lanterna da Tarsa   // postes acesos pela Lúcia
     L.sort((a, b) => a[0] - b[0]); LAMP_BUF.fill(0);
     L.slice(0, 11).forEach((l, i) => LAMP_BUF.set([l[1], l[2], l[3], l[4]], (i + 1) * 4));
   }
@@ -19,6 +19,23 @@ function nightLamps(c) {
   return LAMP_BUF;
 }
 const EMOTES_PV = ['acenar', 'comemorar', 'dancar', 'sentar'];   // poses do espelho
+/** Chuva: gotas caindo em volta da câmera (mais na tempestade) e respingos no chão. */
+function drawRain(t) {
+  const w = weatherNow(); if (w.type !== 'chuva' && w.type !== 'tempestade') return;
+  const n = Math.round((w.type === 'tempestade' ? 300 : 170) * w.k), cx = cam.x, cz = cam.z, wind = w.type === 'tempestade' ? .35 : .12;
+  for (let i = 0; i < n; i++) {
+    const h1 = frac(Math.sin(i * 12.9898) * 43758.55), h2 = frac(Math.sin(i * 78.233) * 12345.67), h3 = frac(Math.sin(i * 39.425) * 24634.6);
+    const ph = frac(t * (1.6 + h3 * .6) + h1), y = 7 * (1 - ph), x = cx + (h1 * 2 - 1) * 15 + wind * y, z = cz + (h2 * 2 - 1) * 12;
+    if (y < .25) { dyn(x, .05, z, .45, 28, .12); continue; }   // respingo
+    dyn(x, y, z, .9, 28, .085); dyn(x - wind * .12, y + .25, z, .7, 28, .07); dyn(x - wind * .24, y + .5, z, .45, 28, .055);
+  }
+}
+/** À noite: a Guarda Tarsa faz a ronda com lanterna e a banca da Dora fica coberta enquanto ela está em casa. */
+function drawNightVillage(t) {
+  const tar = npcs.find(n => n.id === 'tarsa');
+  if (tar && tar.visible && tar.W && NIGHT > .3) { const hp = tp(tar.W[9] || tar.W[4], [.38, .55, .2]); dyn(hp[0], hp[1], hp[2], .9 + .1 * Math.sin(t * 8), 14, .22); dyn(hp[0], hp[1] + .14, hp[2], 1, 29, .1); }
+  if (npcPlace('dora') !== 'out') for (const [sx, sz] of HUB.stalls.slice(2, 4)) { const wx = sx * T + 1, wz = sz * T + 1; for (let i = 0; i < 7; i++) for (let j = 0; j < 5; j++) { const u = i / 6 - .5, v = j / 4 - .5; dyn(wx + u * 2.1, 1.05 - Math.abs(v) * .5 - (i % 2) * .04, wz + v * 1.5, .75, 22, .32); } }   // lona por cima da banca fechada
+}
 /** Chamas dos postes da vila: só nos acesos (a Lúcia acende no fim da tarde e apaga ao amanhecer). Ao acender, faíscas. */
 const LAMP_ON = [];
 function drawLamps(t) {
@@ -118,13 +135,13 @@ function render(dt) {
   } else {
     let tx = P.x, tz = P.z;
     if (boss && !boss.dying) { tx = lerp(P.x, boss.x, .32); tz = lerp(P.z, boss.z, .32); }
-    if (RG && RG.key === 'home') { tx = lerp(P.x, 16, .85); tz = lerp(P.z, 12.6, .85); }
+    if (RG && isIndoor(RG.key) || (RG && RG.key === 'home')) { const rm = REG[RG.key].rooms[0]; tx = lerp(P.x, rm.x * T, .85); tz = lerp(P.z, rm.y * T + .1, .85); }
     if (G.cine) { const k = sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)); tx = lerp(tx, G.cine.x, k); tz = lerp(tz, G.cine.z, k); }
     cam.x = lerp(cam.x, tx, 1 - Math.exp(-dt * 6)); cam.z = lerp(cam.z, tz, 1 - Math.exp(-dt * 6));
-    const fit = Math.pow(clamp(1.1 / asp, 1, 2), .55), dist = 15.5 * (G.settings.zoom || 1) * fit * (RG && RG.key === 'home' ? 1.16 : 1) * (boss ? 1.3 : 1) * (boss && boss.type === 'dragon' ? 1.12 : 1) * (G.cine ? 1 - .3 * sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)) : 1), pitch = .98;
+    const fit = Math.pow(clamp(1.1 / asp, 1, 2), .55), dist = 15.5 * (G.settings.zoom || 1) * fit * (G.lookT > 0 ? 1 + 1.3 * sm(0, 1.2, 7 - G.lookT) * sm(0, 1.2, G.lookT) : 1) * (RG && RG.key === 'home' ? 1.16 : RG && RG.key === 'taverna' ? 1.32 : RG && RG.key === 'casa' ? 1.0 : 1) * (boss ? 1.3 : 1) * (boss && boss.type === 'dragon' ? 1.12 : 1) * (G.cine ? 1 - .3 * sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)) : 1), pitch = .98;
     const sh = G.shake || 0;
-    tgt = [cam.x + rr(-sh, sh), .8, cam.z + rr(-sh, sh)]; eye = [tgt[0], tgt[1] + dist * Math.sin(pitch), tgt[2] + dist * Math.cos(pitch)];
-    xray = 1; player = [P.x, 0, P.z];
+    tgt = [cam.x + rr(-sh, sh), .8 + groundAt(cam.x, cam.z), cam.z + rr(-sh, sh)]; eye = [tgt[0], tgt[1] + dist * Math.sin(pitch), tgt[2] + dist * Math.cos(pitch)];
+    xray = 1; player = [P.x, groundAt(P.x, P.z), P.z];
   }
   VP = mMul(proj, mLook(eye, tgt, [0, 1, 0])); invVP = invert4(VP);
   const light = V.norm([-.45, 1.0, .5]);
@@ -133,7 +150,7 @@ function render(dt) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.useProgram(PS.p); U = PS.u;
   gl.uniformMatrix4fv(U.u_vp, false, VP); gl.uniform3fv(U.u_cam, eye); gl.uniform3fv(U.u_light, light); gl.uniform3fv(U.u_player, player); gl.uniform1f(U.u_aspect, asp);
-  { const pc = [VP[0] * player[0] + VP[4] * 1.0 + VP[8] * player[2] + VP[12], VP[1] * player[0] + VP[5] * 1.0 + VP[9] * player[2] + VP[13], VP[3] * player[0] + VP[7] * 1.0 + VP[11] * player[2] + VP[15]]; gl.uniform3fv(U.u_pclip, [pc[0] / pc[2], pc[1] / pc[2], pc[2]]); }
+  { const pc = [VP[0] * player[0] + VP[4] * (1.0 + player[1]) + VP[8] * player[2] + VP[12], VP[1] * player[0] + VP[5] * (1.0 + player[1]) + VP[9] * player[2] + VP[13], VP[3] * player[0] + VP[7] * (1.0 + player[1]) + VP[11] * player[2] + VP[15]]; gl.uniform3fv(U.u_pclip, [pc[0] / pc[2], pc[1] / pc[2], pc[2]]); }
   gl.uniform1f(U.u_proj, FB.h / (2 * Math.tan(fov / 2))); gl.uniform1f(U.u_time, G.time);
   { const preview0 = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); NIGHT = preview0 ? 0 : nightK(); DUSK = preview0 ? 0 : duskK() * (1 - NIGHT * .6); gl.uniform1f(U.u_night, NIGHT); if (NIGHT > 0) gl.uniform4fv(U.u_lamps, nightLamps(tgt)); }
   const camD = V.len(V.sub(eye, tgt)); gl.uniform1f(U.u_near, Math.max(.1, camD - 14)); gl.uniform1f(U.u_range, 30);
@@ -168,7 +185,8 @@ function render(dt) {
     drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
     auraFx(0, 0, G.char.aura, t, dt);   /* a aura também aparece no espelho e no inventário */
   } else {
-    if (RG && RG.key === 'hub') drawLamps(t);
+    if (RG && RG.key === 'hub') { drawLamps(t); drawNightVillage(t); }
+    drawRain(t);
     drawRemotes(dt, t);
     for (const n of npcs) {
       if (!n.visible) continue;
@@ -181,6 +199,7 @@ function render(dt) {
       n.yaw += angDiff(n.yaw, want) * (1 - Math.exp(-dt * 6));
       n.act = talking ? 'talk' : ((((n.id === 'kiko' || n.id === 'nina') && (n.moveAmt || 0) < .2 && Math.sin(t * .7 + n.x) > .8) || (n.id === 'otto' && P && Math.hypot(P.x - n.x, P.z - n.z) < 9 && Math.sin(t * .9) > .6)) ? 'wave' : null);
       n.cls = n.cfg.cls; poseHuman(n.anim, n, t + n.x);
+      if (n.sit && !talking) { applyEmote(n.anim, 'sentar', t, 1, n.cfg.cls); if (n.asleep) { n.anim[2].rx += .25 + Math.sin(t * 1.2) * .03; if (Math.random() < .012) spawn({ x: n.x + .2, y: 1.4, z: n.z, vx: .15, vy: .35, life: 2, s0: .07, s1: .12, b0: .9, b1: .1, mat: 28 }); } }   // sentado; dormindo, cochila (Zzz)
       if (n.id === 'lio' && !talking) { n.anim[5].rx = -.9 + Math.sin(t * 9) * .18; n.anim[4].rx = -.75; n.anim[4].ry = -.6; n.anim[3].rz = Math.sin(t * 2) * .08; }
       if (n.id === 'brann') { n.anim[2].rx += .22; n.anim[3].rx -= .1; }
       if (n.id === 'lucia' && !talking && n.round && !n.round.moving) {   // na ronda, parada num poste: ergue a vara e acende (ou abafa a chama ao amanhecer)
@@ -250,7 +269,7 @@ function render(dt) {
       for (const k in G.buffs) if (G.buffs[k] > 0 && Math.random() < .35) spawn({ x: P.x + rr(-.45, .45), y: rr(.1, 1.8), z: P.z + rr(-.45, .45), vy: rr(.3, .8), life: .6, s0: .09, s1: .02, b0: 1, b1: .2, mat: BUFFS[k].mat });
       const blink = P.iframe > 0 && P.dashT <= 0 && P.dieT < 0 && Math.floor(t * 20) % 2 === 0;
       if (G.settings.halo !== false && P.dieT < 0) for (let k = 0; k < 18; k++) { const a = k / 18 * 6.283 + t * .6; dyn(P.x + Math.cos(a) * .62, .07, P.z + Math.sin(a) * .62, k % 3 ? .45 : .75, 30, .13); }   // anel de destaque do herói
-      if (!blink) P.W = drawModel(playerModel, P.anim, P.x, 0, P.z, P.yaw, 1, { dis: P.dieT >= 0 ? clamp(P.dieT / 1.2, 0, 1) : 0, dmat: 7, flash: P.flash > .6 ? 1 : 0 });
+      if (!blink) P.W = drawModel(playerModel, P.anim, P.x, groundAt(P.x, P.z), P.z, P.yaw, 1, { dis: P.dieT >= 0 ? clamp(P.dieT / 1.2, 0, 1) : 0, dmat: 7, flash: P.flash > .6 ? 1 : 0 });
       if (P.W && (G.fishing || G.fishCatch)) drawFishing(t);
       if (P.dieT < 0) auraFx(P.x, P.z, G.char.aura, t, dt);
       if (P.shield > 0) for (let i = 0; i < 16; i++) { const a = t * 2 + i / 16 * 6.283; dyn(P.x + Math.cos(a) * .7, .3 + (i % 4) * .4, P.z + Math.sin(a) * .7, .7, 31, .14); }
@@ -301,6 +320,7 @@ function render(dt) {
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, palTex); gl.uniform1i(Q.u_pal, 1);
   gl.uniform1f(Q.u_px, pxDev); gl.uniform2f(Q.u_res, FB.w, FB.h); gl.uniform1f(Q.u_dither, G.settings.dither); gl.uniform1f(Q.u_time, G.time);
   gl.uniform1i(Q.u_outlineOn, G.settings.outline ? 1 : 0); gl.uniform1f(Q.u_fade, G.fade || 0); gl.uniform1f(Q.u_hurt, G.hurt || 0); gl.uniform1f(Q.u_night, NIGHT); gl.uniform1f(Q.u_dusk, DUSK);
+  { const w = preview ? { type: 'limpo', k: 0 } : weatherNow(), wet = (w.type === 'chuva' || w.type === 'tempestade') ? w.k * (w.type === 'tempestade' ? 1 : .7) : 0, fog = w.type === 'neblina' ? w.k : wet * .25; gl.uniform1f(Q.u_wet, wet); gl.uniform1f(Q.u_fog, fog); gl.uniform1f(Q.u_bolt, preview ? 0 : G.bolt || 0); gl.uniform3fv(Q.u_fogc, NIGHT > .5 ? [.14, .16, .22] : [.66, .69, .74]); }
   const bgp = preview ? { bg: ['#0c0a18', '#1a1430', '#2e2048'], outline: '#06050b', star: '#ffe9c9' } : regPal;
   gl.uniform3fv(Q.u_outline, hex1(bgp.outline)); gl.uniform3fv(Q.u_star, hex1(bgp.star));
   gl.uniform3fv(Q.u_bg0, hex1(bgp.bg[0])); gl.uniform3fv(Q.u_bg1, hex1(bgp.bg[1])); gl.uniform3fv(Q.u_bg2, hex1(bgp.bg[2]));
@@ -364,7 +384,7 @@ function bakeModel(model, A, S, eye, tgt, yaw = 0, fov = 30) {
   const d = V.len(V.sub(eye, tgt)); gl.uniform1f(U.u_near, Math.max(.1, d - 2)); gl.uniform1f(U.u_range, 4); gl.uniform4fv(U.u_shadow, new Float32Array(32));
   drawModel(model, A, 0, 0, 0, yaw, 1, {});
   gl.bindFramebuffer(gl.FRAMEBUFFER, F.out); gl.viewport(0, 0, S, S); gl.disable(gl.DEPTH_TEST); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.useProgram(PP.p); const Q = PP.u; gl.uniform1f(Q.u_night, 0); gl.uniform1f(Q.u_dusk, 0);
+  gl.useProgram(PP.p); const Q = PP.u; gl.uniform1f(Q.u_night, 0); gl.uniform1f(Q.u_dusk, 0); gl.uniform1f(Q.u_wet, 0); gl.uniform1f(Q.u_fog, 0); gl.uniform1f(Q.u_bolt, 0);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, F.tex); gl.uniform1i(Q.u_fb, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, palTex); gl.uniform1i(Q.u_pal, 1);
   gl.uniform1f(Q.u_px, 1); gl.uniform2f(Q.u_res, S, S); gl.uniform1f(Q.u_dither, .6); gl.uniform1f(Q.u_time, 0); gl.uniform1i(Q.u_outlineOn, 1); gl.uniform1f(Q.u_fade, 0); gl.uniform1f(Q.u_hurt, 0); gl.uniform1i(Q.u_icon, 1);

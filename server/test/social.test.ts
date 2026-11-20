@@ -353,6 +353,31 @@ for (const kind of STORES) {
       t.c.close(); f.c.close(); g.c.close();
     });
 
+    test('troca direta: proposta, ofertas dos dois lados, confirmação dupla e a troca nos saves da nuvem (com lápides)', async () => {
+      const A = await account(baseSave({ gold: 500, inv: [{ id: 'tr00001a', slot: 'charm', rar: 2, tier: 2, st: { crit: 4 }, cls: 'lamina', name: 'Anel A' }] }));
+      const B = await account(baseSave({ gold: 50, inv: [{ id: 'tr00002b', slot: 'charm', rar: 1, tier: 2, st: { gold: 8 }, cls: 'lamina', name: 'Anel B' }] }));
+      const a = await connect(A), b = await connect(B);
+      a.c.send({ t: 'tprop', name: B.account.name });
+      await b.c.waitFor(m => m.t === 'tinvite' && m.from === A.account.name);
+      b.c.send({ t: 'tans', from: A.account.name, ok: true });
+      await a.c.waitFor(m => m.t === 'tstate' && m.with === B.account.name);
+      a.c.send({ t: 'toffer', items: ['tr00001a'], gold: 200 });
+      await b.c.waitFor(m => m.t === 'tstate' && m.theirs.items.length === 1 && m.theirs.gold === 200);
+      b.c.send({ t: 'toffer', items: ['tr00002b', 'nao-tem'], gold: 9999 });   // item que não tem e ouro demais: o servidor corta
+      const st = await a.c.waitFor(m => m.t === 'tstate' && m.theirs.items.length === 1);
+      assert.equal(st.theirs.gold, 50); assert.equal(st.theirs.items[0].id, 'tr00002b');
+      a.c.send({ t: 'tready', on: true }); b.c.send({ t: 'tready', on: true });
+      const da = await a.c.waitFor(m => m.t === 'tdone'), db = await b.c.waitFor(m => m.t === 'tdone');
+      assert.deepEqual(da.gave, ['tr00001a']); assert.equal(da.got[0].id, 'tr00002b'); assert.equal(da.gold, 50 - 200);
+      assert.equal(db.got[0].id, 'tr00001a'); assert.equal(db.gold, 150);
+      const sa = (await api(S.url, 'GET', '/save', undefined, A.token)).body, sb = (await api(S.url, 'GET', '/save', undefined, B.token)).body;
+      assert.equal(sa.data.gold, 350); assert.deepEqual(sa.data.inv.map((x: any) => x.id), ['tr00002b']); assert.equal(sa.rev, da.rev);
+      assert.equal(sb.data.gold, 200); assert.deepEqual(sb.data.inv.map((x: any) => x.id), ['tr00001a']);
+      // A não consegue trazer de volta o anel que deu
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: sa.rev, data: { ...sa.data, inv: [...sa.data.inv, { id: 'tr00001a', slot: 'charm', rar: 2, tier: 2, st: { crit: 4 }, cls: 'lamina', name: 'Anel A' }] } }, A.token)).status, 422);
+      a.c.close(); b.c.close();
+    });
+
     test('dificuldade do grupo: a do líder, limitada à que todos desbloquearam; o Pronto? leva a dificuldade e o nível do líder', async () => {
       const A = await account(baseSave({ lvl: 15, diff: 3 })), B = await account(baseSave({ lvl: 5 }));   // 10 níveis: o limite
       const a = await connect(A), b = await connect(B);

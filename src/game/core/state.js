@@ -66,6 +66,19 @@ const STASH_UP = [800, 2000, 4500, 9000, 18000];
 const UPCH = [1, 1, 1, 1, 1, .9, .75, .6, .45, .3];
 const H = () => { const s = G.save; s.house = s.house || { owned: false, f: {}, stash: [], cap: 20, seen: [] }; s.house.seen = s.house.seen || []; return s.house; };
 const gsave = () => G.save;
+/** Interiores (casas dos moradores e taverna): regiões cobertas no estilo da casa do jogador. INDOOR: em qual casa você está. */
+const isIndoor = k => !!(k && REG[k] && REG[k].style === 'home');
+let INDOOR = null;   // { house: índice em HUB.houses, owner: id do morador, name } (casa) ou { taverna: true }
+/* Rotina dos moradores pela hora do dia (dayHour, igual para todos): 'out' na vila, 'taverna', 'casa' (dormindo ou em casa) ou 'porta' (crianças na porta da taverna).
+   Os que prestam serviço (Bruma na forja, Ysolde de dia, Otto de dia) continuam achando-se pela vila; à noite, quem está em casa atende lá dentro. */
+const ROUTINE = {
+  mel: [[17, 2, 'taverna']], lio: [[19, 1, 'taverna'], [1, 8, 'casa']], otto: [[20, 24, 'taverna'], [0, 7, 'casa']], brann: [[18, 21, 'taverna'], [21, 6, 'casa']],
+  kiko: [[20, 22, 'porta'], [22, 6, 'casa']], nina: [[20, 22, 'porta'], [22, 6, 'casa']], ysolde: [[23, 5, 'casa']], tarsa: [[9, 15, 'casa']],
+  dora: [[19, 7, 'casa']], lucia: [[21, 4.2, 'casa']], bardo: [[2, 9, 'casa']], ivo: [[2, 5, 'casa']],
+};
+const inSpan = (h, a, b) => (a <= b ? h >= a && h < b : h >= a || h < b);
+function npcPlace(id, h = dayHour()) { for (const [a, b, p] of ROUTINE[id] || []) if (inSpan(h, a, b)) return p; return 'out'; }
+const ownerHouse = id => { const h = Object.keys(HOUSE_OWNER).find(k => HOUSE_OWNER[k] === (id === 'nina' ? 'kiko' : id)); return h === undefined ? -1 : +h; };
 /** Espaços da bolsa (20, ampliável no Otto até 40). */
 const BAG = () => Math.min(40, Math.max(20, (G.save && G.save.bagCap) || 20));
 const BAG_UP = [1500, 4000, 9000, 18000];   // preço de cada +5 espaços
@@ -78,6 +91,13 @@ stats = function () {
   if (bless('rapidez')) { st.spd *= 1.3; st.atkCd *= .75; }
   if (bless('fortuna')) { st.gold *= 2; st.itemFind *= 1.5; }
   if (bless('protecao')) st.dr = Math.min(.8, st.dr + .4);
+  // comida (taverna da Mel e pratos de peixe na fogueira)
+  if (bless('sopa')) st.maxHp = Math.round(st.maxHp * 1.1);
+  if (bless('torta')) { st.dmg *= 1.1; st.gold *= 1.25; }
+  if (bless('assado')) st.maxHp = Math.round(st.maxHp * 1.12);
+  if (bless('brasa')) st.dmg *= 1.12;
+  if (bless('ensopado')) { st.maxHp = Math.round(st.maxHp * 1.2); st.dr = Math.min(.8, st.dr + .08); }
+  if (bless('banquete')) { st.maxHp = Math.round(st.maxHp * 1.2); st.dmg *= 1.2; st.spd *= 1.1; }
   if (G.rift && G.rift.aff && G.rift.aff.includes('dourada')) st.gold *= 2;
   if (G.save) { const D = curDiff(); st.gold *= D.gold; st.itemFind *= D.find; }
   if (eloMentor()) { st.gold *= 1.25; st.itemFind *= 1.1; }   // bônus de mentor
@@ -145,14 +165,14 @@ const diffOk = d => !!G.save && G.save.lvl >= d.lvl && (!d.act2 || !!G.save.boss
 const monLevel = () => { if (!G.save) return 1; if (RG && RG.wild && P) return wildLv(P.x, P.z); if (G.rift) return (ELO && ELO.ref ? ELO.ref : G.save.lvl) + G.rift.L; return Math.max(REGBASE[RG ? RG.key : 'hub'] || 1, G.save.lvl); };
 function monsterScale() {
   const D = curDiff();
-  if (RG && RG.wild) { const zl = P ? wildLv(P.x, P.z) : 2; const nk = typeof nightK === 'function' ? nightK() : 0; return { hp: D.hp * (1 + .1 * (zl - 1)), dmg: D.dmg * (1 + .06 * (zl - 1)) * (1 + .15 * nk), xp: D.xp * (1 + .08 * (zl - 1)) * (G.bloodT > 0 ? 1.5 : 1) * (1 + .25 * nk) }; }   // Lua de Sangue: +50% de XP · noite: +15% de dano dos monstros e +25% de XP
+  if (RG && RG.wild) { const zl = P ? wildLv(P.x, P.z) : 2; const nk = typeof nightK === 'function' ? nightK() : 0; return { hp: D.hp * (1 + .1 * (zl - 1)), dmg: D.dmg * (1 + .06 * (zl - 1)) * (1 + .15 * nk), xp: D.xp * (1 + .08 * (zl - 1)) * (G.bloodT > 0 ? 1.5 : 1) * (1 + .25 * nk) * (typeof foggy === 'function' && foggy() ? 1.15 : 1) }; }   // Lua de Sangue: +50% de XP · noite: +15% de dano dos monstros e +25% de XP
   if (G.rift) return { hp: G.rift.hm * D.hp, dmg: G.rift.dm * D.dmg, xp: D.xp };
   const base = REGBASE[RG ? RG.key : 'hub'] || 1, over = Math.max(0, (G.save ? G.save.lvl : 1) - base - 2), n = G.save && G.save.diff ? 1 : .6;
   return { hp: D.hp * (1 + .08 * n * over), dmg: D.dmg * (1 + .05 * n * over), xp: D.xp * (1 + .05 * over) };
 }
 function updateDiffHud() {
   const el = $('#hDiff'); if (!el || !G.save) return; const D = curDiff();
-  const txt = D.n.toUpperCase() + (RG && RG.key !== 'hub' && RG.key !== 'home' ? ' · MONSTROS NV ' + monLevel() : '');
+  const txt = D.n.toUpperCase() + (RG && RG.key !== 'hub' && RG.key !== 'home' && !isIndoor(RG.key) ? ' · MONSTROS NV ' + monLevel() : '');
   if (el.textContent !== txt) el.textContent = txt; el.style.color = RG && RG.wild && monLevel() > G.save.lvl + 3 ? '#ff6a5a' : D.c;
 }
 function renderDiff() {

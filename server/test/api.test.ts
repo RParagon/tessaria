@@ -33,6 +33,59 @@ for (const kind of STORES) {
       assert.equal(bad.status, 422);
     });
 
+    test('torneio de pesca: pesca validada pelo peso e ritmo, ranking da semana e prêmio da semana passada uma vez só', async () => {
+      const a = await register(S.url), b = await register(S.url);
+      assert.equal((await api(S.url, 'POST', '/fish/catch', { fish: 'truta', kg: 30 }, a.token)).status, 422);   // truta de 30 kg não existe
+      assert.equal((await api(S.url, 'POST', '/fish/catch', { fish: 'tubarao', kg: 1 }, a.token)).status, 422);
+      const c1 = await api(S.url, 'POST', '/fish/catch', { fish: 'rei', kg: 39 }, a.token);
+      assert.equal(c1.status, 200); assert.ok(c1.body.points > 50, `pontos ${c1.body.points}`);
+      assert.equal((await api(S.url, 'POST', '/fish/catch', { fish: 'lambari', kg: .1 }, a.token)).status, 429);   // rápido demais
+      assert.equal((await api(S.url, 'POST', '/fish/catch', { fish: 'lambari', kg: .2 }, b.token)).status, 200);
+      const t = await api(S.url, 'GET', '/fish/tournament', undefined, a.token);
+      assert.equal(t.status, 200); assert.ok(t.body.endsAt > Date.now());
+      assert.deepEqual(t.body.top.slice(0, 2).map((x: any) => x.name), [a.account.name, b.account.name]);
+      assert.equal(t.body.me.rank, 1); assert.equal(t.body.me.bestFish, 'rei');
+      assert.equal((await api(S.url, 'POST', '/fish/tournament/claim', {}, a.token)).status, 404);   // nada na semana passada
+      await S.store.addFishCatch(t.body.week - 1, a.account.id, 500, 'dourado', 8);
+      const last = await api(S.url, 'GET', '/fish/tournament', undefined, a.token);
+      assert.equal(last.body.last.me.prize, 6000);
+      const cl = await api(S.url, 'POST', '/fish/tournament/claim', {}, a.token);
+      assert.equal(cl.status, 200); assert.equal(cl.body.gold, 6000);
+      assert.equal((await api(S.url, 'POST', '/fish/tournament/claim', {}, a.token)).status, 409);
+    });
+
+    test('mercado da vila: anunciar tira da bolsa, comprar cobra e entrega, o vendedor recebe com taxa; cancelar devolve', async () => {
+      const A = await register(S.url), B = await register(S.url);
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: 0, data: baseSave({ inv: [item('mk00001a'), item('mk00002a')] }) }, A.token)).status, 200);
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: 0, data: baseSave({ gold: 1000 }) }, B.token)).status, 200);
+      const l = await api(S.url, 'POST', '/market/list', { itemId: 'mk00001a', price: 300 }, A.token);
+      assert.equal(l.status, 200);
+      assert.equal((await api(S.url, 'POST', '/market/list', { itemId: 'nao-existe', price: 10 }, A.token)).status, 422);
+      assert.equal((await api(S.url, 'GET', '/save', undefined, A.token)).body.data.inv.length, 1);   // saiu da bolsa
+      const m = await api(S.url, 'GET', '/market', undefined, B.token);
+      assert.equal(m.body.active[0].price, 300); assert.equal(m.body.active[0].sellerName, A.account.name);
+      assert.equal((await api(S.url, 'POST', `/market/${l.body.id}/buy`, {}, A.token)).status, 422);   // o próprio
+      const b = await api(S.url, 'POST', `/market/${l.body.id}/buy`, {}, B.token);
+      assert.equal(b.status, 200); assert.equal(b.body.item.id, 'mk00001a');
+      const sb = (await api(S.url, 'GET', '/save', undefined, B.token)).body;
+      assert.equal(sb.data.gold, 700); assert.equal(sb.data.inv[0].id, 'mk00001a'); assert.equal(sb.rev, b.body.rev);
+      assert.equal((await api(S.url, 'POST', `/market/${l.body.id}/buy`, {}, B.token)).status, 409);   // já vendido
+      const c = await api(S.url, 'POST', '/market/collect', {}, A.token);
+      assert.equal(c.status, 200); assert.equal(c.body.gold, 285);   // 5% de taxa
+      assert.equal((await api(S.url, 'GET', '/save', undefined, A.token)).body.data.gold, 120 + 285);
+      assert.equal((await api(S.url, 'POST', '/market/collect', {}, A.token)).status, 422);
+      // o item que A vendeu não volta pelo save de A (lápide); o B pode usar
+      const sa = (await api(S.url, 'GET', '/save', undefined, A.token)).body;
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: sa.rev, data: { ...sa.data, inv: [...sa.data.inv, item('mk00001a')] } }, A.token)).status, 422);
+      // cancelar devolve
+      const l2 = await api(S.url, 'POST', '/market/list', { itemId: 'mk00002a', price: 50 }, A.token);
+      const cn = await api(S.url, 'POST', `/market/${l2.body.id}/cancel`, {}, A.token);
+      assert.equal(cn.status, 200); assert.equal(cn.body.item.id, 'mk00002a');
+      const sa2 = (await api(S.url, 'GET', '/save', undefined, A.token)).body;
+      assert.deepEqual(sa2.data.inv.map((x: any) => x.id), ['mk00002a']);
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: sa2.rev, data: sa2.data }, A.token)).status, 200);   // volta a valer no save
+    });
+
     test('registro, login por e-mail e por nome, /me e logout', async () => {
       const r = await api(S.url, 'POST', '/auth/register', { name: 'Ysa_01', email: 'ysa@exemplo.com', password: 'senha1234' });
       assert.equal(r.status, 201); assert.ok(r.body.token);

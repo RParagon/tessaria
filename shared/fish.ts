@@ -104,3 +104,21 @@ export function sellFish(st: MarketState, id: string, n: number, now: number) {
 }
 /** Quanto o preço variou em relação à hora anterior (sem a pressão): para as setas ▲▼. */
 export function fishTrendDelta(id: string, now: number) { const h = marketHour(now); return trend(id, h) / trend(id, h - 1) - 1; }
+
+// ---------- peso e torneio semanal de pesca ----------
+/** Faixa de peso (kg) de cada peixe. Os grandes são raros (curva puxada para baixo). */
+export const FISH_KG: Record<string, [number, number]> = { lambari: [.05, .25], tilapia: [.3, 1.2], truta: [.4, 2.2], bagre: [1, 6], carpa: [.8, 4], dourado: [2, 9], enguia: [.6, 3], salmao: [2, 8], lua: [.5, 2.5], rei: [15, 40] };
+export function fishKg(id: string, rng: () => number = Math.random) { const r = FISH_KG[id] ?? [.1, 1]; return Math.round((r[0] + (r[1] - r[0]) * Math.pow(rng(), 1.8)) * 100) / 100; }
+/** Pontos de torneio de uma pesca: peso relativo à faixa da espécie, valendo mais nos raros. */
+export function fishPoints(id: string, kg: number) {
+  const f = fishById(id), r = FISH_KG[id]; if (!f || !r) return 0;
+  const rel = Math.max(0, Math.min(1, (kg - r[0]) / (r[1] - r[0])));
+  return Math.round((5 + 20 * rel) * (1 + (f.rare ?? 0) * 1.5));
+}
+/** Semanas do torneio: começam toda segunda-feira, 00:00 UTC. */
+export const TOURNEY_EPOCH = Date.UTC(2026, 0, 5);
+export const WEEK_MS = 7 * 864e5;
+export const tourneyWeek = (now: number) => Math.floor((now - TOURNEY_EPOCH) / WEEK_MS);
+export const tourneyEnds = (week: number) => TOURNEY_EPOCH + (week + 1) * WEEK_MS;
+/** Prêmio em Centelhas para os 10 primeiros da semana que passou (resgatado na banca do Pesqueiro). */
+export const TOURNEY_PRIZES = [6000, 4000, 2500, 1500, 1200, 1000, 800, 600, 500, 400];

@@ -272,6 +272,18 @@ Ainda por vir:
 - `GET /fish/market` (público) devolve preço e variação da hora; `POST /fish/sell` (conta, até 40 por minuto, até 99 peixes por venda) vende um a um, com o preço caindo a cada peixe.
 - Offline, o jogo usa a mesma regra num mercado local do save.
 
+## Torneio de Pesca
+
+- Semanal (segunda 00:00 UTC). Cada pesca online manda espécie e peso; o servidor confere a espécie, a faixa de peso dela e o ritmo (uma pesca a cada 2,5 s) e soma os pontos (`fishPoints` em `shared/fish.ts`).
+- Ranking da semana com a melhor pesca de cada um; os 10 primeiros da semana anterior resgatam o prêmio uma vez (`fish_scores.claimed`).
+- Fase 1: o jogo diz o que pescou (como no combate). A confiança é a mesma do resto do save, com os limites acima.
+
+## Mercado da Vila e troca direta (0.41.0)
+
+- **Mercado:** anunciar tira o item da bolsa do vendedor na nuvem (com lápide) e cria o anúncio; comprar cobra as Centelhas do save do comprador e põe o item na bolsa dele (tirando a lápide dele, se houver); o vendedor recebe depois, com 5% de taxa. Até 8 anúncios por conta. Tudo em transação.
+- **Troca direta:** só na mesma sala. O servidor monta as ofertas a partir do save da nuvem (itens que não estão na bolsa e Centelhas a mais são cortados), desfaz as confirmações quando a oferta muda e, com as duas confirmações, troca tudo de uma vez (`tradeExecute`). Sair da sala cancela.
+- O jogo sincroniza o save antes de cada operação e adota a revisão nova que o servidor devolve.
+
 ## Social no celular
 
 - **Painel do grupo** no HUD, no canto esquerdo: nome, classe, nível e barra de vida de cada um. Tocar num nome abre as opções (passar liderança, tirar do grupo, adicionar amigo).

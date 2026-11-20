@@ -13,7 +13,7 @@ async function onlinePlayer(browser: Browser, cls = 'lamina') {
   page.on('console', m => { if (m.type() === 'error' && !/fonts\.g|favicon/.test(m.text())) errors.push(m.text()); });
   await page.goto('/?debug=1');
   await page.waitForSelector('#mOnline:not([hidden])', { timeout: 30_000 });
-  await page.evaluate(() => { (window as any).__T.G.forceHour = 12; });   // meio-dia (a noite muda dano, XP e loot)
+  await page.evaluate(() => { (window as any).__T.G.forceHour = 12; (window as any).__T.G.forceWeather = 'limpo'; });   // meio-dia (a noite muda dano, XP e loot)
   await page.click('#mOnline');
   await page.click('.net-tabs button:nth-child(3)');
   await page.click('.net-form button.gold');
@@ -486,4 +486,62 @@ test('um save novo do jogo passa na validação do servidor', async ({ page }) =
   // casa com toda a mobília do jogo e todos os estilos raros do Guarda-Roupa: o servidor precisa conhecer cada um
   const full = await page.evaluate(() => (window as any).__T.ev(`(() => { const s = newSave(); s.house = { owned: true, f: Object.fromEntries(HOUSE_F.map(f => [f.id, true])), stash: [], cap: 20, seen: [] }; s.cos = RARE_ACCS.concat(RARE_HAIR).map(a => a[0]).concat(ARMOR_STYLES.filter(a => a[2]).map(a => a[0])).concat(AURAS.filter(a => a[2]).map(a => a[0])); return s; })()`));
   expect(validateSave(full).errors).toEqual([]);
+});
+
+test('torneio de pesca: a pesca online entra no ranking da semana e aparece na aba Torneio da banca', async ({ browser }) => {
+  const A = await onlinePlayer(browser, 'arco');
+  const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
+  await ev(A.page, "TessNet.fishCatch('dourado', 8.5)");
+  await A.page.waitForTimeout(800);
+  await ev(A.page, "openFishery('torneio')");
+  await expect(A.page.locator('#fsSub')).toContainText('1º', { timeout: 10_000 });
+  await expect(A.page.locator('#fsList')).toContainText(A.name);
+  await expect(A.page.locator('#fsList')).toContainText('Dourado-do-Rio');
+  expect(A.errors).toEqual([]);
+  await A.ctx.close();
+});
+
+test('mercado da vila e troca direta: anunciar, comprar e receber; trocar itens e Centelhas na mesma sala', async ({ browser }) => {
+  test.setTimeout(150_000);
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
+  const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
+  await ev(A.page, "G.save.inv = [TessItems.makeItem('charm', 1.5, 2, 'lamina'), TessItems.makeItem('weapon', 1.5, 1, 'lamina')]; G.save.gold = 100; writeSave()");
+  await ev(B.page, 'G.save.gold = 2000; writeSave()');
+  for (const pg of [A.page, B.page]) await pg.evaluate(() => (window as any).TessNet.flushNow());
+  const id0 = await ev(A.page, 'G.save.inv[0].id');
+  // A anuncia pelo mercado
+  await ev(A.page, 'openMarket()'); await A.page.waitForSelector('#market:not([hidden])');
+  await A.page.click('#market .ftabs button[data-mt="vender"]');
+  const row = A.page.locator('#mkList .shoprow').first();
+  await row.locator('input').fill('500'); await row.locator('button.gold').click();
+  await A.page.waitForFunction(id => (window as any).__T.ev(`!G.save.inv.some(it => it.id === '${id}')`), id0, { timeout: 10_000 });
+  await A.page.click('#mkClose');
+  // B compra
+  await ev(B.page, 'openMarket()'); await B.page.waitForSelector('#market:not([hidden])');
+  await B.page.locator('#mkList .shoprow', { hasText: A.name }).locator('button.gold').click();
+  await B.page.waitForFunction(id => (window as any).__T.ev(`G.save.inv.some(it => it.id === '${id}') && G.save.gold === 1500`), id0, { timeout: 10_000 });
+  await B.page.click('#mkClose');
+  // A recebe a venda (5% de taxa)
+  await ev(A.page, 'openMarket()'); await A.page.waitForSelector('#market:not([hidden])');
+  await A.page.click('#market .ftabs button[data-mt="meus"]');
+  await A.page.locator('#mkList button.gold', { hasText: 'Receber' }).click();
+  await A.page.waitForFunction(() => (window as any).__T.ev('G.save.gold === 100 + 475'), null, { timeout: 10_000 });
+  await A.page.click('#mkClose');
+  // troca direta: A dá a espada e recebe 300 Centelhas de B
+  const sword = await ev(A.page, 'G.save.inv[0].id');
+  await A.page.evaluate(n => (window as any).TessNet.tradePropose(n), B.name);
+  await B.page.waitForFunction(() => (window as any).__T.ev("G.mode === 'dialog'"), null, { timeout: 10_000 });
+  await B.page.locator('#dialog button', { hasText: 'Aceitar' }).click();
+  for (const pg of [A.page, B.page]) await pg.waitForSelector('#trade:not([hidden])', { timeout: 10_000 });
+  await A.page.locator('#trMine .slot').first().click();
+  await B.page.fill('#trGold', '300');
+  await B.page.waitForFunction(() => (window as any).__T.ev('G.trade && G.trade.theirs.items.length === 1 && G.trade.mine.gold === 300'), null, { timeout: 10_000 });
+  await A.page.waitForFunction(() => (window as any).__T.ev('G.trade && G.trade.theirs.gold === 300 && G.trade.mine.items.length === 1'), null, { timeout: 10_000 });
+  await A.page.click('#trReady'); await B.page.click('#trReady');
+  await A.page.waitForFunction(id => (window as any).__T.ev(`!G.trade && G.save.gold === 875 && !G.save.inv.some(it => it.id === '${id}')`), sword, { timeout: 10_000 });
+  await B.page.waitForFunction(id => (window as any).__T.ev(`!G.trade && G.save.gold === 1200 && G.save.inv.some(it => it.id === '${id}')`), sword, { timeout: 10_000 });
+  // os saves seguem sincronizando depois da troca
+  for (const pg of [A.page, B.page]) { await pg.evaluate(() => (window as any).__T.ev('writeSave()')); await pg.evaluate(() => (window as any).TessNet.flushNow()); expect(await pg.evaluate(() => (window as any).TessNet.sync)).toBe('salvo'); }
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
 });

@@ -14,7 +14,7 @@ import { inc, render as renderMetrics } from './metrics';
 import { nameProblem, maskText, cleanChat } from '../../shared/text';
 import { allItems, validateSave, MAX_SAVE_BYTES } from '../../shared/save';
 import { PROTOCOL_VERSION, HUB_CAP } from '../../shared/protocol';
-import { FISH, fishById, fishPrice, fishTrendDelta, sellFish, type MarketState } from '../../shared/fish';
+import { FISH, FISH_KG, fishById, fishPoints, fishPrice, fishTrendDelta, sellFish, tourneyEnds, tourneyWeek, TOURNEY_PRIZES, type MarketState } from '../../shared/fish';
 
 declare module 'fastify' { interface FastifyRequest { account?: Account } }
 
@@ -240,6 +240,61 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const total = sellFish(market, b.fish, b.n, Date.now());
     inc('fish_sold', b.n);
     return { total, prices: prices() };
+  });
+
+  // ---------- mercado da vila ----------
+  // O item sai da bolsa do vendedor (na nuvem) ao anunciar e vai para a do comprador, que paga do próprio save.
+  // O vendedor recebe as vendas quando quiser, menos 5% de taxa da vila. Até 8 anúncios por conta.
+  const MARKET_TAX = .05, MARKET_MAX = 8;
+  const mfail = (rep: FastifyReply, r: string) => fail(rep, r === 'bolsa-cheia' || r === 'sem-ouro' || r === 'limite' || r === 'vendido' || r === 'equipado' ? 409 : r === 'nao-encontrado' ? 404 : 422,
+    ({ 'sem-save': 'Sincronize seu progresso antes.', 'sem-item': 'Esse item não está na sua bolsa na nuvem. Sincronize e tente de novo.', equipado: 'Tire o item do corpo antes.', limite: `No máximo ${MARKET_MAX} anúncios ao mesmo tempo.`, 'nao-encontrado': 'Anúncio não encontrado.', vendido: 'Esse item já foi vendido.', proprio: 'Esse anúncio é seu.', 'sem-ouro': 'Centelhas insuficientes (na nuvem).', 'bolsa-cheia': 'Bolsa cheia.', nada: 'Nada para receber.' } as Record<string, string>)[r] ?? 'Não deu certo.');
+  app.get('/market', { preHandler: auth }, async req => ({ active: await store.marketActive(80), mine: await store.marketMine(req.account!.id), tax: MARKET_TAX, max: MARKET_MAX }));
+  const ListBody = z.object({ itemId: z.string().max(40), price: z.number().int().min(1).max(10_000_000) });
+  app.post('/market/list', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const b = parse(ListBody, req.body, rep); if (!b) return;
+    const r = await store.marketList(req.account!.id, req.account!.name, b.itemId, b.price, MARKET_MAX); if (!r.ok) return mfail(rep, r.reason);
+    inc('market_listed'); await store.audit(req.account!.id, 'mercado_anuncio', { item: b.itemId, preco: b.price }); return { rev: r.rev, id: r.id };
+  });
+  app.post('/market/:id/buy', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const id = Number((req.params as any).id); if (!Number.isSafeInteger(id) || id <= 0) return fail(rep, 400, 'Anúncio inválido.');
+    const r = await store.marketBuy(req.account!.id, id); if (!r.ok) return mfail(rep, r.reason);
+    inc('market_sold'); await store.audit(req.account!.id, 'mercado_compra', { anuncio: id, preco: r.price }); return { rev: r.rev, item: r.item, price: r.price };
+  });
+  app.post('/market/:id/cancel', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const id = Number((req.params as any).id); if (!Number.isSafeInteger(id) || id <= 0) return fail(rep, 400, 'Anúncio inválido.');
+    const r = await store.marketCancel(req.account!.id, id); if (!r.ok) return mfail(rep, r.reason);
+    return { rev: r.rev, item: r.item };
+  });
+  app.post('/market/collect', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const r = await store.marketCollect(req.account!.id, MARKET_TAX); if (!r.ok) return mfail(rep, r.reason);
+    return { rev: r.rev, gold: r.gold, n: r.n };
+  });
+
+  // ---------- torneio semanal de pesca ----------
+  // Cada pesca vale pontos pelo peso (relativo à espécie) e pela raridade; a semana vira toda segunda 00:00 UTC.
+  // Os 10 primeiros da semana passada resgatam o prêmio uma vez. Fase 1: o jogo diz o que pescou; o servidor confere a espécie, a faixa de peso e o ritmo.
+  const lastCatch = new Map<string, number>();
+  const CatchBody = z.object({ fish: z.string().max(16), kg: z.number().positive().max(100) });
+  app.post('/fish/catch', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const b = parse(CatchBody, req.body, rep); if (!b) return;
+    const r = FISH_KG[b.fish]; if (!fishById(b.fish) || !r) return fail(rep, 422, 'Peixe desconhecido.');
+    if (b.kg < r[0] - 1e-6 || b.kg > r[1] + 1e-6) return fail(rep, 422, 'Peso impossível para esse peixe.');
+    const id = req.account!.id, now = Date.now(); if (now - (lastCatch.get(id) ?? 0) < 2500) return fail(rep, 429, 'Devagar: uma pesca de cada vez.');
+    lastCatch.set(id, now);
+    const pts = fishPoints(b.fish, b.kg), total = await store.addFishCatch(tourneyWeek(now), id, pts, b.fish, b.kg);
+    inc('fish_catches'); return { points: pts, total };
+  });
+  app.get('/fish/tournament', { preHandler: auth }, async req => {
+    const now = Date.now(), wk = tourneyWeek(now), id = req.account!.id;
+    const [top, me, lastTop, lastMe] = await Promise.all([store.fishTop(wk, 20), store.fishMine(wk, id), store.fishTop(wk - 1, 3), store.fishMine(wk - 1, id)]);
+    return { week: wk, endsAt: tourneyEnds(wk), top, me, last: { top: lastTop, me: lastMe ? { ...lastMe, prize: lastMe.rank <= TOURNEY_PRIZES.length ? TOURNEY_PRIZES[lastMe.rank - 1] : 0 } : null } };
+  });
+  app.post('/fish/tournament/claim', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
+    const wk = tourneyWeek(Date.now()) - 1, id = req.account!.id, me = await store.fishMine(wk, id);
+    if (!me || me.rank > TOURNEY_PRIZES.length) return fail(rep, 404, 'Sem prêmio na semana passada.');
+    if (!(await store.claimFishPrize(wk, id))) return fail(rep, 409, 'Prêmio já resgatado.');
+    const gold = TOURNEY_PRIZES[me.rank - 1]; await store.audit(id, 'torneio_premio', { semana: wk, posicao: me.rank, centelhas: gold });
+    return { gold, rank: me.rank };
   });
 
   // ---------- amigos e bloqueios (docs/ONLINE.md) ----------

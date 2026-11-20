@@ -96,6 +96,7 @@ function takeItem(it) {
 function afterEquip() { rebuildPlayerModel(); const st = stats(); if (P) { const ratio = P.hp / P.maxHp; P.maxHp = st.maxHp; P.hp = Math.min(P.maxHp, Math.max(1, Math.round(ratio * P.maxHp))); } if (RG) uploadPalette(RG.key); writeSave(); netLook(); sfx('open'); }
 function gainXp(n) {
   if (bless('descanso')) n = Math.round(n * 1.15);
+  if (bless('banquete')) n = Math.round(n * 1.25);
   const s = G.save;
   { const ref = ELO && ELO.ref ? ELO.ref : monLevel(), gap = ref - s.lvl; if (gap > 5) n = Math.min(n, Math.max(2, Math.round(xpNeed(s.lvl) * .03 / (1 + (gap - 5) * .1)))); }   // carregado por alguém muito mais forte: XP limitado por abate
   s.xp += n;

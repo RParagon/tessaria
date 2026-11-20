@@ -72,6 +72,7 @@ export function sanitizeLook(x: any): Look {
 
 import type { PartyView } from './social';
 
+export interface TradeSide { items: any[]; gold: number; ready: boolean }
 export interface PublicPlayer { id: number; name: string; title: string; look: Look; x: number; z: number; yaw: number }
 
 // Cliente → servidor
@@ -95,6 +96,8 @@ export type ClientMsg =
   | { t: 'pvp'; to: number; dmg: number }      // acertei este jogador (o servidor confere zona, amizade e grupo)
   | { t: 'ldrop'; x: number; z: number; gold: number; items: unknown[]; at: number }   // caí: meu espólio fica no chão (at: hora da queda no save, wloot.t)
   | { t: 'ltake'; id: string; free: number }    // pegar um espólio (free: espaços livres na bolsa)
+  // troca direta (na mesma sala)
+  | { t: 'tprop'; name: string } | { t: 'tans'; from: string; ok: boolean } | { t: 'toffer'; items: string[]; gold: number } | { t: 'tready'; on: boolean } | { t: 'tcancel' }
   | { t: 'where'; r: string; n?: number; i?: number }        // região atual (chave do jogo), nível da Fenda e instância do grupo
   | { t: 'pinvite'; name: string }              // convidar para o grupo
   | { t: 'paccept'; from: string }              // aceitar o convite de alguém
@@ -119,6 +122,10 @@ export type ServerMsg =
   | { t: 'ldrop'; id: string; x: number; z: number; by: number; name: string; gold: number; n: number; ms: number }   // espólio no chão da sala (ms: quanto falta)
   | { t: 'lgot'; id: string; gold: number; items: any[]; own: boolean; left: number }   // você pegou (left: itens que ficaram por falta de espaço)
   | { t: 'lgone'; id: string; by?: string; at?: number }   // espólio sumiu (pego ou expirou); by: quem pegou o SEU; t: hora da sua queda
+  | { t: 'tinvite'; from: string }
+  | { t: 'tstate'; with: string; mine: TradeSide; theirs: TradeSide }
+  | { t: 'tdone'; rev: number; gave: string[]; got: any[]; gold: number; with: string }
+  | { t: 'tend'; reason: string }
   | { t: 'join'; p: PublicPlayer }
   | { t: 'leave'; id: number }
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação

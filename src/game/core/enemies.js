@@ -104,7 +104,7 @@ function updateEnemy(e, dt) {
       touchDmg(.45); break;
     }
     case 'javali': {
-      e.st += dt; if (!e.aggro && (d < 8 || e.hitT > 0)) { e.aggro = true; e.cd = Math.min(e.cd, .4); }
+      e.st += dt; if (!e.aggro && (d < 8 * aggroMul() || e.hitT > 0)) { e.aggro = true; e.cd = Math.min(e.cd, .4); }
       if (!e.aggro) { wander(e, dt, 1.4); break; }
       if (e.state === 'aim') { moveEnt(e, 0, 0, dt); face(e.tAng, 12); if (e.st > .6) { e.state = 'charge'; e.st = 0; sfx('dash'); } }
       else if (e.state === 'charge') { const ox = e.x, oz = e.z; moveEnt(e, Math.sin(e.tAng) * 11, Math.cos(e.tAng) * 11, dt); e.walkPh += dt * 18; if (Math.random() < .6) spawn({ x: e.x, y: .15, z: e.z, vy: .5, life: .4, s0: .18, s1: .05, b0: .5, b1: .05, mat: 9 }); if (alive && d < 1.1) { hurtPlayer(edmg(e), e.x, e.z, 10); e.state = 'rec'; e.st = 0; } const mv = Math.hypot(e.x - ox, e.z - oz); if (e.st > .7 || mv < 11 * dt * .35) { e.state = 'rec'; e.st = 0; } }
@@ -113,7 +113,7 @@ function updateEnemy(e, dt) {
       touchDmg(.5 * e.scale); break;
     }
     case 'lobo': {
-      e.st += dt; if (!e.aggro && (d < 10 || e.hitT > 0)) { e.aggro = true; for (const o of enemies) if (o.type === 'lobo' && Math.hypot(o.x - e.x, o.z - e.z) < 9) o.aggro = true; if (!G.howlT || G.time - G.howlT > 4) { G.howlT = G.time; sfx('roar'); } }
+      e.st += dt; if (!e.aggro && (d < 10 * aggroMul() || e.hitT > 0)) { e.aggro = true; for (const o of enemies) if (o.type === 'lobo' && Math.hypot(o.x - e.x, o.z - e.z) < 9) o.aggro = true; if (!G.howlT || G.time - G.howlT > 4) { G.howlT = G.time; sfx('roar'); } }
       if (!e.aggro) { wander(e, dt, 1.6); break; }
       if (e.state === 'lunge') { moveEnt(e, Math.sin(e.tAng) * 9, Math.cos(e.tAng) * 9, dt); e.y = Math.sin(clamp(e.st / .35, 0, 1) * Math.PI) * .4; if (!e.tHit && alive && d < 1.1) { e.tHit = true; hurtPlayer(edmg(e), e.x, e.z, 7); } if (e.st > .35) { e.state = 'circle'; e.y = 0; e.cd = rr(1.3, 2.2); e.tHit = false; } }
       else if (e.state === 'crouch') { moveEnt(e, 0, 0, dt); face(e.tAng, 14); if (e.st > .4) { e.state = 'lunge'; e.st = 0; sfx('swing'); } }
@@ -122,7 +122,7 @@ function updateEnemy(e, dt) {
       break;
     }
     case 'urso': {
-      e.st += dt; if (!e.aggro && (d < 7 || e.hitT > 0)) { e.aggro = true; e.state = 'roar'; e.st = 0; sfx('roar'); }
+      e.st += dt; if (!e.aggro && (d < 7 * aggroMul() || e.hitT > 0)) { e.aggro = true; e.state = 'roar'; e.st = 0; sfx('roar'); }
       if (!e.aggro) { wander(e, dt, 1.0); break; }
       if (e.state === 'roar') { moveEnt(e, 0, 0, dt); face(Math.atan2(nx, nz), 6); if (e.st > .9) { e.state = 'walk'; e.cd = .5; } }
       else if (e.state === 'swipe') { moveEnt(e, 0, 0, dt); if (e.st > .55 && !e.tHit) { e.tHit = true; sfx('swing'); if (alive && inCone(P.x, P.z, e.x, e.z, e.yaw, 1.0, 3)) hurtPlayer(edmg(e), e.x, e.z, 10); } if (e.st > 1.0) { e.state = 'walk'; e.cd = rr(1.2, 1.8); e.tHit = false; } }

@@ -266,7 +266,10 @@ test('dia e noite: relógio no HUD, noite nos Ermos com monstros mais fortes e m
   await ev('G.forceHour = 23');
   await expect(page.locator('#hClock')).toContainText('☾ 23:00');
   expect(await ev('nightK()')).toBe(1);
-  await page.waitForFunction(() => window.__T.ev('(n => Math.hypot(n.x - 31.6, n.z - 26.2) < .1)(npcs.find(n => n.id === "kiko"))'), null, { timeout: 5000 });
+  await ev('G.forceHour = 21');   // das 20h às 22h as crianças ouvem histórias na porta da taverna; depois vão dormir
+  await page.waitForFunction(() => window.__T.ev('(n => n.visible && Math.hypot(n.x - 31.6, n.z - 26.2) < .1)(npcs.find(n => n.id === "kiko"))'), null, { timeout: 5000 });
+  await ev('G.forceHour = 23');
+  await page.waitForFunction(() => window.__T.ev('!npcs.find(n => n.id === "kiko").visible'), null, { timeout: 5000 });
   // postes: apagados de dia, todos acesos à noite; no fim da tarde a Lúcia faz a ronda e acende um por um, pelas ruas
   expect(await ev('HUB.lamps.every((l, i) => lampLit(i))')).toBe(true);
   await ev('G.forceHour = 12'); expect(await ev('HUB.lamps.some((l, i) => lampLit(i))')).toBe(false);
@@ -286,5 +289,86 @@ test('dia e noite: relógio no HUD, noite nos Ermos com monstros mais fortes e m
   const dia = await ev('monsterScale()'); await ev('G.forceHour = 1'); const noite = await ev('monsterScale()');
   expect(noite.dmg / dia.dmg).toBeCloseTo(1.15, 2); expect(noite.xp / dia.xp).toBeCloseTo(1.25, 2);
   await expect(page.locator('#hClock')).toContainText('☾ 01:00');
+  expect(errors).toEqual([]);
+});
+
+test('rotina e interiores: à noite os moradores vão para casa e para a taverna; entrar, comer com a Mel, cozinhar peixe e sair na porta', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  await ev('G.save.met.ysolde = true; G.save.gold = 1000; P.hp = P.maxHp = 1e9');
+  // meio-dia: Brann e Mel na rua; 21h: Brann na taverna? não: 21h ele está em casa; Mel na taverna
+  expect(await ev('[npcs.find(n => n.id === "brann").visible, npcPlace("brann", 12), npcPlace("brann", 22), npcPlace("mel", 21)]')).toEqual([true, 'out', 'casa', 'taverna']);
+  await ev('G.forceHour = 22');
+  await page.waitForFunction(() => window.__T.ev('!npcs.find(n => n.id === "brann").visible && !npcs.find(n => n.id === "mel").visible'), null, { timeout: 5000 });
+  // a porta da taverna
+  const td = await ev('(d => [d.x, d.z])(HUB.doors.find(d => d.taverna))');
+  await ev(`P.x = ${td[0]}; P.z = ${td[1]}`);
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'door', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => window.__T.RG.key === 'taverna' && window.__T.ev("G.mode === 'play'"), null, { timeout: 20_000 });
+  expect(await ev('npcs.map(n => n.id).sort()')).toEqual(['lio', 'mel', 'otto']);
+  // Mel vende a sopa (buff)
+  const mp = await ev('(n => [n.x, n.z])(npcs.find(n => n.id === "mel"))');
+  await ev(`P.x = ${mp[0]}; P.z = ${mp[1]} + 1.2`);
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'npc' && window.__T.nearInter.npc.id === 'mel', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await skipDialogs(page, 'Sopa da Mel');
+  expect(await ev('[G.buffs.sopa > 400, G.save.gold]')).toEqual([true, 960]);
+  // cozinhar no fogareiro: 2 lambaris viram Peixe Assado
+  await ev("G.save.fish = { lambari: 3 }; (c => { P.x = c.x; P.z = c.z; })(inter.find(i => i.kind === 'cook'))");
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'cook', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await skipDialogs(page, 'Cozinhar Peixe Assado');
+  expect(await ev('[G.buffs.assado > 300, G.save.fish.lambari]')).toEqual([true, 1]);
+  // sair: volta na porta da taverna
+  await ev("(c => { P.x = c.x; P.z = c.z; })(inter.find(i => i.kind === 'exitdoor'))");
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'exitdoor', null, { timeout: 5000 });
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => window.__T.RG.key === 'hub' && window.__T.ev("G.mode === 'play'"), null, { timeout: 20_000 });
+  expect(await ev(`Math.hypot(P.x - ${td[0]}, P.z - ${td[1]}) < 1.5`)).toBe(true);
+  // casa do Vovô Brann: ele dorme lá dentro
+  await ev('enterDoor(HUB.doors.find(d => d.i === 5))');
+  await page.waitForFunction(() => window.__T.RG.key === 'casa' && window.__T.ev("G.mode === 'play'"), null, { timeout: 20_000 });
+  expect(await ev('[REG.casa.name, npcs.map(n => [n.id, !!n.asleep])]')).toEqual(['Casa do Vovô Brann', [['brann', true]]]);
+  expect(errors).toEqual([]);
+});
+
+test('clima: chuva, neblina e tempestade mudam a pesca, o faro dos monstros e trazem raios nos Ermos; dentro de casa não chove', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  expect(await ev('[weatherNow().type, aggroMul()]')).toEqual(['limpo', 1]);
+  await ev("G.forceWeather = 'chuva'");
+  await page.waitForTimeout(400);
+  expect(await ev('[raining(), aggroMul() < 1]')).toEqual([true, true]);
+  await expect(page.locator('#hClock')).toContainText('☂');
+  await ev("G.forceWeather = 'neblina'"); expect(await ev('[foggy(), aggroMul()]')).toEqual([true, .65]);
+  // dentro da taverna: sempre limpo
+  await ev('enterDoor(HUB.doors.find(d => d.taverna))');
+  await page.waitForFunction(() => window.__T.RG.key === 'taverna' && window.__T.ev("G.mode === 'play'"), null, { timeout: 20_000 });
+  expect(await ev('weatherNow().type')).toBe('limpo');
+  // tempestade nos Ermos: raios marcados no chão perto do herói
+  await ev("G.forceWeather = 'tempestade'; P.hp = P.maxHp = 1e9"); await page.evaluate(() => window.__T.travel('wilds'));
+  await page.waitForFunction(() => window.__T.RG.key === 'wilds' && window.__T.ev("G.mode === 'play'"), null, { timeout: 60_000 });
+  await ev("(r => { P.x = r.wx; P.z = r.wz; })(RG.rooms.find(r => r.zone === 1 && !r.kind))"); await ev('G.boltCD = 0');
+  await page.waitForFunction(() => window.__T.ev("tels.length > 0 || G.bolt > 0"), null, { timeout: 5000 });
+  expect(errors).toEqual([]);
+});
+
+test('Morro do Mirante: o chão sobe no morro, o herói acompanha e a luneta mostra a vista (XP na primeira vez)', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  expect(await ev('[groundAt(44, 32), groundAt(HILL.x, HILL.z) > 2, groundAt(HILL.x + HILL.r * .5, HILL.z) > .3]')).toEqual([0, true, true]);
+  expect(await ev('blocked(Math.floor(HILL.x / T), Math.floor(HILL.z / T))')).toBe(false);
+  await ev('P.x = HILL.x + .4; P.z = HILL.z + 1.4');
+  await page.waitForFunction(() => window.__T.nearInter?.kind === 'mirante', null, { timeout: 5000 });
+  const xp = await ev('G.save.lvl * 1e7 + G.save.xp');
+  await page.keyboard.press('e');
+  expect(await ev('[G.lookT > 6, G.save.met.mirante, G.save.lvl * 1e7 + G.save.xp > ' + xp + ']')).toEqual([true, true, true]);
   expect(errors).toEqual([]);
 });

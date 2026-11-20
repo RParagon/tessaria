@@ -115,4 +115,36 @@ CREATE TABLE IF NOT EXISTS item_grants (
 );
 CREATE INDEX IF NOT EXISTS item_grants_account ON item_grants(account_id);
 ` },
+  { id: '004_torneio_pesca', sql: `
+-- Torneio semanal de pesca: pontos da semana por conta, a melhor pesca e se o prêmio já foi resgatado.
+CREATE TABLE IF NOT EXISTS fish_scores (
+  week        integer NOT NULL,
+  account_id  uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  points      integer NOT NULL DEFAULT 0,
+  best_fish   text NOT NULL,
+  best_kg     real NOT NULL,
+  best_pts    integer NOT NULL DEFAULT 0,
+  claimed     boolean NOT NULL DEFAULT false,
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (week, account_id)
+);
+CREATE INDEX IF NOT EXISTS fish_scores_rank ON fish_scores (week, points DESC);
+` },
+  { id: '005_mercado', sql: `
+-- Mercado da vila: anúncios de itens (o item sai da bolsa do vendedor ao anunciar; volta se cancelar).
+CREATE TABLE IF NOT EXISTS market_listings (
+  id          bigserial PRIMARY KEY,
+  seller_id   uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  seller_name text NOT NULL,
+  item        jsonb NOT NULL,
+  price       integer NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  buyer_id    uuid REFERENCES accounts(id) ON DELETE SET NULL,
+  buyer_name  text,
+  sold_at     timestamptz,
+  paid        boolean NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS market_active ON market_listings (created_at DESC) WHERE buyer_id IS NULL;
+CREATE INDEX IF NOT EXISTS market_seller ON market_listings (seller_id);
+` },
 ];

@@ -210,6 +210,32 @@ export class Net {
     if (!this.account || this.offline) return null;
     const r = await call('POST', '/fish/sell', { fish, n }, 8000); return r.status === 200 ? r.data : null;
   }
+  /** Torneio de pesca: avisa a pesca (pontos pelo peso) e lê o ranking da semana. */
+  fishCatch(fish: string, kg: number) { if (this.account && !this.offline) void call('POST', '/fish/catch', { fish, kg }, 6000).then(r => { if (r.status === 200) this.emit('fishpts', r.data); }); }
+  async fishTourney(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/fish/tournament', undefined, 8000); return r.status === 200 ? r.data : null; }
+  async fishClaim(): Promise<{ gold: number; rank: number } | null> { if (!this.account || this.offline) return null; const r = await call('POST', '/fish/tournament/claim', {}, 8000); return r.status === 200 ? r.data : null; }
+  // ---------- mercado da vila ----------
+  async market(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/market', undefined, 8000); return r.status === 200 ? r.data : null; }
+  /** Operações que mexem no save da nuvem: sincroniza antes e adota a revisão nova depois. */
+  private async saveOp(method: string, path: string, body: unknown = {}) {
+    await this.flushNow();
+    if (this.sync === 'recusado' || this.sync === 'conflito') return { ok: false as const, error: 'Seu progresso precisa ser sincronizado antes.' };
+    const r = await call(method, path, body, 10000);
+    if (r.error) return { ok: false as const, error: r.error };
+    if (typeof r.data?.rev === 'number') this.rev = r.data.rev;
+    return { ok: true as const, data: r.data };
+  }
+  marketList(itemId: string, price: number) { return this.saveOp('POST', '/market/list', { itemId, price }); }
+  marketBuy(id: number) { return this.saveOp('POST', `/market/${id}/buy`); }
+  marketCancel(id: number) { return this.saveOp('POST', `/market/${id}/cancel`); }
+  marketCollect() { return this.saveOp('POST', '/market/collect'); }
+  // ---------- troca direta ----------
+  tradePropose(name: string) { this.send({ t: 'tprop', name }); }
+  tradeAnswer(from: string, ok: boolean) { this.send({ t: 'tans', from, ok }); }
+  /** A oferta é conferida no save da nuvem: sincroniza antes de mandar. */
+  async tradeOffer(items: string[], gold: number) { await this.flushNow(); this.send({ t: 'toffer', items, gold }); }
+  tradeReady(on: boolean) { this.send({ t: 'tready', on }); }
+  tradeCancel() { this.send({ t: 'tcancel' }); }
   // ---------- Ermos abertos ----------
   /** Na sala pública dos Ermos (não na instância do grupo). */
   get inOpenWilds() { return this.connected && this.region === 'wilds' && !!this.room && !this.inst; }
@@ -335,6 +361,10 @@ export class Net {
       case 'hx': case 'gx': case 'px': G?.coopMsg?.(m.t, m.from, m.d); break;
       case 'loot': G?.coopLoot?.(m); break;
       case 'pvp': G?.pvpHurt?.(m.from, m.name, m.dmg); break;
+      case 'tinvite': G?.tradeInvite?.(m.from); break;
+      case 'tstate': G?.tradeState?.(m); break;
+      case 'tdone': this.rev = m.rev; G?.tradeDone?.(m); break;
+      case 'tend': G?.tradeEnd?.(m.reason); break;
       case 'ldrop': this.loots.set(m.id, { id: m.id, x: m.x, z: m.z, by: m.by, name: m.name, gold: m.gold, n: m.n, exp: Date.now() + m.ms }); if (m.by === this.myId) G?.lootSid?.(m.id); break;
       case 'lgot': G?.lootGot?.(m); break;
       case 'lgone': this.loots.delete(m.id); if (m.by) G?.lootLost?.(m.id, m.by, m.at); else G?.lootVanish?.(m.id); break;

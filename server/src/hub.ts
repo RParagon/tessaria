@@ -54,6 +54,7 @@ class Room {
   }
 }
 
+interface Trade { a: Player; b: Player; offers: Map<number, { items: any[]; gold: number; ready: boolean }>; busy: boolean }
 interface Party { id: number; leader: string; members: string[]; info: Map<string, { name: string; cls: string; lvl: number }>; gone: Map<string, NodeJS.Timeout>; inst?: Instance | null }
 /** Instância do grupo (Fenda): uma sala própria, com os dados que geram o mesmo mapa para todos. */
 interface Instance { diff: number; lvl: number; kills: Set<number>; killTokens: number; killRefill: number; host: number; id: number; party: Party; kind: 'rift' | 'wilds'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
@@ -177,6 +178,7 @@ export class Hub {
   }
   private leaveRoom(p: Player) {
     const room = p.room; if (!room) return;
+    if (this.trades.has(p.id)) this.tradeEnd(p, 'saiu da sala');
     p.room = null;
     if (!room.players.delete(p.id)) return;
     room.broadcast({ t: 'leave', id: p.id });
@@ -187,6 +189,7 @@ export class Hub {
   private leave(p: Player) {
     if (p.left) return;
     p.left = true;
+    this.tradeEnd(p, 'saiu'); this.tradeInv.delete(p.id);
     this.leaveRoom(p);
     if (this.byAccount.get(p.account.id) !== p) return;      // a conta já entrou de novo em outra conexão
     this.byAccount.delete(p.account.id);
@@ -216,6 +219,11 @@ export class Hub {
       case 'ikill': return void this.onKill(p, msg);
       case 'hx': case 'gx': case 'hto': case 'px': return this.relay(p, msg, raw.length);
       case 'pvp': return this.onPvp(p, msg);
+      case 'tprop': return void this.tradePropose(p, msg.name);
+      case 'tans': return this.tradeAnswer(p, msg.from, !!msg.ok);
+      case 'toffer': return void this.tradeOffer(p, msg);
+      case 'tready': return void this.tradeReady(p, !!msg.on);
+      case 'tcancel': return this.tradeEnd(p, 'cancelada');
       case 'ldrop': return void this.onLootDrop(p, msg);
       case 'ltake': return void this.onLootTake(p, msg);
       case 'ijoin': return this.joinInst(p, msg.inst);
@@ -410,6 +418,61 @@ export class Hub {
       else this.lootGone.set(L.owner, { id: L.id, by: p.account.name, at: L.at, when: Date.now() });
     }
     if (rest.length) room.broadcast(this.lootMsg(L)); else room.broadcast({ t: 'lgone', id: L.id });
+  }
+
+  // ---------- troca direta ----------
+  // Dois jogadores na mesma sala: cada um oferece itens da bolsa e Centelhas; quando os dois confirmam,
+  // o servidor troca tudo de uma vez nos saves da nuvem (store.tradeExecute). Mudar a oferta desfaz as confirmações.
+  private trades = new Map<number, Trade>();
+  private tradeInv = new Map<number, number>();   // convidado → quem convidou
+  private tradeState(t: Trade) {
+    for (const me of [t.a, t.b]) { const other = me === t.a ? t.b : t.a, mo = t.offers.get(me.id)!, oo = t.offers.get(other.id)!;
+      send(me, { t: 'tstate', with: other.account.name, mine: { items: mo.items, gold: mo.gold, ready: mo.ready }, theirs: { items: oo.items, gold: oo.gold, ready: oo.ready } }); }
+  }
+  private async tradePropose(p: Player, name: unknown) {
+    if (typeof name !== 'string' || !p.room || this.trades.has(p.id)) return;
+    const t = [...p.room.players.values()].find(o => o !== p && o.account.name.toLowerCase() === name.toLowerCase());
+    if (!t) return send(p, { t: 'sys', text: 'Essa pessoa não está na sua sala.' });
+    if (this.trades.has(t.id)) return send(p, { t: 'sys', text: `${t.account.name} já está numa troca.` });
+    if (p.blocks.has(t.account.id) || t.blocks.has(p.account.id)) return send(p, { t: 'sys', text: `Não foi possível propor troca a ${t.account.name}.` });
+    this.tradeInv.set(t.id, p.id); send(t, { t: 'tinvite', from: p.account.name }); send(p, { t: 'sys', text: `Troca proposta a ${t.account.name}.` });
+  }
+  private tradeAnswer(p: Player, from: unknown, ok: boolean) {
+    const pid = this.tradeInv.get(p.id); this.tradeInv.delete(p.id);
+    const a = pid ? [...(p.room?.players.values() ?? [])].find(o => o.id === pid) : null;
+    if (!a || typeof from !== 'string' || a.account.name !== from) return;
+    if (!ok) return send(a, { t: 'sys', text: `${p.account.name} recusou a troca.` });
+    if (this.trades.has(a.id) || this.trades.has(p.id)) return;
+    const t: Trade = { a, b: p, offers: new Map([[a.id, { items: [], gold: 0, ready: false }], [p.id, { items: [], gold: 0, ready: false }]]), busy: false };
+    this.trades.set(a.id, t); this.trades.set(p.id, t); this.tradeState(t);
+  }
+  private async tradeOffer(p: Player, m: any) {
+    const t = this.trades.get(p.id); if (!t || t.busy) return;
+    const ids = Array.isArray(m.items) ? [...new Set(m.items.filter((x: unknown) => typeof x === 'string'))].slice(0, 8) as string[] : [], gold = Math.max(0, Math.floor(num(m.gold) ?? 0));
+    const save = (await this.store.getSave(p.account.id))?.data, inv: any[] = Array.isArray(save?.inv) ? save.inv : [];
+    const items = ids.map(id => inv.find(it => it?.id === id)).filter(Boolean);
+    if (!this.trades.has(p.id)) return;
+    const o = t.offers.get(p.id)!; o.items = items; o.gold = Math.min(gold, Number(save?.gold) || 0);
+    for (const x of t.offers.values()) x.ready = false;
+    this.tradeState(t);
+  }
+  private async tradeReady(p: Player, on: boolean) {
+    const t = this.trades.get(p.id); if (!t || t.busy) return;
+    t.offers.get(p.id)!.ready = on; this.tradeState(t);
+    const oa = t.offers.get(t.a.id)!, ob = t.offers.get(t.b.id)!;
+    if (!oa.ready || !ob.ready) return;
+    t.busy = true;
+    const r = await this.store.tradeExecute(t.a.account.id, t.b.account.id, oa.items.map((i: any) => i.id), oa.gold, ob.items.map((i: any) => i.id), ob.gold);
+    this.trades.delete(t.a.id); this.trades.delete(t.b.id);
+    if (!r.ok) { for (const x of [t.a, t.b]) send(x, { t: 'tend', reason: r.reason === 'bolsa-cheia' ? 'bolsa cheia' : r.reason === 'sem-ouro' ? 'Centelhas insuficientes' : 'os itens mudaram; sincronize e tente de novo' }); return; }
+    inc('trades_done'); await this.store.audit(t.a.account.id, 'troca', { com: t.b.account.id, deu: oa.items.map((i: any) => i.id), ouro: oa.gold, recebeu: ob.items.map((i: any) => i.id), ouroRecebido: ob.gold });
+    send(t.a, { t: 'tdone', rev: r.revA, gave: oa.items.map((i: any) => i.id), got: r.fromB, gold: ob.gold - oa.gold, with: t.b.account.name });
+    send(t.b, { t: 'tdone', rev: r.revB, gave: ob.items.map((i: any) => i.id), got: r.fromA, gold: oa.gold - ob.gold, with: t.a.account.name });
+  }
+  private tradeEnd(p: Player, reason: string) {
+    const t = this.trades.get(p.id); if (!t || t.busy) return;
+    this.trades.delete(t.a.id); this.trades.delete(t.b.id);
+    for (const x of [t.a, t.b]) send(x, { t: 'tend', reason: x === p ? reason : `${p.account.name} cancelou` });
   }
 
   // ---------- onde o jogador está ----------

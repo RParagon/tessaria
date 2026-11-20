@@ -20,7 +20,7 @@ function setTxt(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textC
 function updateHud() {
   if (!P) return;
   const s = G.save, st = stats();
-  setTxt('#hClock', outdoors() ? (nightK() > .5 ? '☾ ' : '☀ ') + hourStr() : ''); { const ck = $('#hClock'); if (ck) ck.style.color = nightK() > .5 ? '#9cb8ff' : duskK() > .3 ? '#ff9a5a' : '#ffd27a'; }
+  { const w = weatherNow(); setTxt('#hClock', outdoors() ? (nightK() > .5 ? '☾ ' : '☀ ') + hourStr() + (w.k > .4 && WEATHER[w.type].ic ? ' ' + WEATHER[w.type].ic : '') : ''); } { const ck = $('#hClock'); if (ck) ck.style.color = nightK() > .5 ? '#9cb8ff' : duskK() > .3 ? '#ff9a5a' : '#ffd27a'; }
   setTxt('#hName', G.char.name); setTxt('#hLv', eloLvl(s) !== s.lvl ? s.lvl + '→' + eloLvl(s) : eloMentor() ? s.lvl + '★' : s.lvl);
   $('#hHp').style.width = clamp(P.hp / P.maxHp, 0, 1) * 100 + '%'; setTxt('#hHpT', `${Math.ceil(P.hp)} / ${P.maxHp}`);
   $('#hXp').style.width = clamp(s.xp / xpNeed(s.lvl), 0, 1) * 100 + '%';
@@ -56,12 +56,12 @@ function refreshHudVis() {
   document.body.classList.toggle('playing', G.mode === 'play');
   const play = (['play', 'dialog'].includes(G.mode) || (G.mode === 'menu' && $('#ending').hidden && P)) && G.menu !== 'inv';
   $('#hud').hidden = !play;
-  if (!play) { $('#mmap').hidden = true; $('#mmapZ').hidden = true; } else if (RG && RG.key !== 'hub' && RG.key !== 'home') { $('#mmap').hidden = false; $('#mmapZ').hidden = false; }
+  if (!play) { $('#mmap').hidden = true; $('#mmapZ').hidden = true; } else if (RG && RG.key !== 'hub' && RG.key !== 'home' && !isIndoor(RG.key)) { $('#mmap').hidden = false; $('#mmapZ').hidden = false; }
   $('#touch').hidden = !(play && G.touch && G.mode === 'play');
   $('#keys').hidden = G.touch; $('#abar').hidden = G.touch;
   { const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); $('#poseBar').hidden = !pv; if (!pv) { G.pvPose = null; G.pvZoom = 1; document.querySelectorAll('#poseBar button').forEach(x => x.classList.remove('on')); } }
 }
-function showOnly(id) { for (const s of ['#bank', '#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap', '#fishery']) $(s).hidden = s !== id; }
+function showOnly(id) { for (const s of ['#bank', '#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap', '#fishery', '#market', '#trade']) $(s).hidden = s !== id; }
 function openMenu(which) {
   if (G.mode !== 'play' && !(G.mode === 'dialog' && (which === 'forge' || which === 'shop' || which === 'fishery'))) return;
   $('#dialog').hidden = true; DLG.q = []; DLG.cur = null;
@@ -71,7 +71,7 @@ function openMenu(which) {
   if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; G.sellAllArm = false; renderShop(); }
   if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; resetMailOnline(); renderMail(); }
   if (which === 'profile') renderProfile(); if (which === 'bank') renderBank();
-  if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap(); if (which === 'fishery') renderFishery();
+  if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap(); if (which === 'fishery') renderFishery(); if (which === 'market') renderMarket(); if (which === 'trade') renderTrade();
   if (which === 'forge') renderForge(); if (which === 'journal') renderJournal(); if (which === 'pause') renderPause();
   showOnly('#' + which); refreshHudVis();
 }
@@ -176,7 +176,7 @@ function renderWShop() {
 }
 $('#wsClose').onclick = () => closeMenus();
 /* ---- Pesqueiro: mercado de peixes (preço que cai quando muitos vendem o mesmo peixe), iscas, varas e coleção ---- */
-let fsTab = 'mercado', fsPrices = null, fsBusy = false;
+let fsTab = 'mercado', fsPrices = null, fsBusy = false, fsTour = null, fsTourT = 0;
 function openFishery(tab) { if (tab) fsTab = tab; if (G.menu === 'fishery') return renderFishery(); fsPrices = null; openMenu('fishery'); const n = NETON(); if (n) n.fishMarket().then(p => { fsPrices = p; if (G.menu === 'fishery') renderFishery(); }); }
 /** Preço agora: o do mercado compartilhado (online) ou o do mercado local deste save. */
 function fishPriceNow(id) { if (fsPrices && fsPrices[id]) return fsPrices[id]; const now = Date.now(); return { p: TF.fishPrice(G.save.fmkt || {}, id, now), d: TF.fishTrendDelta(id, now) }; }
@@ -220,6 +220,17 @@ function renderFishery() {
     row(`<span class="fish-dot" style="--fc:#a0703a"></span><div class="nm">${cur.n}<small>Sua vara atual${rodLv ? ' · +' + cur.win.toFixed(1) + ' s para puxar' : ''}${TF.FISH.some(f => f.rod > rodLv) ? ' · peixe mais pesado arrebenta a linha' : ' · aguenta qualquer peixe'}</small></div>`);
     if (nx) row(`<span class="fish-dot" style="--fc:#ffbf3d"></span><div class="nm">${nx.n}<small>Aguenta peixes mais pesados (${TF.FISH.filter(f => f.rod === rodLv + 1).map(f => f.n).join(', ') || 'os maiores'}) · +${nx.win.toFixed(1)} s para puxar</small></div>`,
       [btn(nx.price + ' ✦', s.gold >= nx.price, () => { spend(nx.price); s.rodLv = rodLv + 1; toast(nx.n.toUpperCase(), true, 'PEIXES MAIS PESADOS NÃO ARREBENTAM A LINHA', '#ffbf3d'); sfx('legend'); writeSave(); renderFishery(); }, true)]);
+  } else if (fsTab === 'torneio') {
+    const n = NETON();
+    if (!n) { $('#fsSub').innerHTML = 'O torneio semanal é online: entre com sua conta para disputar com todos os Tecelões. Cada pesca vale pontos pelo peso (comparado aos da mesma espécie) e pela raridade.'; return; }
+    if (!fsTour || Date.now() - fsTourT > 15000) { fsTourT = Date.now(); n.fishTourney().then(t => { fsTour = t; if (G.menu === 'fishery' && fsTab === 'torneio') renderFishery(); }); if (!fsTour) { $('#fsSub').textContent = 'Carregando o ranking…'; return; } }
+    const T0 = fsTour, left = Math.max(0, T0.endsAt - Date.now()), dd = Math.floor(left / 864e5), hh = Math.floor(left / 36e5) % 24, kgs = x => x.toFixed(2).replace('.', ',');
+    $('#fsSub').innerHTML = `<b style="color:var(--gold)">Torneio de Pesca da semana</b> · termina em ${dd}d ${hh}h. Cada pesca soma pontos (peso e raridade). Os 10 primeiros ganham Centelhas na semana seguinte.` + (T0.me ? `<br>Você: <b>${T0.me.rank}º</b> com <b>${T0.me.points}</b> pontos · melhor: ${TF.fishById(T0.me.bestFish).n} de ${kgs(T0.me.bestKg)} kg` : '<br>Você ainda não pescou nesta semana.');
+    const L = T0.last && T0.last.me;
+    if (L && L.prize && !L.claimed) { const r = row(`<div class="nm">Prêmio da semana passada<small>Você ficou em ${L.rank}º lugar</small></div>`); r.appendChild(btn('Resgatar ' + L.prize + ' ✦', true, async () => { const c = await n.fishClaim(); if (c) { s.gold += c.gold; sfx('legend'); toast('PRÊMIO DO TORNEIO', true, '+' + c.gold + ' CENTELHAS · ' + c.rank + 'º LUGAR', '#ffbf3d'); writeSave(); } fsTour = null; renderFishery(); }, true)); }
+    if (!T0.top.length) row('<div class="nm">Ninguém pescou ainda nesta semana.<small>Seja o primeiro!</small></div>');
+    T0.top.forEach((x, i) => row(`<div class="nm"><b style="color:${i === 0 ? 'var(--gold)' : i < 3 ? '#d8d2c4' : 'inherit'}">${i + 1}º ${x.name}</b><small>melhor: ${(TF.fishById(x.bestFish) || { n: x.bestFish }).n} de ${kgs(x.bestKg)} kg</small></div><div class="fprice">${x.points}<small>pontos</small></div>`));
+    if (T0.last && T0.last.top.length) row('<div class="nm" style="width:100%"><small>Campeões da semana passada</small>' + T0.last.top.map((x, i) => (i + 1) + 'º ' + x.name + ' (' + x.points + ')').join(' · ') + '</div>');
   } else {
     const fxp = s.fxp || 0, a = TF.fisherXpFor(lv), b = TF.fisherXpFor(lv + 1), pct = lv >= TF.FISHER_MAX ? 100 : Math.round((fxp - a) / (b - a) * 100);
     const got = TF.FISH.filter(f => s.fcount && s.fcount[f.id]).length;
@@ -228,17 +239,65 @@ function renderFishery() {
     const WN = { lago: 'lago', rio: 'rio', remanso: 'remanso' };
     for (const f of TF.FISH) {
       const c = s.fcount && s.fcount[f.id], r = document.createElement('div'); r.className = 'shoprow';
-      r.innerHTML = c ? `<span class="fish-dot" style="--fc:${f.c}"></span><div class="nm"><span style="color:${f.c}">${f.n}</span><small>${c} pescados · ${f.at.map(w => WN[w]).join(', ')}${f.w > 1 ? ' · briga ' + f.w + '×' : ''}${f.night ? ' · mais à noite' : ''}</small></div>`
+      r.innerHTML = c ? `<span class="fish-dot" style="--fc:${f.c}"></span><div class="nm"><span style="color:${f.c}">${f.n}</span><small>${c} pescados${s.frec && s.frec[f.id] ? ' · recorde ' + s.frec[f.id].toFixed(2).replace('.', ',') + ' kg' : ''} · ${f.at.map(w => WN[w]).join(', ')}${f.w > 1 ? ' · briga ' + f.w + '×' : ''}${f.night ? ' · mais à noite' : ''}</small></div>`
         : `<span class="fish-dot unk"></span><div class="nm">???<small>${f.at.map(w => WN[w]).join(', ')}${f.lv > 1 ? ' · Pescador ' + f.lv : ''}${f.night ? ' · de noite' : ''}${f.rod ? ' · ' + TF.RODS[f.rod].n : ''}${f.id === 'rei' ? ' · só com Isca de Fio' : ''}</small></div>`;
       grid.appendChild(r);
     }
   }
 }
 $('#fsClose').onclick = () => closeMenus();
+/* ---- Mercado da Vila (online): anunciar itens, comprar dos outros, receber as vendas (5% de taxa) ---- */
+let mkTab = 'comprar', mkData = null, mkSel = null, mkBusy = false;
+function openMarket() { const n = NETON(); if (!n) { toast('O Mercado da Vila é online', false, 'ENTRE COM SUA CONTA PARA COMPRAR E VENDER COM OUTROS TECELÕES'); return; } mkData = null; mkSel = null; openMenu('market'); n.market().then(d => { mkData = d; if (G.menu === 'market') renderMarket(); }); }
+async function marketOp(fn, after) { if (mkBusy) return; mkBusy = true; const r = await fn(); mkBusy = false; if (!r.ok) { toast('Não deu certo', false, r.error.toUpperCase()); sfx('ui'); } else { after(r.data); writeSave(); sfx('pick'); } const n = NETON(); if (n) mkData = await n.market(); renderMarket(); }
+function renderMarket() {
+  const s = G.save, n = NETON(), list = $('#mkList'), det = $('#mkDet'); list.innerHTML = ''; det.innerHTML = '';
+  document.querySelectorAll('#market .ftabs button').forEach(b => { b.classList.toggle('on', b.dataset.mt === mkTab); b.onclick = () => { mkTab = b.dataset.mt; mkSel = null; sfx('ui'); renderMarket(); }; });
+  if (!mkData) { $('#mkSub').textContent = 'Carregando o mercado…'; return; }
+  const row = (it, html, btns) => { const r = document.createElement('div'); r.className = 'shoprow'; if (it) r.appendChild(slotBtn(it, () => { det.innerHTML = `<h3 style="color:${RAR[it.rar].c}">${it.name}</h3><div class="meta">${SLOTN[it.slot]} · ${RAR[it.rar].n} · Poder ${itemScore(it)}</div><ul>${itemLinesHTML(it, s.eq[it.slot])}</ul>`; }, false)); const nm = document.createElement('div'); nm.className = 'nm'; nm.innerHTML = html; r.appendChild(nm); for (const b of btns || []) r.appendChild(b); list.appendChild(r); return r; };
+  const btn = (txt, on, fn, gold) => { const b = document.createElement('button'); b.className = 'px' + (gold && on ? ' gold' : ''); b.textContent = txt; b.disabled = !on; b.onclick = fn; return b; };
+  if (mkTab === 'comprar') {
+    const mine = n.account.name, act = mkData.active.filter(l => l.sellerName !== mine);
+    $('#mkSub').innerHTML = `Itens à venda por outros Tecelões. Você tem <b style="color:var(--gold)">${s.gold}</b> Centelhas e ${BAG() - s.inv.length} espaços na bolsa.`;
+    if (!act.length) row(null, 'Nada à venda agora.<small>Volte mais tarde, ou anuncie você mesmo na aba Vender.</small>');
+    for (const l of act) row(l.item, `<span style="color:${RAR[l.item.rar].c}">${l.item.name}</span><small>de ${l.sellerName} · Poder ${itemScore(l.item)} · nível ${TI.reqLvl(l.item)}</small>`, [btn(l.price + ' ✦', s.gold >= l.price && s.inv.length < BAG(), () => marketOp(() => n.marketBuy(l.id), d => { s.gold -= d.price; s.spent = (s.spent || 0) + d.price; s.inv.push(d.item); toast('COMPRADO', true, d.item.name.toUpperCase() + ' · −' + d.price + ' CENTELHAS', RAR[d.item.rar].c); }), true)]);
+  } else if (mkTab === 'vender') {
+    $('#mkSub').innerHTML = `Escolha um item da bolsa e o preço. Ele sai da bolsa e fica no mercado até alguém comprar (ou você cancelar). Taxa da vila: ${Math.round(mkData.tax * 100)}% na hora de receber. Até ${mkData.max} anúncios.`;
+    if (!s.inv.length) row(null, 'Sua bolsa está vazia.');
+    for (const it of s.inv) {
+      const r = row(it, `<span style="color:${RAR[it.rar].c}">${it.name}</span><small>Poder ${itemScore(it)} · o Otto pagaria ${scrapVal(it)}</small>`);
+      const inp = document.createElement('input'); inp.type = 'number'; inp.min = '1'; inp.step = '10'; inp.value = String(Math.max(10, scrapVal(it) * 3)); inp.style.width = '86px'; inp.setAttribute('aria-label', 'Preço');
+      r.appendChild(inp); r.appendChild(btn('Anunciar', true, () => { const price = Math.max(1, Math.min(1e7, Math.floor(+inp.value || 0))); marketOp(() => n.marketList(it.id, price), () => { const i = s.inv.findIndex(x => x.id === it.id); if (i >= 0) s.inv.splice(i, 1); toast('ANUNCIADO', false, it.name.toUpperCase() + ' · ' + price + ' CENTELHAS'); }); }, true));
+    }
+  } else {
+    const due = mkData.mine.filter(l => l.sold && !l.paid), total = due.reduce((a, l) => a + Math.floor(l.price * (1 - mkData.tax)), 0);
+    $('#mkSub').innerHTML = due.length ? `Você vendeu ${due.length} ${due.length > 1 ? 'itens' : 'item'}: <b style="color:var(--gold)">${total}</b> Centelhas para receber (já sem a taxa).` : 'Seus anúncios. Os vendidos aparecem aqui para você receber as Centelhas.';
+    if (due.length) { const r = row(null, 'Receber as vendas<small>Vai direto para as suas Centelhas</small>'); r.appendChild(btn('Receber ' + total + ' ✦', true, () => marketOp(() => n.marketCollect(), d => { s.gold += d.gold; toast('VENDAS RECEBIDAS', true, '+' + d.gold + ' CENTELHAS', '#ffbf3d'); }), true)); }
+    if (!mkData.mine.length) row(null, 'Você não tem anúncios.');
+    for (const l of mkData.mine) row(l.item, `<span style="color:${RAR[l.item.rar].c}">${l.item.name}</span><small>${l.price} ✦ · ${l.sold ? 'vendido para ' + (l.buyerName || 'alguém') : 'à venda'}</small>`, l.sold ? [] : [btn('Cancelar', s.inv.length < BAG(), () => marketOp(() => n.marketCancel(l.id), d => { s.inv.push(d.item); toast('ANÚNCIO CANCELADO', false, d.item.name.toUpperCase() + ' VOLTOU PARA A BOLSA'); }))]);
+  }
+}
+$('#mkClose').onclick = () => closeMenus();
+/* ---- Troca direta (online, na mesma sala) ---- */
+let trSel = new Set(), trTimer = 0;
+function tradeSend() { const n = NETON(); if (!n || !G.trade) return; clearTimeout(trTimer); trTimer = setTimeout(() => n.tradeOffer([...trSel], Math.max(0, Math.min(G.save.gold, Math.floor(+$('#trGold').value || 0)))), 250); }
+function renderTrade() {
+  const T0 = G.trade, s = G.save; if (!T0) return;
+  $('#trTitle').textContent = 'Troca com ' + T0.with; $('#trTheirsH').textContent = 'Oferta de ' + T0.with;
+  const mine = $('#trMine'); mine.innerHTML = '';
+  s.inv.forEach(it => { const b = slotBtn(it, () => { trSel.has(it.id) ? trSel.delete(it.id) : trSel.size < 8 && trSel.add(it.id); sfx('ui'); renderTrade(); tradeSend(); }, trSel.has(it.id)); if (trSel.has(it.id)) b.classList.add('off'); mine.appendChild(b); });
+  const th = $('#trTheirs'); th.innerHTML = ''; for (const it of T0.theirs.items) th.appendChild(slotBtn(it, () => { $('#trSub').innerHTML = `<b style="color:${RAR[it.rar].c}">${it.name}</b> · ${SLOTN[it.slot]} · Poder ${itemScore(it)}`; }, false));
+  $('#trMineSt').textContent = (T0.mine.items.length ? T0.mine.items.length + ' item(ns)' : 'nenhum item') + ' · ' + T0.mine.gold + ' ✦' + (T0.mine.ready ? ' · CONFIRMADO' : '');
+  $('#trTheirsSt').textContent = (T0.theirs.items.length ? T0.theirs.items.length + ' item(ns)' : 'nenhum item') + ' · ' + T0.theirs.gold + ' ✦' + (T0.theirs.ready ? ' · CONFIRMADO' : ' · ainda decidindo');
+  $('#trReady').textContent = T0.mine.ready ? 'Desfazer confirmação' : 'Confirmar troca';
+}
+$('#trGold').oninput = () => tradeSend();
+$('#trReady').onclick = () => { const n = NETON(); if (n && G.trade) { sfx('ui'); n.tradeReady(!G.trade.mine.ready); } };
+$('#trCancel').onclick = () => { const n = NETON(); if (n) n.tradeCancel(); G.trade = null; closeMenus(); };
 /** Mapa dos Ermos: o que você explorou, obeliscos e acampamentos. Num obelisco, toque num obelisco desperto para viajar. */
 function renderWMap() {
   const travel0 = G.wmTravel !== undefined && G.wmTravel !== null, mapOk = hasMap();
-  if (!RG || RG.key === 'home' || (!mapOk && !travel0)) { closeMenus(); return; }
+  if (!RG || RG.key === 'home' || isIndoor(RG.key) || (!mapOk && !travel0)) { closeMenus(); return; }
   if (mapOk && MM.key !== RG) setupMinimap();
   $('.wmwrap').hidden = !mapOk || !MM.seen;   // sem mapa, o obelisco ainda viaja pela lista
   $('#wmTitle').textContent = RG.wild ? 'Mapa dos Ermos' : 'Mapa · ' + (RG.key === 'rift' ? 'Fenda' : REG[RG.key].name); $('.wmwrap').style.aspectRatio = RG.W + '/' + RG.H;

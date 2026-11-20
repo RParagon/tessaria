@@ -95,6 +95,7 @@ const DIALOG = {
   mel() {
     const s = G.save, lines = [{ who: 'Padeira Mel', text: pick(['Pão quente pra quem segura o mundo nas costas! Come, come.', 'Acabou de sair do forno. Não aceito não como resposta.', 'Você tá parecendo um fio solto. Come mais.']), fn: () => { if (P.hp < P.maxHp) { const h = P.maxHp - Math.round(P.hp); P.hp = P.maxHp; popNum(P.x, 2.2, P.z, '+' + h, 'heal'); sfx('heal'); } } }];
     if (!s.met.mel) { s.met.mel = true; lines.unshift({ who: 'Padeira Mel', text: 'Então você é a agulha de que todos falam! Sempre que passar aqui, tem pão pra recuperar as forças.' }); }
+    lines.push(melMenu());
     return lines;
   },
   lio() {

@@ -12,7 +12,7 @@ export async function newGame(page, { cls = 'lamina', name } = {}) {
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) { /* sem storage */ } });
   await page.reload();
   await page.waitForFunction(() => window.__T && document.querySelector('#mNew'), null, { timeout: 30_000 });
-  await page.evaluate(() => { __T.G.forceHour = 12; });   // meio-dia: a noite muda dano, XP e loot (o teste da noite força a hora)
+  await page.evaluate(() => { __T.G.forceHour = 12; __T.G.forceWeather = 'limpo'; });   // meio-dia: a noite muda dano, XP e loot (o teste da noite força a hora)
   await page.waitForTimeout(800);
   await page.click('#mNew');
   await page.evaluate(([c, n]) => { __T.G.char.cls = c; if (n) __T.G.char.name = n; }, [cls, name]);

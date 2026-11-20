@@ -74,3 +74,6 @@ setInterval(() => {
   while (MUS.nextT < AC.currentTime + .3) { playStep(S, MUS.step, MUS.nextT, sd); MUS.nextT += sd; MUS.step++; }
 }, 80);
 
+
+/* Interiores: a casa toca a música calma do lar; a taverna, uma mais animada. */
+MUSIC.casa = MUSIC.home; MUSIC.taverna = { ...MUSIC.home, bpm: 108, mode: [0, 2, 4, 5, 7, 9], prog: [[0, "M"], [5, "M"], [7, "M"], [5, "M"]], lead: "square", dens: .55, echo: .3, pad: false };

@@ -87,15 +87,16 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
 Vila e mundo:
 - [x] Ciclo de dia e noite com efeito no jogo (0.36.0)
 - [x] Casas com interior visível pelo recorte e teto do banco fechado (0.36.0)
-- [ ] Entrar nas casas dos moradores e na taverna (interior jogável, como a casa do jogador)
-- [ ] Chuva e neblina leves (o clima muda o que aparece nos Ermos e no Pesqueiro)
-- [ ] Moradores com rotina de dia e de noite para todos (dormir, abrir e fechar as bancas)
-- [ ] Relevo de verdade na vila (subidas e mirantes)
+- [x] Entrar nas casas dos moradores e na taverna (0.38.0)
+- [x] Chuva, neblina e tempestade com efeito nos Ermos e no Pesqueiro (0.39.0)
+- [x] Moradores com rotina de dia e de noite (0.38.0)
+- [x] Relevo de verdade na vila: Morro do Mirante (0.42.0)
+- [ ] Mais relevo (morros nos Ermos, escadarias na vila)
 
 Pesqueiro:
-- [ ] Torneio de pesca semanal com ranking online
-- [ ] Receitas: cozinhar peixe na fogueira para bônus curtos
+- [x] Torneio de pesca semanal com ranking online (0.40.0)
+- [x] Receitas: cozinhar peixe na fogueira para bônus curtos (0.38.0)
 
 Online:
 - [ ] Monstros compartilhados nas salas públicas dos Ermos (o servidor simula)
-- [ ] Troca direta e mercado da vila (docs/ONLINE.md)
+- [x] Troca direta e mercado da vila (0.41.0)

@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { MIGRATIONS } from './migrations';
-import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
+import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult , Listing } from './types';
 import { invMax } from '../../../shared/save';
 
 type Row = Record<string, any>;
@@ -84,6 +84,115 @@ export class PgStore implements Store {
   async addTombstones(accountId: string, itemIds: string[]) {
     if (!itemIds.length) return;
     await this.sql`INSERT INTO tombstones ${this.sql(itemIds.map(id => ({ account_id: accountId, item_id: id })))} ON CONFLICT DO NOTHING`;
+  }
+  async addFishCatch(week: number, accountId: string, points: number, fish: string, kg: number) {
+    const r = await this.sql`INSERT INTO fish_scores (week, account_id, points, best_fish, best_kg, best_pts) VALUES (${week}, ${accountId}, ${points}, ${fish}, ${kg}, ${points})
+      ON CONFLICT (week, account_id) DO UPDATE SET points = fish_scores.points + EXCLUDED.points,
+        best_fish = CASE WHEN EXCLUDED.best_pts > fish_scores.best_pts THEN EXCLUDED.best_fish ELSE fish_scores.best_fish END,
+        best_kg = CASE WHEN EXCLUDED.best_pts > fish_scores.best_pts THEN EXCLUDED.best_kg ELSE fish_scores.best_kg END,
+        best_pts = GREATEST(fish_scores.best_pts, EXCLUDED.best_pts)
+      RETURNING points`;
+    return Number(r[0].points);
+  }
+  async fishTop(week: number, n: number) {
+    const r = await this.sql`SELECT a.name, f.points, f.best_fish, f.best_kg, f.best_pts FROM fish_scores f JOIN accounts a ON a.id = f.account_id WHERE f.week = ${week} ORDER BY f.points DESC, f.updated_at ASC LIMIT ${n}`;
+    return r.map(x => ({ name: x.name as string, points: Number(x.points), bestFish: x.best_fish as string, bestKg: Number(x.best_kg), bestPts: Number(x.best_pts) }));
+  }
+  async fishMine(week: number, accountId: string) {
+    const r = await this.sql`SELECT a.name, f.points, f.best_fish, f.best_kg, f.best_pts, f.claimed, (SELECT COUNT(*) FROM fish_scores o WHERE o.week = f.week AND o.points > f.points) AS ahead FROM fish_scores f JOIN accounts a ON a.id = f.account_id WHERE f.week = ${week} AND f.account_id = ${accountId}`;
+    if (!r.length) return null; const x = r[0];
+    return { name: x.name as string, points: Number(x.points), bestFish: x.best_fish as string, bestKg: Number(x.best_kg), bestPts: Number(x.best_pts), rank: Number(x.ahead) + 1, claimed: !!x.claimed };
+  }
+  async claimFishPrize(week: number, accountId: string) {
+    const r = await this.sql`UPDATE fish_scores SET claimed = true WHERE week = ${week} AND account_id = ${accountId} AND NOT claimed RETURNING week`;
+    return r.length > 0;
+  }
+  // ---------- mercado da vila e troca direta ----------
+  private toListing(x: any): Listing { return { id: Number(x.id), sellerName: x.seller_name, item: x.item, price: Number(x.price), createdAt: x.created_at, sold: !!x.buyer_id, paid: !!x.paid, buyerName: x.buyer_name ?? null }; }
+  async marketList(sellerId: string, sellerName: string, itemId: string, price: number, maxActive: number) {
+    return this.sql.begin(async tx => {
+      const [s] = await tx`SELECT data FROM saves WHERE account_id = ${sellerId} FOR UPDATE`;
+      if (!s) return { ok: false, reason: 'sem-save' } as const;
+      const [c] = await tx`SELECT COUNT(*)::int AS n FROM market_listings WHERE seller_id = ${sellerId} AND buyer_id IS NULL`;
+      if (c.n >= maxActive) return { ok: false, reason: 'limite' } as const;
+      const data = s.data, inv: any[] = Array.isArray(data.inv) ? data.inv : [], i = inv.findIndex(it => it && it.id === itemId);
+      if (i < 0) return { ok: false, reason: ['weapon', 'armor', 'charm'].some(k => data.eq?.[k]?.id === itemId) ? 'equipado' : 'sem-item' } as const;
+      const [item] = inv.splice(i, 1); data.inv = inv;
+      const [u] = await tx`UPDATE saves SET data = ${tx.json(data)}, rev = rev + 1, updated_at = now() WHERE account_id = ${sellerId} RETURNING rev`;
+      await tx`INSERT INTO tombstones (account_id, item_id) VALUES (${sellerId}, ${itemId}) ON CONFLICT DO NOTHING`;
+      const [m] = await tx`INSERT INTO market_listings (seller_id, seller_name, item, price) VALUES (${sellerId}, ${sellerName}, ${tx.json(item)}, ${price}) RETURNING id`;
+      return { ok: true, rev: u.rev, id: Number(m.id) } as const;
+    }) as any;
+  }
+  async marketActive(limit: number) { return (await this.sql`SELECT * FROM market_listings WHERE buyer_id IS NULL ORDER BY created_at DESC LIMIT ${limit}`).map(x => this.toListing(x)); }
+  async marketMine(sellerId: string) { return (await this.sql`SELECT * FROM market_listings WHERE seller_id = ${sellerId} AND NOT (buyer_id IS NOT NULL AND paid) ORDER BY created_at DESC LIMIT 50`).map(x => this.toListing(x)); }
+  async marketBuy(buyerId: string, id: number) {
+    return this.sql.begin(async tx => {
+      const [m] = await tx`SELECT * FROM market_listings WHERE id = ${id} FOR UPDATE`;
+      if (!m) return { ok: false, reason: 'nao-encontrado' } as const;
+      if (m.buyer_id) return { ok: false, reason: 'vendido' } as const;
+      if (m.seller_id === buyerId) return { ok: false, reason: 'proprio' } as const;
+      const [s] = await tx`SELECT data FROM saves WHERE account_id = ${buyerId} FOR UPDATE`;
+      if (!s) return { ok: false, reason: 'sem-save' } as const;
+      const data = s.data, price = Number(m.price); data.inv = Array.isArray(data.inv) ? data.inv : [];
+      if ((Number(data.gold) || 0) < price) return { ok: false, reason: 'sem-ouro' } as const;
+      if (data.inv.length >= invMax(data)) return { ok: false, reason: 'bolsa-cheia' } as const;
+      data.gold -= price; data.spent = (Number(data.spent) || 0) + price; data.inv.push(m.item);
+      const [u] = await tx`UPDATE saves SET data = ${tx.json(data)}, rev = rev + 1, updated_at = now() WHERE account_id = ${buyerId} RETURNING rev`;
+      await tx`DELETE FROM tombstones WHERE account_id = ${buyerId} AND item_id = ${m.item.id}`;
+      await tx`UPDATE market_listings SET buyer_id = ${buyerId}, buyer_name = (SELECT name FROM accounts WHERE id = ${buyerId}), sold_at = now() WHERE id = ${id}`;
+      return { ok: true, rev: u.rev, item: m.item, price } as const;
+    }) as any;
+  }
+  async marketCancel(sellerId: string, id: number) {
+    return this.sql.begin(async tx => {
+      const [m] = await tx`SELECT * FROM market_listings WHERE id = ${id} AND seller_id = ${sellerId} FOR UPDATE`;
+      if (!m) return { ok: false, reason: 'nao-encontrado' } as const;
+      if (m.buyer_id) return { ok: false, reason: 'vendido' } as const;
+      const [s] = await tx`SELECT data FROM saves WHERE account_id = ${sellerId} FOR UPDATE`;
+      if (!s) return { ok: false, reason: 'sem-save' } as const;
+      const data = s.data; data.inv = Array.isArray(data.inv) ? data.inv : [];
+      if (data.inv.length >= invMax(data)) return { ok: false, reason: 'bolsa-cheia' } as const;
+      data.inv.push(m.item);
+      const [u] = await tx`UPDATE saves SET data = ${tx.json(data)}, rev = rev + 1, updated_at = now() WHERE account_id = ${sellerId} RETURNING rev`;
+      await tx`DELETE FROM tombstones WHERE account_id = ${sellerId} AND item_id = ${m.item.id}`;
+      await tx`DELETE FROM market_listings WHERE id = ${id}`;
+      return { ok: true, rev: u.rev, item: m.item } as const;
+    }) as any;
+  }
+  async marketCollect(sellerId: string, tax: number) {
+    return this.sql.begin(async tx => {
+      const due = await tx`SELECT id, price FROM market_listings WHERE seller_id = ${sellerId} AND buyer_id IS NOT NULL AND NOT paid FOR UPDATE`;
+      if (!due.length) return { ok: false, reason: 'nada' } as const;
+      const [s] = await tx`SELECT data FROM saves WHERE account_id = ${sellerId} FOR UPDATE`;
+      if (!s) return { ok: false, reason: 'sem-save' } as const;
+      const gold = due.reduce((a, m) => a + Math.floor(Number(m.price) * (1 - tax)), 0), data = s.data;
+      data.gold = (Number(data.gold) || 0) + gold;
+      const [u] = await tx`UPDATE saves SET data = ${tx.json(data)}, rev = rev + 1, updated_at = now() WHERE account_id = ${sellerId} RETURNING rev`;
+      await tx`UPDATE market_listings SET paid = true WHERE id IN ${tx(due.map(m => m.id))}`;
+      return { ok: true, rev: u.rev, gold, n: due.length } as const;
+    }) as any;
+  }
+  async tradeExecute(aId: string, bId: string, aItems: string[], aGold: number, bItems: string[], bGold: number) {
+    return this.sql.begin(async tx => {
+      const rows = await tx`SELECT account_id, data FROM saves WHERE account_id IN ${tx([aId, bId])} ORDER BY account_id FOR UPDATE`;
+      const A = rows.find(r => r.account_id === aId)?.data, B = rows.find(r => r.account_id === bId)?.data;
+      if (!A || !B) return { ok: false, reason: 'sem-save' };
+      const ia: any[] = Array.isArray(A.inv) ? A.inv : [], ib: any[] = Array.isArray(B.inv) ? B.inv : [];
+      if ((Number(A.gold) || 0) < aGold || (Number(B.gold) || 0) < bGold) return { ok: false, reason: 'sem-ouro' };
+      if (!aItems.every(id => ia.some(it => it?.id === id)) || !bItems.every(id => ib.some(it => it?.id === id))) return { ok: false, reason: 'sem-item' };
+      if (ia.length - aItems.length + bItems.length > invMax(A) || ib.length - bItems.length + aItems.length > invMax(B)) return { ok: false, reason: 'bolsa-cheia' };
+      const fromA = ia.filter(it => aItems.includes(it?.id)), fromB = ib.filter(it => bItems.includes(it?.id));
+      A.inv = ia.filter(it => !aItems.includes(it?.id)).concat(fromB); B.inv = ib.filter(it => !bItems.includes(it?.id)).concat(fromA);
+      A.gold = A.gold - aGold + bGold; B.gold = B.gold - bGold + aGold;
+      const [ua] = await tx`UPDATE saves SET data = ${tx.json(A)}, rev = rev + 1, updated_at = now() WHERE account_id = ${aId} RETURNING rev`;
+      const [ub] = await tx`UPDATE saves SET data = ${tx.json(B)}, rev = rev + 1, updated_at = now() WHERE account_id = ${bId} RETURNING rev`;
+      for (const [acc, ids, back] of [[aId, aItems, bItems], [bId, bItems, aItems]] as const) {
+        if (ids.length) await tx`INSERT INTO tombstones ${tx(ids.map(i => ({ account_id: acc, item_id: i })))} ON CONFLICT DO NOTHING`;
+        if (back.length) await tx`DELETE FROM tombstones WHERE account_id = ${acc} AND item_id IN ${tx(back as string[])}`;
+      }
+      return { ok: true, revA: ua.rev, revB: ub.rev, fromA, fromB };
+    }) as any;
   }
   async grantItems(accountId: string, itemIds: string[], source: string) {
     if (!itemIds.length) return;

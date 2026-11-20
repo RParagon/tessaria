@@ -87,7 +87,8 @@ const FS_POST = `#version 300 es
 precision highp float;
 precision highp int;
 uniform sampler2D u_fb, u_pal;
-uniform float u_px, u_dither, u_time, u_fade, u_hurt, u_night, u_dusk;
+uniform float u_px, u_dither, u_time, u_fade, u_hurt, u_night, u_dusk, u_wet, u_fog, u_bolt;
+uniform vec3 u_fogc;
 uniform vec2 u_res;
 uniform int u_outlineOn;
 uniform int u_icon;   // 1: assando ícone (fundo transparente)
@@ -134,6 +135,10 @@ void main(){
     }
     if(d.b>0.0 && d.b*1.05>b) col=vec3(1.0);
   }
+  // clima: chuva acinzenta, neblina pela distância (o fundo some de vez), clarão do relâmpago
+  if(u_wet>0.0){ float g=dot(col,vec3(0.3,0.5,0.2)); col=mix(col,vec3(g)*vec3(0.82,0.88,1.0)*0.9,u_wet*0.45); }
+  if(u_fog>0.0){ float fd=d.a==0.0?1.0:smoothstep(0.2,0.85,d.a); col=mix(col,u_fogc,fd*u_fog*0.85); }
+  if(u_bolt>0.0) col=mix(col,vec3(0.92,0.95,1.0),u_bolt*0.55);
   vec2 cv=uv-0.5; float vig=dot(cv,cv)*2.4;
   if(u_hurt>0.0 && (vig-0.42)*u_hurt*2.4>b) col=mix(col,vec3(0.75,0.08,0.08),0.7);
   if(u_fade>0.0 && u_fade>b) col=vec3(0.02,0.015,0.04);
@@ -187,16 +192,17 @@ function uploadPalette(regKey) {
   const wr = eqOn && G.save && G.save.eq && G.save.eq.weapon ? G.save.eq.weapon.rar : 0; rows[4] = METAL[wr];
   for (let i = 8; i < 30; i++) rows[i] = reg.rows[i];
   for (let i = 152; i < 160; i++) if (reg.rows[i]) rows[i] = reg.rows[i];   // cores extras da região (biomas dos Ermos)
-  if (regKey === 'hub') { const br = charRows(BARD.cfg); for (let i = 0; i < 8; i++) rows[152 + i] = br[i]; }   // Bardo (só na vila)
+  const indoor = isIndoor(regKey);
+  if (regKey === 'hub' || indoor) { const br = charRows(BARD.cfg); for (let i = 0; i < 8; i++) rows[152 + i] = br[i]; }   // Bardo (só na vila)
   rows[30] = SPARK; rows[31] = HEAL; RAR.forEach(r => rows[r.row] = r.ramp);
   const eqp = eqOn && G.save && G.save.eq ? G.save.eq : {}, arR = eqp.armor ? eqp.armor.rar : 0, chR = eqp.charm ? eqp.charm.rar : 0;
   rows[125] = METAL[arR]; rows[126] = RAR[arR].ramp; rows[127] = RAR[chR].ramp;
   NPCS.forEach((n, k) => { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[32 + k * 8 + i] = r[i]; });
   for (const k in XROWS) rows[k] = XROWS[k];
   if (regKey === 'wilds') { const r = charRows(MERC_CFG); for (let i = 0; i < 8; i++) rows[128 + i] = r[i]; }   // mercador dos acampamentos
-  if (regKey === 'hub') for (const n of EAST_NPCS) { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[n.base + i] = r[i]; }   // moradores do Bairro Leste (só na vila)
+  if (regKey === 'hub' || indoor) for (const n of EAST_NPCS) { const r = charRows(n.cfg); for (let i = 0; i < 8; i++) rows[n.base + i] = r[i]; }   // moradores do Bairro Leste (só na vila)
   for (const k in REMOTE_ROWS) rows[k] = REMOTE_ROWS[k];
-  if (regKey !== 'hub') { const rf = charRows({ ...G.char, skin: 5, outfit: 11, trim: 3, glow: 2 }); for (let i = 0; i < 8; i++) rows[152 + i] = rf[i]; }   // Reflexo (fora da vila; na vila as linhas são do Bardo)
+  if (regKey !== 'hub' && !indoor) { const rf = charRows({ ...G.char, skin: 5, outfit: 11, trim: 3, glow: 2 }); for (let i = 0; i < 8; i++) rows[152 + i] = rf[i]; }   // Reflexo (fora da vila; na vila as linhas são do Bardo)
   for (let m = 0; m < 256; m++) { const row = rows[m] || rows[11]; for (let i = 0; i < 5; i++) { const c = row[i], o = (m * 5 + i) * 4; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = 255; } }
   gl.bindTexture(gl.TEXTURE_2D, palTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 5, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);

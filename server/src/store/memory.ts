@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
+import type { Account, ClaimResult, FishScore, Listing, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
 import { invMax } from '../../../shared/save';
 
 /**
@@ -20,6 +20,72 @@ export class MemoryStore implements Store {
   public errors: any[] = [];
   public chat: Array<{ accountId: string; room: string; text: string }> = [];
 
+  private fish = new Map<string, { week: number; accountId: string; points: number; bestFish: string; bestKg: number; bestPts: number; claimed: boolean }>();
+  async addFishCatch(week: number, accountId: string, points: number, fish: string, kg: number) {
+    const k = week + ':' + accountId, e = this.fish.get(k) ?? { week, accountId, points: 0, bestFish: fish, bestKg: kg, bestPts: 0, claimed: false };
+    e.points += points; if (points > e.bestPts) { e.bestPts = points; e.bestFish = fish; e.bestKg = kg; } this.fish.set(k, e); return e.points;
+  }
+  private fishRow(e: { accountId: string; points: number; bestFish: string; bestKg: number; bestPts: number }): FishScore { return { name: this.accounts.get(e.accountId)?.name ?? '?', points: e.points, bestFish: e.bestFish, bestKg: e.bestKg, bestPts: e.bestPts }; }
+  async fishTop(week: number, n: number) { return [...this.fish.values()].filter(e => e.week === week).sort((a, b) => b.points - a.points).slice(0, n).map(e => this.fishRow(e)); }
+  async fishMine(week: number, accountId: string) { const e = this.fish.get(week + ':' + accountId); if (!e) return null; const rank = 1 + [...this.fish.values()].filter(o => o.week === week && o.points > e.points).length; return { ...this.fishRow(e), rank, claimed: e.claimed }; }
+  async claimFishPrize(week: number, accountId: string) { const e = this.fish.get(week + ':' + accountId); if (!e || e.claimed) return false; e.claimed = true; return true; }
+  private market: Array<{ id: number; sellerId: string; sellerName: string; item: any; price: number; createdAt: Date; buyerId: string | null; buyerName: string | null; paid: boolean }> = [];
+  private marketSeq = 0;
+  private bump(s: SaveRow) { s.rev++; s.updatedAt = new Date(); return s.rev; }
+  private invOf(s: SaveRow) { s.data.inv = Array.isArray(s.data.inv) ? s.data.inv : []; return s.data.inv as any[]; }
+  private listing(m: (typeof this.market)[number]): Listing { return { id: m.id, sellerName: m.sellerName, item: this.clone(m.item), price: m.price, createdAt: m.createdAt, sold: !!m.buyerId, paid: m.paid, buyerName: m.buyerName }; }
+  async marketList(sellerId: string, sellerName: string, itemId: string, price: number, maxActive: number) {
+    const s = this.saves.get(sellerId); if (!s) return { ok: false as const, reason: 'sem-save' as const };
+    if (this.market.filter(m => m.sellerId === sellerId && !m.buyerId).length >= maxActive) return { ok: false as const, reason: 'limite' as const };
+    const inv = this.invOf(s), i = inv.findIndex(it => it && it.id === itemId);
+    if (i < 0) return { ok: false as const, reason: (['weapon', 'armor', 'charm'].some(k => s.data.eq?.[k]?.id === itemId) ? 'equipado' : 'sem-item') as 'equipado' | 'sem-item' };
+    const [item] = inv.splice(i, 1); const rev = this.bump(s);
+    if (!this.tombs.has(sellerId)) this.tombs.set(sellerId, new Set()); this.tombs.get(sellerId)!.add(itemId);
+    const id = ++this.marketSeq; this.market.push({ id, sellerId, sellerName, item, price, createdAt: new Date(), buyerId: null, buyerName: null, paid: false });
+    return { ok: true as const, rev, id };
+  }
+  async marketActive(limit: number) { return this.market.filter(m => !m.buyerId).slice(-limit).reverse().map(m => this.listing(m)); }
+  async marketMine(sellerId: string) { return this.market.filter(m => m.sellerId === sellerId && !(m.buyerId && m.paid)).reverse().map(m => this.listing(m)); }
+  async marketBuy(buyerId: string, id: number) {
+    const m = this.market.find(x => x.id === id); if (!m) return { ok: false as const, reason: 'nao-encontrado' as const };
+    if (m.buyerId) return { ok: false as const, reason: 'vendido' as const };
+    if (m.sellerId === buyerId) return { ok: false as const, reason: 'proprio' as const };
+    const s = this.saves.get(buyerId); if (!s) return { ok: false as const, reason: 'sem-save' as const };
+    if ((Number(s.data.gold) || 0) < m.price) return { ok: false as const, reason: 'sem-ouro' as const };
+    const inv = this.invOf(s); if (inv.length >= invMax(s.data)) return { ok: false as const, reason: 'bolsa-cheia' as const };
+    s.data.gold -= m.price; s.data.spent = (Number(s.data.spent) || 0) + m.price; inv.push(this.clone(m.item)); const rev = this.bump(s);
+    this.tombs.get(buyerId)?.delete(m.item.id);
+    m.buyerId = buyerId; m.buyerName = this.accounts.get(buyerId)?.name ?? null;
+    return { ok: true as const, rev, item: this.clone(m.item), price: m.price };
+  }
+  async marketCancel(sellerId: string, id: number) {
+    const m = this.market.find(x => x.id === id && x.sellerId === sellerId); if (!m) return { ok: false as const, reason: 'nao-encontrado' as const };
+    if (m.buyerId) return { ok: false as const, reason: 'vendido' as const };
+    const s = this.saves.get(sellerId); if (!s) return { ok: false as const, reason: 'sem-save' as const };
+    const inv = this.invOf(s); if (inv.length >= invMax(s.data)) return { ok: false as const, reason: 'bolsa-cheia' as const };
+    inv.push(this.clone(m.item)); const rev = this.bump(s); this.tombs.get(sellerId)?.delete(m.item.id);
+    this.market = this.market.filter(x => x !== m);
+    return { ok: true as const, rev, item: this.clone(m.item) };
+  }
+  async marketCollect(sellerId: string, tax: number) {
+    const due = this.market.filter(m => m.sellerId === sellerId && m.buyerId && !m.paid); if (!due.length) return { ok: false as const, reason: 'nada' as const };
+    const s = this.saves.get(sellerId); if (!s) return { ok: false as const, reason: 'sem-save' as const };
+    const gold = due.reduce((a, m) => a + Math.floor(m.price * (1 - tax)), 0);
+    s.data.gold = (Number(s.data.gold) || 0) + gold; const rev = this.bump(s); for (const m of due) m.paid = true;
+    return { ok: true as const, rev, gold, n: due.length };
+  }
+  async tradeExecute(aId: string, bId: string, aItems: string[], aGold: number, bItems: string[], bGold: number) {
+    const A = this.saves.get(aId), B = this.saves.get(bId); if (!A || !B) return { ok: false as const, reason: 'sem-save' };
+    const ia = this.invOf(A), ib = this.invOf(B);
+    if ((Number(A.data.gold) || 0) < aGold || (Number(B.data.gold) || 0) < bGold) return { ok: false as const, reason: 'sem-ouro' };
+    if (!aItems.every(id => ia.some(it => it?.id === id)) || !bItems.every(id => ib.some(it => it?.id === id))) return { ok: false as const, reason: 'sem-item' };
+    if (ia.length - aItems.length + bItems.length > invMax(A.data) || ib.length - bItems.length + aItems.length > invMax(B.data)) return { ok: false as const, reason: 'bolsa-cheia' };
+    const fromA = ia.filter(it => aItems.includes(it?.id)), fromB = ib.filter(it => bItems.includes(it?.id));
+    A.data.inv = ia.filter(it => !aItems.includes(it?.id)).concat(this.clone(fromB)); B.data.inv = ib.filter(it => !bItems.includes(it?.id)).concat(this.clone(fromA));
+    A.data.gold = A.data.gold - aGold + bGold; B.data.gold = B.data.gold - bGold + aGold;
+    for (const [acc, ids, back] of [[aId, aItems, bItems], [bId, bItems, aItems]] as const) { if (!this.tombs.has(acc)) this.tombs.set(acc, new Set()); for (const i of ids) this.tombs.get(acc)!.add(i); for (const i of back) this.tombs.get(acc)!.delete(i); }
+    return { ok: true as const, revA: this.bump(A), revB: this.bump(B), fromA: this.clone(fromA), fromB: this.clone(fromB) };
+  }
   async migrate() {}
   async close() {}
 

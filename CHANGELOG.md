@@ -1,5 +1,35 @@
 # Histórico de versões
 
+## 0.42.0 · Morro do Mirante
+- **Relevo de verdade:** ao sul do Pesqueiro, de frente para o Remanso, um morro em que dá para subir por qualquer lado. O chão, as pedras e tudo o que está nele acompanham a encosta, com a luz inclinada; o herói, os outros jogadores e a câmera sobem junto
+- **Mirante:** no topo há um banco, uma bandeira e uma luneta de latão. Olhar pela luneta afasta a câmera e mostra o rio, o Remanso e a vila lá embaixo; a primeira vez dá +150 de XP
+
+## 0.41.0 · Mercado da Vila e troca direta
+- **Mercado da Vila (online):** nas bancas da praça norte. Anuncie um item da bolsa pelo preço que quiser (até 8 anúncios): ele sai da sua bolsa e fica à venda até alguém comprar ou você cancelar. Compre o que os outros anunciaram com as suas Centelhas. As vendas ficam guardadas até você receber, com 5% de taxa da vila
+- **Troca direta (online):** toque no nome de alguém na sua sala e escolha **Propor troca**. Cada um escolhe itens da bolsa (até 8) e Centelhas; mudar a oferta desfaz as confirmações; quando os dois confirmam, o servidor troca tudo de uma vez, nos dois saves
+- Segurança: tudo passa pelo save da nuvem (o jogo sincroniza antes), de forma atômica; o item que sai da sua conta ganha lápide e não volta pelo save; o servidor só aceita na oferta o que está mesmo na sua bolsa e as Centelhas que você tem
+- Servidor: `GET /market`, `POST /market/list`, `POST /market/:id/buy`, `POST /market/:id/cancel`, `POST /market/collect`; mensagens `tprop`, `tans`, `toffer`, `tready`, `tcancel`; tabela `market_listings` (migração 005)
+
+## 0.40.0 · Torneio de Pesca
+- **Peso dos peixes:** cada pesca tem peso em kg (os grandes são raros), aparece no aviso e vira recorde por espécie na coleção
+- **Torneio semanal (online):** toda pesca soma pontos pelo peso, comparado aos da mesma espécie, e pela raridade (um Rei-do-Rio grande vale muito). A semana vira toda segunda-feira às 00:00 UTC. Na banca do Pesqueiro, a aba **Torneio** mostra o ranking (20 primeiros, com a melhor pesca de cada um), a sua posição, o tempo que falta e os campeões da semana passada
+- **Prêmios:** os 10 primeiros da semana passada resgatam Centelhas uma vez (6000, 4000, 2500, 1500, 1200, 1000, 800, 600, 500 e 400)
+- Servidor: `POST /fish/catch` (confere a espécie, a faixa de peso e o ritmo), `GET /fish/tournament`, `POST /fish/tournament/claim`; tabela `fish_scores` (migração 004)
+
+## 0.39.0 · Clima
+- **Chuva, neblina e tempestade:** a cada 6 horas do jogo (6 min reais) o tempo muda, pela hora do servidor (todos veem o mesmo céu): céu limpo (metade das vezes), chuva, neblina ou tempestade, com entrada e saída suaves. Dentro de casa, na Fenda e nos covis o tempo não muda
+- **Chuva:** gotas e respingos, céu acinzentado. O peixe morde 35% mais rápido e o raro aparece mais; os monstros só percebem você de mais perto (os passos ficam abafados)
+- **Neblina:** o longe some na névoa (de noite, escura). Os monstros enxergam pouco (percebem você bem mais perto) e os Ermos dão +15% de XP
+- **Tempestade:** chuva forte com vento, relâmpagos (clarão e trovão) e, nos Ermos, raios que caem perto de você (círculo no chão; fora dos acampamentos)
+- O relógio do HUD mostra o tempo (☂ chuva, ≋ neblina, ⚡ tempestade) e um aviso chega quando o tempo muda
+
+## 0.38.0 · Taverna, casas dos moradores e rotina
+- **Entrar nas casas:** a Taverna da Mel e as casas de dez moradores têm porta: aproxime-se e entre. Cada casa tem a mobília do dono (as armas da Tarsa, os livros e o cristal da Ysolde, os caixotes do Otto, as caminhas do Kiko e da Nina, a cadeira de balanço do Brann, as lanternas da Lúcia, os cestos da Dora, os alaúdes dos bardos, as varas do Ivo). Ao sair, você volta na porta por onde entrou (inclusive da sua casa)
+- **Rotina de dia e de noite:** a Mel vai para o balcão da taverna às 17h; o Lio toca lá das 19h à 1h e o Otto bebe das 20h à meia-noite; o Brann passa na taverna e vai dormir às 21h; as crianças ficam na porta da taverna até as 22h e vão para a cama; a Ysolde dorme das 23h às 5h; a Dora fecha a banca (coberta com lona) das 19h às 7h; a Tarsa faz a ronda à noite com lanterna e dorme de dia; a Lúcia volta para casa depois de acender os postes. Quem está em casa atende lá dentro, e quem dorme acorda resmungando
+- Morador com missão em andamento ou que você precisa encontrar para a história fica na rua
+- **Comida:** a Mel vende Sopa da Mel (40 ✦, +10% de vida) e Torta de Maçã (90 ✦, +10% de dano e +25% de Centelhas), por 8 minutos
+- **Cozinhar peixe:** na fogueira do Bairro Leste ou no fogareiro da taverna. Peixe Assado (2 Lambaris, +12% de vida), Truta na Brasa (2 Trutas, +12% de dano), Ensopado do Rio (Bagre + Tilápia, +20% de vida e −8% de dano recebido) e Banquete do Rei (1 Rei-do-Rio, +20% de vida e dano, mais velocidade e +25% de XP). Cozinhar também cura 30%
+
 ## 0.37.0 · A ronda da Lúcia e postes nas ruas
 - **A Acendedora Lúcia acende a vila:** às 17h12 ela sai de casa e corre pelas ruas de poste em poste, para, ergue a vara e acende cada lanterna (com faíscas); a ronda leva cerca de 3 minutos e termina quando a noite fecha. Às 4h24 ela refaz o caminho apagando, e os postes ficam apagados de dia. Fora da ronda, ela passeia como antes
 - **Todos veem a mesma ronda:** sai da hora do servidor, então a Lúcia está no mesmo lugar e os mesmos postes estão acesos para todos os jogadores
