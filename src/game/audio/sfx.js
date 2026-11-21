@@ -24,6 +24,7 @@ function sfx(type) {
     case 'lvl': [523, 659, 784, 1046].forEach((f, i) => { const o = AC.createOscillator(), gg = AC.createGain(); o.type = 'square'; o.frequency.value = f; gg.gain.setValueAtTime(0, t + i * .08); gg.gain.linearRampToValueAtTime(.06, t + i * .08 + .01); gg.gain.exponentialRampToValueAtTime(.001, t + i * .08 + .2); o.connect(gg); gg.connect(g); o.start(t + i * .08); o.stop(t + i * .08 + .22); }); break;
     case 'dash': noise(.15, .18, 900); break;
     case 'boom': noise(.45, .4, 500); osc('sine', 120, 40, .4, .25); break;
+    case 'thunder': noise(.25, .5, 1800); noise(2.8, .55, 140); noise(1.8, .35, 320); osc('sine', 55, 28, 2.2, .3); break;   // trovão: estalo e ronco longo
     case 'roar': noise(.9, .35, 380); osc('sawtooth', 90, 45, .9, .12); break;
     case 'open': osc('triangle', 330, 660, .2, .1); break;
     case 'frag': [660, 880, 1320].forEach((f, i) => osc('triangle', f, f, .35 + i * .1, .06)); break;
@@ -34,3 +35,24 @@ function sfx(type) {
   }
 }
 
+
+/* Chuva: ruído contínuo filtrado (mais forte na tempestade; abafado dentro de casa). level 0 a 1. */
+let RAIN = null;
+function rainAudio(level, muffled) {
+  if (!AC) return;
+  if (!G.settings.sound) level = 0;
+  if (!RAIN) {
+    if (level <= .01) return;
+    const b = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (Math.random() < .002 ? 3 : 1);   // chiado com alguns pingos
+    const src = AC.createBufferSource(); src.buffer = b; src.loop = true;
+    const hp = AC.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 280;
+    const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2600;
+    const g = AC.createGain(); g.gain.value = 0;
+    src.connect(hp); hp.connect(f); f.connect(g); g.connect(AC.destination); src.start();
+    RAIN = { src, f, g };
+  }
+  const t = AC.currentTime;
+  RAIN.g.gain.setTargetAtTime(level * (muffled ? .05 : .11), t, .8);
+  RAIN.f.frequency.setTargetAtTime(muffled ? 700 : 2600, t, .5);
+}

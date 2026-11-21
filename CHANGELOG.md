@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.43.0 · Acabamento: interiores, clima, torneio, mercado e histórico
+- **Interiores mais vivos:** mesas com tampo de tábuas e borda escura (que se leem bem de cima), toalhas xadrez, cadeiras com encosto viradas para a mesa, pratos, canecas e velas, quadros e ervas secando nas paredes. Na taverna, a Mel circula entre o balcão e as mesas levando a caneca, e o alaúde do Lio solta notas no ar. De dia também tem gente: o Otto almoça lá do meio-dia à 13h30 e o Vovô Brann joga cartas das 12h às 15h
+- **Som do clima:** chuva contínua (forte na tempestade, abafada dentro de casa) e trovão de verdade, com estalo e ronco longo
+- **Poças:** com a chuva, o chão andável junta poças que enchem em 20 s e secam devagar depois que para; durante a chuva, as gotas fazem anéis na água
+- **Torneio de Pesca:** cada pesca online mostra os pontos ganhos, o total da semana e a sua posição, com um aviso grande quando você sobe no ranking. A taverna ganhou o **Quadro do Torneio**, com o ranking e os campeões
+- **Mercado da Vila:** busca pelo nome, filtro por tipo e por raridade, ordem (mais novos, menor e maior preço, mais poder) e "só o que eu posso usar" (classe e nível); agora mostra até 200 anúncios
+- **Histórico:** nova aba no mercado com as suas trocas diretas (com quem, o que deu, o que recebeu e as Centelhas) e as compras e vendas no mercado
+- Servidor: `GET /history`, posição no torneio na resposta de cada pesca, tabela `trade_log` (migração 006)
+
 ## 0.42.0 · Morro do Mirante
 - **Relevo de verdade:** ao sul do Pesqueiro, de frente para o Remanso, um morro em que dá para subir por qualquer lado. O chão, as pedras e tudo o que está nele acompanham a encosta, com a luz inclinada; o herói, os outros jogadores e a câmera sobem junto
 - **Mirante:** no topo há um banco, uma bandeira e uma luneta de latão. Olhar pela luneta afasta a câmera e mostra o rio, o Remanso e a vila lá embaixo; a primeira vez dá +150 de XP

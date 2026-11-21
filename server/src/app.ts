@@ -248,7 +248,8 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
   const MARKET_TAX = .05, MARKET_MAX = 8;
   const mfail = (rep: FastifyReply, r: string) => fail(rep, r === 'bolsa-cheia' || r === 'sem-ouro' || r === 'limite' || r === 'vendido' || r === 'equipado' ? 409 : r === 'nao-encontrado' ? 404 : 422,
     ({ 'sem-save': 'Sincronize seu progresso antes.', 'sem-item': 'Esse item não está na sua bolsa na nuvem. Sincronize e tente de novo.', equipado: 'Tire o item do corpo antes.', limite: `No máximo ${MARKET_MAX} anúncios ao mesmo tempo.`, 'nao-encontrado': 'Anúncio não encontrado.', vendido: 'Esse item já foi vendido.', proprio: 'Esse anúncio é seu.', 'sem-ouro': 'Centelhas insuficientes (na nuvem).', 'bolsa-cheia': 'Bolsa cheia.', nada: 'Nada para receber.' } as Record<string, string>)[r] ?? 'Não deu certo.');
-  app.get('/market', { preHandler: auth }, async req => ({ active: await store.marketActive(80), mine: await store.marketMine(req.account!.id), tax: MARKET_TAX, max: MARKET_MAX }));
+  app.get('/history', { preHandler: auth }, async req => ({ history: await store.history(req.account!.id, 40) }));
+  app.get('/market', { preHandler: auth }, async req => ({ active: await store.marketActive(200), mine: await store.marketMine(req.account!.id), tax: MARKET_TAX, max: MARKET_MAX }));
   const ListBody = z.object({ itemId: z.string().max(40), price: z.number().int().min(1).max(10_000_000) });
   app.post('/market/list', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
     const b = parse(ListBody, req.body, rep); if (!b) return;
@@ -282,7 +283,8 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const id = req.account!.id, now = Date.now(); if (now - (lastCatch.get(id) ?? 0) < 2500) return fail(rep, 429, 'Devagar: uma pesca de cada vez.');
     lastCatch.set(id, now);
     const pts = fishPoints(b.fish, b.kg), total = await store.addFishCatch(tourneyWeek(now), id, pts, b.fish, b.kg);
-    inc('fish_catches'); return { points: pts, total };
+    const me = await store.fishMine(tourneyWeek(now), id);
+    inc('fish_catches'); return { points: pts, total, rank: me?.rank ?? null };
   });
   app.get('/fish/tournament', { preHandler: auth }, async req => {
     const now = Date.now(), wk = tourneyWeek(now), id = req.account!.id;

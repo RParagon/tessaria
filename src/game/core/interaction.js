@@ -69,8 +69,9 @@ const WEATHER_S = 6 * 60;
 const WEATHER = { limpo: { n: 'Céu limpo', ic: '' }, chuva: { n: 'Chuva', ic: '☂' }, neblina: { n: 'Neblina', ic: '≋' }, tempestade: { n: 'Tempestade', ic: '⚡' } };
 function weatherOf(period) { const r = legRand(424243, period); return r < .5 ? 'limpo' : r < .74 ? 'chuva' : r < .9 ? 'neblina' : 'tempestade'; }
 /** Clima agora ({ type, k }: k é a força, que sobe e desce nos primeiros e últimos 25 s). Dentro de casa, na Fenda e nos covis, sempre limpo. */
-function weatherNow() {
-  if (!outdoors()) return { type: 'limpo', k: 0 };
+function weatherNow() { return outdoors() ? weatherRaw() : { type: 'limpo', k: 0 }; }
+/** O tempo lá fora (vale também dentro de casa, para o som abafado da chuva). */
+function weatherRaw() {
   if (G.forceWeather) return { type: G.forceWeather, k: G.forceWeather === 'limpo' ? 0 : 1 };
   const vt = villageTime(), p = Math.floor(vt / WEATHER_S), t = vt - p * WEATHER_S, type = weatherOf(p);
   return { type, k: type === 'limpo' ? 0 : clamp(Math.min(t, WEATHER_S - t) / 25, 0, 1) };
@@ -88,11 +89,13 @@ function updateWeather(dt) {
     toast(msg[0], true, msg[1], '#9cb8ff'); sfx('ui');
   }
   // tempestade: relâmpagos (clarão e trovão) e, nos Ermos, raios que caem perto
+  { const raw = weatherRaw(), wet = raw.type === 'tempestade' ? raw.k : raw.type === 'chuva' ? raw.k * .65 : 0, inside = RG && (isIndoor(RG.key) || RG.key === 'home'); rainAudio(outdoors() || inside ? wet : 0, inside); }   // som da chuva (abafado dentro de casa)
+  G.wet = clamp((G.wet || 0) + (raining() ? dt / 20 : -dt / 60), 0, 1);   // chão molhado: as poças enchem na chuva (20 s) e secam devagar (1 min)
   G.bolt = Math.max(0, (G.bolt || 0) - dt * 4);
   if (w.type === 'tempestade' && w.k > .5 && G.mode === 'play') {
     G.boltCD = (G.boltCD ?? rr(3, 8)) - dt;
     if (G.boltCD <= 0) {
-      G.boltCD = rr(5, 11); G.bolt = 1; setTimeout(() => sfx('boom'), rr(150, 900));
+      G.boltCD = rr(5, 11); G.bolt = 1; setTimeout(() => sfx('thunder'), rr(150, 900));
       if (RG && RG.wild && !inCamp(P.x, P.z) && !coopIsGuest()) wildsHazard(P.x + rr(-4, 4), P.z + rr(-4, 4), 1.4, 1.1, 30, 12 + wildLv(P.x, P.z) * 1.2, 'TEMPESTADE');
     }
   }
@@ -122,9 +125,20 @@ function npcScheduled(n, t) {
   if (f < dur && d > .01) { const u = f / dur; return { x: A[0] + (B[0] - A[0]) * u, z: A[1] + (B[1] - A[1]) * u, yaw: Math.atan2(B[0] - A[0], B[1] - A[1]), moving: true, walk: f * sp * 2.6 }; }
   return { x: B[0], z: B[1], yaw: null, moving: false, walk: 0 };
 }
+/** Moradores dentro de casa e da taverna que andam por um roteiro (a Mel servindo): param em cada ponto olhando para a mesa. */
+function updateIndoorNPCs(dt) {
+  for (const n of npcs) {
+    if (!n.path || n.talkT > 0 || (G.mode === 'dialog' && DLG.cur && DLG.cur.who === n.name)) { if (n.path) n.moveAmt = lerp(n.moveAmt || 0, 0, .2); continue; }
+    const [tx, tz, stop, lx, lz] = n.path[n.pi], d = Math.hypot(tx - n.x, tz - n.z);
+    if (d > .08) { const sp = 1.6, k = Math.min(1, sp * dt / d); n.x += (tx - n.x) * k; n.z += (tz - n.z) * k; n.wyaw = Math.atan2(tx - n.x, tz - n.z); n.moveAmt = lerp(n.moveAmt || 0, 1, .15); n.walkPh = (n.walkPh || 0) + dt * sp * 2.6; n.yaw += angDiff(n.yaw, n.wyaw) * Math.min(1, dt * 8); continue; }
+    n.moveAmt = lerp(n.moveAmt || 0, 0, .2); n.baseYaw = Math.atan2(lx - n.x, lz - n.z);
+    if ((n.wait -= dt) <= 0) { n.pi = (n.pi + 1) % n.path.length; n.wait = n.path[n.pi][2]; }
+  }
+}
 /** Onde cada morador fica à noite (x, z, para onde olha). */
 const NIGHT_SPOT = { kiko: [31.6, 26.2, 0], nina: [34.4, 26.2, 0] };
 function updateNPCs(dt) {
+  if (RG && isIndoor(RG.key)) return updateIndoorNPCs(dt);
   if (!RG || RG.key !== 'hub') return;
   const vt = villageTime(), night = isNight(), hh = dayHour();
   if (G.save && G.mode !== 'title') for (const n of npcs) {   // rotina: quem está na taverna ou em casa some da rua (fale com ele lá dentro)
@@ -244,7 +258,7 @@ function updateTriggers(dt) {
   if (RG.key === 'hub') { const [fx, fz] = HUB.fountain, d = Math.hypot(fx - P.x, fz - P.z); if (d < 3.4 && d < bd) { bd = d; nearInter = { kind: 'shrine', x: fx, z: fz, hub: true }; } }
   const pr = $('#prompt'), tu = $('#tUse');
   if (nearInter && P.dieT < 0) {
-    const HL = { bank: 'Banco do Tear', wardrobe: 'Abrir o guarda-roupa', bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar · ' + HUB.fishSpots[nearInter.spot || 0].n, fishery: 'Pesqueiro: mercado, iscas e varas', door: nearInter.kind === 'door' ? (nearInter.door.taverna ? 'Entrar na Taverna da Mel' : 'Entrar · ' + houseName(nearInter.door.i)) : '', exitdoor: 'Sair para a vila', cook: 'Cozinhar peixe', market: 'Mercado da Vila (comprar e vender com outros Tecelões)', mirante: 'Olhar pela luneta', obelisk: nearInter.kind === 'obelisk' ? (obelList().includes(nearInter.obId) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
+    const HL = { bank: 'Banco do Tear', wardrobe: 'Abrir o guarda-roupa', bench: 'Sentar no banco', fish: G.fishing ? (G.fishing.bite ? 'PUXAR!' : 'Esperando o peixe…') : 'Pescar · ' + HUB.fishSpots[nearInter.spot || 0].n, fishery: 'Pesqueiro: mercado, iscas e varas', door: nearInter.kind === 'door' ? (nearInter.door.taverna ? 'Entrar na Taverna da Mel' : 'Entrar · ' + houseName(nearInter.door.i)) : '', exitdoor: 'Sair para a vila', cook: 'Cozinhar peixe', market: 'Mercado da Vila (comprar e vender com outros Tecelões)', mirante: 'Olhar pela luneta', tboard: 'Quadro do Torneio de Pesca', obelisk: nearInter.kind === 'obelisk' ? (obelList().includes(nearInter.obId) ? 'Viajar pelo obelisco' : 'Despertar o obelisco') : '', cave: nearInter.kind === 'cave' ? 'Entrar no covil · ' + WZ[nearInter.zone].n : '', revive: nearInter.kind === 'revive' ? (COOP.sew ? 'Costurando ' + nearInter.name + '…' : 'Costurar ' + nearInter.name) : '', house: H().owned ? 'Entrar em casa' : 'Casa à venda · ' + HOUSE_COST + ' Centelhas', stash: 'Abrir o baú', catalog: 'Catálogo da casa (mobília e baú)', mail: 'Correio do Tear', bed: 'Dormir (+15% de XP)' };
     const label = HL[nearInter.kind] || (nearInter.kind === 'appletree' ? 'Deixar a maçã na macieira' : nearInter.kind === 'altar' ? 'Desafiar ' + BOSSDEF[REG[RG.key].boss].name.split(',')[0] + ' de novo · ' + curDiff().n : nearInter.kind === 'npc' ? 'Falar com ' + nearInter.npc.name : nearInter.kind === 'shrine' ? 'Descansar e salvar' : nearInter.kind === 'chest' ? 'Abrir baú' : nearInter.kind === 'portal' ? (nearInter.to === 'hub' ? 'Voltar à Vila Brasa' : 'Entrar: ' + REG[nearInter.to].name) : nearInter.kind === 'dragon' ? 'Falar com Varkhaz' : nearInter.kind === 'board' ? 'Ver contratos' : nearInter.kind === 'riftportal' ? 'Entrar na Fenda do Tear' : 'Usar');
     pr.innerHTML = (G.touch ? '' : '<kbd>E</kbd>') + label; pr.hidden = false; tu.hidden = !G.touch;
     if (G.touch) { const k = nearInter.kind, vb = k === 'house' ? (H().owned ? 'ENTRAR' : 'VER') : k === 'stash' || k === 'mail' || k === 'wardrobe' || k === 'bank' ? 'ABRIR' : k === 'catalog' ? 'VER' : k === 'bed' ? 'DORMIR' : k === 'npc' || k === 'dragon' ? 'FALAR' : k === 'chest' ? 'ABRIR' : k === 'shrine' ? 'DESCANSAR' : k === 'portal' || k === 'riftportal' ? 'ENTRAR' : k === 'altar' ? 'DESAFIAR' : k === 'appletree' ? 'DEIXAR' : 'USAR', sp = tu.firstElementChild; if (sp && sp.textContent !== vb) sp.textContent = vb; }
@@ -279,6 +293,7 @@ function interact() {
   else if (it.kind === 'exitdoor') { G.arrive = { region: 'hub', x: it.ax, z: it.az }; travel('hub'); }
   else if (it.kind === 'cook') openCook();
   else if (it.kind === 'market') openMarket();
+  else if (it.kind === 'tboard') openFishery('torneio');
   else if (it.kind === 'mirante') { G.lookT = 7; sfx('ui'); toast('VISTA DO MIRANTE', true, 'O RIO, O REMANSO E A VILA INTEIRA LÁ EMBAIXO', '#9cf6ff'); if (!G.save.met.mirante) { G.save.met.mirante = true; gainXp(150); setTimeout(() => toast('+150 XP', false, 'PRIMEIRA VEZ NO MIRANTE'), 1600); writeSave(); } }
   else if (it.kind === 'obelisk') useObelisk(it);
   else if (it.kind === 'cave') enterCave(it);
@@ -476,11 +491,12 @@ function setupIndoor(key) {
   const put = (id, x, z, yaw, sit, asleep) => {
     const n = NPCS.find(q => q.id === id) || EAST_NPCS.find(q => q.id === id) || (id === 'bardo' ? BARD : null); if (!n) return;
     const base = NPCS.includes(n) ? 32 + NPCS.indexOf(n) * 8 : n.base || 152, m = makeModel('npc-' + n.id, () => buildHumanoid(n.cfg, base));
-    npcs.push({ ...n, wander: null, x, z, baseYaw: yaw, yaw, model: m, anim: newAnim(m), talkT: 0, visible: true, sit, asleep });
+    const o = { ...n, wander: null, x, z, baseYaw: yaw, yaw, model: m, anim: newAnim(m), talkT: 0, visible: true, sit, asleep }; npcs.push(o); return o;
   };
   if (key === 'taverna') {
     inter.push({ kind: 'cook', x: cx + 1, z: z0 + 1.7, r: 1.4 });
-    if (npcPlace('mel', h) === 'taverna') put('mel', x0 + 3.2, z0 + .95, 0, false, false);
+    inter.push({ kind: 'tboard', x: cx - 3, z: z0 + 1.3, r: 1.3 });   // Quadro do Torneio de Pesca
+    if (npcPlace('mel', h) === 'taverna') { const mel = put('mel', x0 + 3.2, z0 + .95, 0, false, false); mel.path = [[x0 + 3.2, z0 + .95, 4, x0 + 3.2, z0 + 3], [cx - 2, cz - .6, 2.5, cx - 2, cz + .5], [cx + 2.5, cz - 2.6, 2.5, cx + 2.5, cz - 1.5], [cx + 5, cz + .9, 2.5, cx + 5, cz + 2], [cx - 5, cz + 1.9, 2.5, cx - 5, cz + 3]]; mel.pi = 0; mel.wait = 2; }   // a Mel serve as mesas
     if (npcPlace('lio', h) === 'taverna') put('lio', x1 - 2.4, z0 + 2.4, 0, false, false);
     if (npcPlace('otto', h) === 'taverna') put('otto', cx + 3.4, cz - 1.5, -1.57, true, false);
     if (npcPlace('brann', h) === 'taverna') put('brann', cx - 2.9, cz + .5, 1.57, true, false);

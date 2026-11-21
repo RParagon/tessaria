@@ -61,6 +61,9 @@ export interface Store {
   marketCollect(sellerId: string, tax: number): Promise<{ ok: true; rev: number; gold: number; n: number } | { ok: false; reason: 'nada' | 'sem-save' }>;
   /** Troca direta: itens (ids da bolsa) e Centelhas dos dois lados, tudo ou nada. */
   tradeExecute(aId: string, bId: string, aItems: string[], aGold: number, bItems: string[], bGold: number): Promise<{ ok: true; revA: number; revB: number; fromA: any[]; fromB: any[] } | { ok: false; reason: string }>;
+  /** Histórico: registra uma troca feita e lista as trocas e as compras e vendas no mercado de uma conta (mais novas primeiro). */
+  logTrade(e: { aId: string; bId: string; aName: string; bName: string; aItems: any[]; aGold: number; bItems: any[]; bGold: number }): Promise<void>;
+  history(accountId: string, limit: number): Promise<HistoryEntry[]>;
   /** Registra itens sorteados pelo servidor. */
   grantItems(accountId: string, itemIds: string[], source: string): Promise<void>;
   /** Dos ids dados, os que o servidor concedeu (para qualquer conta). */
@@ -93,3 +96,5 @@ export interface Store {
 
 export interface FishScore { name: string; points: number; bestFish: string; bestKg: number; bestPts: number }
 export interface Listing { id: number; sellerName: string; item: any; price: number; createdAt: Date; sold: boolean; paid: boolean; buyerName?: string | null }
+/** Entrada do histórico: troca (com quem, o que foi e veio, Centelhas líquidas) ou mercado (venda/compra). */
+export interface HistoryEntry { kind: 'troca' | 'venda' | 'compra'; with: string; gave: string[]; got: string[]; gold: number; at: Date }

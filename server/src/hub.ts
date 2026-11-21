@@ -465,7 +465,8 @@ export class Hub {
     const r = await this.store.tradeExecute(t.a.account.id, t.b.account.id, oa.items.map((i: any) => i.id), oa.gold, ob.items.map((i: any) => i.id), ob.gold);
     this.trades.delete(t.a.id); this.trades.delete(t.b.id);
     if (!r.ok) { for (const x of [t.a, t.b]) send(x, { t: 'tend', reason: r.reason === 'bolsa-cheia' ? 'bolsa cheia' : r.reason === 'sem-ouro' ? 'Centelhas insuficientes' : 'os itens mudaram; sincronize e tente de novo' }); return; }
-    inc('trades_done'); await this.store.audit(t.a.account.id, 'troca', { com: t.b.account.id, deu: oa.items.map((i: any) => i.id), ouro: oa.gold, recebeu: ob.items.map((i: any) => i.id), ouroRecebido: ob.gold });
+    inc('trades_done'); await this.store.logTrade({ aId: t.a.account.id, bId: t.b.account.id, aName: t.a.account.name, bName: t.b.account.name, aItems: r.fromA, aGold: oa.gold, bItems: r.fromB, bGold: ob.gold }).catch(() => {});
+    await this.store.audit(t.a.account.id, 'troca', { com: t.b.account.id, deu: oa.items.map((i: any) => i.id), ouro: oa.gold, recebeu: ob.items.map((i: any) => i.id), ouroRecebido: ob.gold });
     send(t.a, { t: 'tdone', rev: r.revA, gave: oa.items.map((i: any) => i.id), got: r.fromB, gold: ob.gold - oa.gold, with: t.b.account.name });
     send(t.b, { t: 'tdone', rev: r.revB, gave: ob.items.map((i: any) => i.id), got: r.fromA, gold: oa.gold - ob.gold, with: t.a.account.name });
   }

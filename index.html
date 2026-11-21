@@ -225,7 +225,8 @@
   <section id="market" class="screen modal" hidden>
     <div class="mbox panel">
       <h2>Mercado da Vila</h2>
-      <div class="ftabs" role="tablist"><button class="px" data-mt="comprar">Comprar</button><button class="px" data-mt="vender">Vender</button><button class="px" data-mt="meus">Meus anúncios</button></div>
+      <div class="ftabs" role="tablist"><button class="px" data-mt="comprar">Comprar</button><button class="px" data-mt="vender">Vender</button><button class="px" data-mt="meus">Meus anúncios</button><button class="px" data-mt="hist">Histórico</button></div>
+      <div class="mkfilt" id="mkFilt" hidden><input id="mkQ" type="search" placeholder="Buscar pelo nome" aria-label="Buscar pelo nome"><select id="mkSlot" aria-label="Tipo"><option value="">Todos os tipos</option><option value="weapon">Armas</option><option value="armor">Armaduras</option><option value="charm">Amuletos</option></select><select id="mkRar" aria-label="Raridade"><option value="">Toda raridade</option><option value="1">Mágico ou melhor</option><option value="2">Raro ou melhor</option><option value="3">Épico ou melhor</option><option value="4">Lendário</option></select><select id="mkSort" aria-label="Ordem"><option value="new">Mais novos</option><option value="cheap">Menor preço</option><option value="rich">Maior preço</option><option value="power">Mais poder</option></select><label class="mkmine"><input id="mkUse" type="checkbox"> só o que eu posso usar</label></div>
       <p class="sub" id="mkSub"></p>
       <div id="mkList" style="display:flex;flex-direction:column;gap:8px"></div>
       <div class="idet" id="mkDet"></div>

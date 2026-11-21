@@ -72,7 +72,7 @@ let INDOOR = null;   // { house: índice em HUB.houses, owner: id do morador, na
 /* Rotina dos moradores pela hora do dia (dayHour, igual para todos): 'out' na vila, 'taverna', 'casa' (dormindo ou em casa) ou 'porta' (crianças na porta da taverna).
    Os que prestam serviço (Bruma na forja, Ysolde de dia, Otto de dia) continuam achando-se pela vila; à noite, quem está em casa atende lá dentro. */
 const ROUTINE = {
-  mel: [[17, 2, 'taverna']], lio: [[19, 1, 'taverna'], [1, 8, 'casa']], otto: [[20, 24, 'taverna'], [0, 7, 'casa']], brann: [[18, 21, 'taverna'], [21, 6, 'casa']],
+  mel: [[17, 2, 'taverna']], lio: [[19, 1, 'taverna'], [1, 8, 'casa']], otto: [[12, 13.5, 'taverna'], [20, 24, 'taverna'], [0, 7, 'casa']], brann: [[12, 15, 'taverna'], [18, 21, 'taverna'], [21, 6, 'casa']],   // de dia, o Otto almoça e o Brann joga cartas na taverna
   kiko: [[20, 22, 'porta'], [22, 6, 'casa']], nina: [[20, 22, 'porta'], [22, 6, 'casa']], ysolde: [[23, 5, 'casa']], tarsa: [[9, 15, 'casa']],
   dora: [[19, 7, 'casa']], lucia: [[21, 4.2, 'casa']], bardo: [[2, 9, 'casa']], ivo: [[2, 5, 'casa']],
 };

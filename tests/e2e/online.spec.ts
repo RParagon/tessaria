@@ -518,6 +518,9 @@ test('mercado da vila e troca direta: anunciar, comprar e receber; trocar itens 
   await A.page.click('#mkClose');
   // B compra
   await ev(B.page, 'openMarket()'); await B.page.waitForSelector('#market:not([hidden])');
+  await B.page.fill('#mkQ', 'zzz-nada');   // filtro que não acha nada
+  await expect(B.page.locator('#mkList')).toContainText('Nada com esses filtros');
+  await B.page.fill('#mkQ', '');
   await B.page.locator('#mkList .shoprow', { hasText: A.name }).locator('button.gold').click();
   await B.page.waitForFunction(id => (window as any).__T.ev(`G.save.inv.some(it => it.id === '${id}') && G.save.gold === 1500`), id0, { timeout: 10_000 });
   await B.page.click('#mkClose');
@@ -540,6 +543,12 @@ test('mercado da vila e troca direta: anunciar, comprar e receber; trocar itens 
   await A.page.click('#trReady'); await B.page.click('#trReady');
   await A.page.waitForFunction(id => (window as any).__T.ev(`!G.trade && G.save.gold === 875 && !G.save.inv.some(it => it.id === '${id}')`), sword, { timeout: 10_000 });
   await B.page.waitForFunction(id => (window as any).__T.ev(`!G.trade && G.save.gold === 1200 && G.save.inv.some(it => it.id === '${id}')`), sword, { timeout: 10_000 });
+  // histórico: a troca e a venda aparecem para A
+  await ev(A.page, 'openMarket()'); await A.page.waitForSelector('#market:not([hidden])');
+  await A.page.click('#market .ftabs button[data-mt="hist"]');
+  await expect(A.page.locator('#mkList')).toContainText('Troca com ' + B.name, { timeout: 10_000 });
+  await expect(A.page.locator('#mkList')).toContainText('Vendeu para ' + B.name);
+  await A.page.click('#mkClose');
   // os saves seguem sincronizando depois da troca
   for (const pg of [A.page, B.page]) { await pg.evaluate(() => (window as any).__T.ev('writeSave()')); await pg.evaluate(() => (window as any).TessNet.flushNow()); expect(await pg.evaluate(() => (window as any).TessNet.sync)).toBe('salvo'); }
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);

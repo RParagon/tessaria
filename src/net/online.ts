@@ -211,7 +211,9 @@ export class Net {
     const r = await call('POST', '/fish/sell', { fish, n }, 8000); return r.status === 200 ? r.data : null;
   }
   /** Torneio de pesca: avisa a pesca (pontos pelo peso) e lê o ranking da semana. */
-  fishCatch(fish: string, kg: number) { if (this.account && !this.offline) void call('POST', '/fish/catch', { fish, kg }, 6000).then(r => { if (r.status === 200) this.emit('fishpts', r.data); }); }
+  fishCatch(fish: string, kg: number) { if (this.account && !this.offline) void call('POST', '/fish/catch', { fish, kg }, 6000).then(r => { if (r.status === 200) (window as any).TessGame?.fishPts?.(r.data); }); }
+  /** Histórico de trocas e de compras e vendas no mercado. */
+  async history(): Promise<any[] | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/history', undefined, 8000); return r.status === 200 ? r.data.history : null; }
   async fishTourney(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/fish/tournament', undefined, 8000); return r.status === 200 ? r.data : null; }
   async fishClaim(): Promise<{ gold: number; rank: number } | null> { if (!this.account || this.offline) return null; const r = await call('POST', '/fish/tournament/claim', {}, 8000); return r.status === 200 ? r.data : null; }
   // ---------- mercado da vila ----------

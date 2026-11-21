@@ -373,6 +373,8 @@ for (const kind of STORES) {
       const sa = (await api(S.url, 'GET', '/save', undefined, A.token)).body, sb = (await api(S.url, 'GET', '/save', undefined, B.token)).body;
       assert.equal(sa.data.gold, 350); assert.deepEqual(sa.data.inv.map((x: any) => x.id), ['tr00002b']); assert.equal(sa.rev, da.rev);
       assert.equal(sb.data.gold, 200); assert.deepEqual(sb.data.inv.map((x: any) => x.id), ['tr00001a']);
+      const h = (await api(S.url, 'GET', '/history', undefined, A.token)).body.history[0];
+      assert.deepEqual([h.kind, h.with, h.gave, h.got, h.gold], ['troca', B.account.name, ['Anel A'], ['Anel B'], -150]);
       // A não consegue trazer de volta o anel que deu
       assert.equal((await api(S.url, 'PUT', '/save', { rev: sa.rev, data: { ...sa.data, inv: [...sa.data.inv, { id: 'tr00001a', slot: 'charm', rar: 2, tier: 2, st: { crit: 4 }, cls: 'lamina', name: 'Anel A' }] } }, A.token)).status, 422);
       a.c.close(); b.c.close();

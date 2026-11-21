@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { MIGRATIONS } from './migrations';
-import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult , Listing } from './types';
+import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult , Listing, HistoryEntry } from './types';
 import { invMax } from '../../../shared/save';
 
 type Row = Record<string, any>;
@@ -106,6 +106,18 @@ export class PgStore implements Store {
   async claimFishPrize(week: number, accountId: string) {
     const r = await this.sql`UPDATE fish_scores SET claimed = true WHERE week = ${week} AND account_id = ${accountId} AND NOT claimed RETURNING week`;
     return r.length > 0;
+  }
+  async logTrade(e: { aId: string; bId: string; aName: string; bName: string; aItems: any[]; aGold: number; bItems: any[]; bGold: number }) {
+    await this.sql`INSERT INTO trade_log (a_id, b_id, a_name, b_name, a_items, a_gold, b_items, b_gold) VALUES (${e.aId}, ${e.bId}, ${e.aName}, ${e.bName}, ${this.sql.json(e.aItems)}, ${e.aGold}, ${this.sql.json(e.bItems)}, ${e.bGold})`;
+  }
+  async history(accountId: string, limit: number) {
+    const nm = (xs: any[]) => (Array.isArray(xs) ? xs : []).map(i => String(i?.name ?? '?'));
+    const tr = await this.sql`SELECT * FROM trade_log WHERE a_id = ${accountId} OR b_id = ${accountId} ORDER BY created_at DESC LIMIT ${limit}`;
+    const mk = await this.sql`SELECT * FROM market_listings WHERE buyer_id IS NOT NULL AND (seller_id = ${accountId} OR buyer_id = ${accountId}) ORDER BY sold_at DESC LIMIT ${limit}`;
+    const out: HistoryEntry[] = [];
+    for (const t of tr) { const mine = t.a_id === accountId; out.push({ kind: 'troca', with: mine ? t.b_name : t.a_name, gave: nm(mine ? t.a_items : t.b_items), got: nm(mine ? t.b_items : t.a_items), gold: mine ? t.b_gold - t.a_gold : t.a_gold - t.b_gold, at: t.created_at }); }
+    for (const m of mk) { if (m.seller_id === accountId) out.push({ kind: 'venda', with: m.buyer_name ?? '?', gave: nm([m.item]), got: [], gold: Number(m.price), at: m.sold_at }); if (m.buyer_id === accountId) out.push({ kind: 'compra', with: m.seller_name, gave: [], got: nm([m.item]), gold: -Number(m.price), at: m.sold_at }); }
+    return out.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, limit);
   }
   // ---------- mercado da vila e troca direta ----------
   private toListing(x: any): Listing { return { id: Number(x.id), sellerName: x.seller_name, item: x.item, price: Number(x.price), createdAt: x.created_at, sold: !!x.buyer_id, paid: !!x.paid, buyerName: x.buyer_name ?? null }; }

@@ -241,8 +241,17 @@ function hubLakeD(px, pz) {
 function buildInterior(key, S, emitters) {
   const rm = REG[key].rooms[0], cx = rm.x * T, cz = rm.y * T, x0 = (rm.x - rm.w) * T, x1 = (rm.x + rm.w) * T, z0 = (rm.y - rm.h) * T, z1 = (rm.y + rm.h) * T;
   const leg = (x, z, h) => S.box([x, h / 2, z], [.04, h / 2, .04], 12, 0, { faces: 'nsew' });
-  const table = (x, z, w2 = .6, d2 = .4) => { S.box([x, .78, z], [w2, .04, d2], 12, 0, { faces: 'tnsew' }); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) leg(x + a * (w2 - .08), z + b * (d2 - .08), .76); };
-  const stool = (x, z) => { S.box([x, .42, z], [.18, .04, .18], 12, 0, { faces: 'tnsew' }); leg(x, z, .4); };
+  // mesa com tampo de tábuas (borda escura, que se lê bem de cima) e, às vezes, toalha xadrez; cadeira com encosto virada para a mesa
+  const table = (x, z, w2 = .6, d2 = .4, cloth) => {
+    S.box([x, .78, z], [w2, .04, d2], p => (Math.abs(p[0] - x) > w2 - .07 || Math.abs(p[2] - z) > d2 - .07) ? 29 : (frac((p[0] - x) * 3.2) < .1 ? 12 : 19), 0, { faces: 'tnsew' });
+    if (cloth) S.box([x, .83, z], [w2 * .8, .01, d2 * .8], p => ((Math.floor((p[0] - x) * 5) + Math.floor((p[2] - z) * 5)) & 1) ? 28 : cloth, 0, { faces: 't' });
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) leg(x + a * (w2 - .08), z + b * (d2 - .08), .76);
+  };
+  const stool = (x, z, tx, tz) => { S.box([x, .44, z], [.2, .04, .2], 19, 0, { faces: 'tnsew' }); for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) leg(x + a * .15, z + b * .15, .42);
+    if (tx !== undefined) { const dx = x - tx, dz = z - tz, l = Math.hypot(dx, dz) || 1, bx = x + dx / l * .19, bz = z + dz / l * .19; S.box([bx, .78, bz], [Math.abs(dz / l) * .2 + .03, .32, Math.abs(dx / l) * .2 + .03], 12, 0, { faces: 'tnsew' }); } };
+  const plate = (x, z) => { S.ell([x, .84, z], [.13, .015, .13], 28, 0, { noSolid: true, min: 10 }); S.ell([x, .86, z], [.06, .03, .05], 13, 0, { min: 6 }); };
+  const frame = (x, m) => { S.box([x, 2.1, z0 + .08], [.42, .32, .03], p => (Math.abs(p[0] - x) > .36 || Math.abs(p[1] - 2.1) > .26) ? 14 : m, 0, { faces: 's' }); };   // quadro na parede
+  const herbs = x => { S.tube([[x - .5, 2.55, z0 + .15, .02, 0], [x + .5, 2.55, z0 + .15, .02, 0]], 12, { sub: 1 }); for (let k = 0; k < 5; k++) S.cone([x - .4 + k * .2, 2.52, z0 + .17], [x - .4 + k * .2, 2.2, z0 + .17], .06, k % 2 ? 10 : 13, 0); };   // ervas secando
   const shelf = (x, z, items) => { S.box([x, 1.2, z], [.9, 1.2, .2], 19, 0, { faces: 'tnsew' }); for (const y of [.5, 1.1, 1.7]) S.box([x, y, z + .05], [.85, .03, .18], 12, 0, { faces: 'tnsew' }); items.forEach((m, k) => S.ell([x - .6 + (k % 4) * .4, .62 + Math.floor(k / 4) * .6, z + .08], [.1, .12, .1], m, 0, { min: 8 })); };
   const fire = (x, z) => { S.box([x, 1.1, z], [1.0, 1.1, .4], (p, n) => n[2] > .5 && Math.abs(p[0] - x) < .5 && p[1] < .9 ? 29 : 11, 0, { faces: 'tsew' }); S.box([x, 2.25, z + .1], [1.15, .07, .5], 12, 0, { faces: 'tnsew' }); for (let k = 0; k < 3; k++) S.pt([x - .2 + k * .2, .25, z + .3], [.9, 0, 0], 21, 0, .3, 16); emitters.push({ t: 'torch', x, y: .4, z: z + .3 }); };
   const window_ = x => { S.box([x, 2.0, z0 + .06], [.7, .55, .05], p => (Math.abs(p[0] - x) < .05 || Math.abs(p[1] - 2.0) < .05) ? 24 : 27, 0, { faces: 's' }); S.box([x, 1.38, z0 + .2], [.85, .06, .16], 24, 0, { faces: 'tsew' }); };
@@ -251,16 +260,18 @@ function buildInterior(key, S, emitters) {
     S.box([x0 + 3.2, .55, z0 + 1.6], [2.6, .55, .4], (p, n) => p[1] > 1.0 ? 12 : (frac(p[0] * 1.5) < .1 ? 29 : 19), 0, { faces: 'tnsew' });   // balcão
     S.box([x0 + 3.2, 1.75, z0 + .25], [2.6, 1.2, .2], 19, 0, { faces: 'tnsew' }); for (let k = 0; k < 8; k++) S.ell([x0 + 1.0 + k * .6, 2.0 + (k % 2) * .5, z0 + .5], [.12, .18, .12], [14, 16, 13, 27, 17, 14, 26, 13][k], 0, { min: 8 });   // prateleira de garrafas
     for (let k = 0; k < 3; k++) S.ell([x0 + .9, .45, z0 + 3 + k * 1.1], [.38, .45, .38], p => Math.abs(p[1] - .45) < .05 ? 29 : 12, 0, { min: 20 });   // barris
-    for (const [tx, tz] of [[cx - 2, cz + .5], [cx + 2.5, cz - 1.5], [cx + 5, cz + 2], [cx - 5, cz + 3]]) { table(tx, tz, .6, .6); for (const [a, b] of [[-.9, 0], [.9, 0], [0, .9]]) stool(tx + a, tz + b); S.ell([tx + .2, .86, tz], [.07, .09, .07], 14, 0, { min: 8 }); S.box([tx - .2, .83, tz + .1], [.14, .01, .1], 28, 0, { faces: 't' }); }
+    [[cx - 2, cz + .5, 16], [cx + 2.5, cz - 1.5, 0], [cx + 5, cz + 2, 18], [cx - 5, cz + 3, 0]].forEach(([tx, tz, cl]) => { table(tx, tz, .65, .65, cl || 0); for (const [a, b] of [[-.95, 0], [.95, 0], [0, .95]]) stool(tx + a, tz + b, tx, tz); S.ell([tx + .25, .9, tz - .1], [.07, .09, .07], 14, 0, { min: 8 }); plate(tx - .2, tz + .15); S.ell([tx + .05, .88, tz + .3], [.05, .07, .05], 27, 0, { min: 6 }); });   // mesas com canecas, pratos e velas
+    frame(cx - 8, 22); frame(cx + 8.5, 15); herbs(cx + 3.5);
     S.box([x1 - 2.4, .2, z0 + 2.6], [1.8, .2, 1.4], 12, 0, { faces: 'tnsew' });   // palco do bardo
     fire(cx + 1, z0 + .4); window_(cx - 6); window_(cx + 6);
+    { const bx = cx - 3; S.box([bx, 1.8, z0 + .1], [1.0, .65, .05], p => (Math.abs(p[0] - bx) > .92 || Math.abs(p[1] - 1.8) > .58) ? 12 : 19, 0, { faces: 's' }); for (const [ox, oy, m] of [[-.55, 2.05, 28], [-.05, 2.1, 28], [.5, 2.0, 14], [-.4, 1.55, 28], [.2, 1.5, 28], [.65, 1.6, 16]]) S.box([bx + ox, oy, z0 + .17], [.2, .17, .01], m, 0, { faces: 's' }); S.ell([bx, 2.45, z0 + .18], [.14, .1, .03], 14, 0, { min: 10 }); }   // Quadro do Torneio de Pesca
     for (const [hx, hz] of [[cx - 3, z0 + 3], [cx + 4, z0 + 3]]) { S.tube([[hx, 3.2, hz, .02, 0], [hx, 2.6, hz, .02, 0]], 29, { sub: 1 }); S.ell([hx, 2.5, hz], [.15, .18, .15], 14, 0, { min: 10 }); emitters.push({ t: 'glow', x: hx, y: 2.5, z: hz }); }   // lampiões pendurados
     emitters.push({ t: 'candle', x: cx - 2, y: .95, z: cz + .5 }); emitters.push({ t: 'candle', x: cx + 2.5, y: .95, z: cz - 1.5 });
     return;
   }
   const own = (typeof INDOOR !== 'undefined' && INDOOR && INDOOR.owner) || 'brann', kids = own === 'kiko';
-  window_(cx - 3); fire(cx + 3.2, z0 + .4); table(cx - .6, cz + .6); stool(cx - 1.5, cz + .6); stool(cx + .3, cz + .6);
-  S.ell([cx - .8, .86, cz + .5], [.07, .08, .07], 14, 0, { min: 8 }); emitters.push({ t: 'candle', x: cx - .4, y: .95, z: cz + .7 });
+  window_(cx - 3); fire(cx + 3.2, z0 + .4); table(cx - .6, cz + .6, .6, .4, own === 'kiko' || own === 'brann' ? 16 : own === 'ysolde' ? 26 : 0); stool(cx - 1.55, cz + .6, cx - .6, cz + .6); stool(cx + .35, cz + .6, cx - .6, cz + .6);
+  S.ell([cx - .8, .9, cz + .5], [.07, .08, .07], 14, 0, { min: 8 }); plate(cx - .3, cz + .7); frame(cx + 1, own === 'ysolde' ? 26 : own === 'ivo' ? 15 : 22); if (own !== 'kiko') herbs(cx - 1.2); emitters.push({ t: 'candle', x: cx - .4, y: .95, z: cz + .7 });
   if (kids) { bed(x0 + 1, z0 + 2.2, 16, true); bed(x0 + 2.4, z0 + 2.2, 18, true); for (let k = 0; k < 5; k++) S.ell([cx + 1 + k * .3, .12, cz + 2], [.12, .12, .12], [16, 17, 13, 26, 18][k], 0, { min: 8 }); }   // duas caminhas e brinquedos
   else bed(x0 + 1.3, z0 + 2.2, { tarsa: 18, ysolde: 26, otto: 16, brann: 23, lucia: 17, dora: 16, lio: 26, bardo: 22, ivo: 18 }[own] || 16);
   const X = { tarsa: () => { for (let k = 0; k < 3; k++) S.tube([[x1 - .4, .1, z0 + 1 + k * .5, .03, 0], [x1 - .4, 1.6, z0 + 1 + k * .5, .02, 0]], 28, { sub: 1 }); S.ell([x1 - .35, 1.1, cz + 1.2], [.08, .45, .45], 25, 0, { min: 20 }); },   // armas e escudo

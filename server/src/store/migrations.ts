@@ -147,4 +147,21 @@ CREATE TABLE IF NOT EXISTS market_listings (
 CREATE INDEX IF NOT EXISTS market_active ON market_listings (created_at DESC) WHERE buyer_id IS NULL;
 CREATE INDEX IF NOT EXISTS market_seller ON market_listings (seller_id);
 ` },
+  { id: '006_historico_trocas', sql: `
+-- Histórico das trocas diretas (o mercado usa market_listings).
+CREATE TABLE IF NOT EXISTS trade_log (
+  id          bigserial PRIMARY KEY,
+  a_id        uuid REFERENCES accounts(id) ON DELETE SET NULL,
+  b_id        uuid REFERENCES accounts(id) ON DELETE SET NULL,
+  a_name      text NOT NULL,
+  b_name      text NOT NULL,
+  a_items     jsonb NOT NULL,
+  a_gold      integer NOT NULL DEFAULT 0,
+  b_items     jsonb NOT NULL,
+  b_gold      integer NOT NULL DEFAULT 0,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS trade_log_a ON trade_log (a_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS trade_log_b ON trade_log (b_id, created_at DESC);
+` },
 ];

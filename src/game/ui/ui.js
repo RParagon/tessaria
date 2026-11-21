@@ -247,19 +247,23 @@ function renderFishery() {
 }
 $('#fsClose').onclick = () => closeMenus();
 /* ---- Mercado da Vila (online): anunciar itens, comprar dos outros, receber as vendas (5% de taxa) ---- */
-let mkTab = 'comprar', mkData = null, mkSel = null, mkBusy = false;
-function openMarket() { const n = NETON(); if (!n) { toast('O Mercado da Vila é online', false, 'ENTRE COM SUA CONTA PARA COMPRAR E VENDER COM OUTROS TECELÕES'); return; } mkData = null; mkSel = null; openMenu('market'); n.market().then(d => { mkData = d; if (G.menu === 'market') renderMarket(); }); }
-async function marketOp(fn, after) { if (mkBusy) return; mkBusy = true; const r = await fn(); mkBusy = false; if (!r.ok) { toast('Não deu certo', false, r.error.toUpperCase()); sfx('ui'); } else { after(r.data); writeSave(); sfx('pick'); } const n = NETON(); if (n) mkData = await n.market(); renderMarket(); }
+let mkTab = 'comprar', mkData = null, mkSel = null, mkBusy = false, mkHist = null;
+for (const id of ['#mkQ', '#mkSlot', '#mkRar', '#mkSort', '#mkUse']) $(id).addEventListener(id === '#mkQ' ? 'input' : 'change', () => { if (G.menu === 'market') renderMarket(); });
+function openMarket() { mkHist = null; const n = NETON(); if (!n) { toast('O Mercado da Vila é online', false, 'ENTRE COM SUA CONTA PARA COMPRAR E VENDER COM OUTROS TECELÕES'); return; } mkData = null; mkSel = null; openMenu('market'); n.market().then(d => { mkData = d; if (G.menu === 'market') renderMarket(); }); }
+async function marketOp(fn, after) { if (mkBusy) return; mkBusy = true; mkHist = null; const r = await fn(); mkBusy = false; if (!r.ok) { toast('Não deu certo', false, r.error.toUpperCase()); sfx('ui'); } else { after(r.data); writeSave(); sfx('pick'); } const n = NETON(); if (n) mkData = await n.market(); renderMarket(); }
 function renderMarket() {
   const s = G.save, n = NETON(), list = $('#mkList'), det = $('#mkDet'); list.innerHTML = ''; det.innerHTML = '';
   document.querySelectorAll('#market .ftabs button').forEach(b => { b.classList.toggle('on', b.dataset.mt === mkTab); b.onclick = () => { mkTab = b.dataset.mt; mkSel = null; sfx('ui'); renderMarket(); }; });
+  $('#mkFilt').hidden = mkTab !== 'comprar';
   if (!mkData) { $('#mkSub').textContent = 'Carregando o mercado…'; return; }
   const row = (it, html, btns) => { const r = document.createElement('div'); r.className = 'shoprow'; if (it) r.appendChild(slotBtn(it, () => { det.innerHTML = `<h3 style="color:${RAR[it.rar].c}">${it.name}</h3><div class="meta">${SLOTN[it.slot]} · ${RAR[it.rar].n} · Poder ${itemScore(it)}</div><ul>${itemLinesHTML(it, s.eq[it.slot])}</ul>`; }, false)); const nm = document.createElement('div'); nm.className = 'nm'; nm.innerHTML = html; r.appendChild(nm); for (const b of btns || []) r.appendChild(b); list.appendChild(r); return r; };
   const btn = (txt, on, fn, gold) => { const b = document.createElement('button'); b.className = 'px' + (gold && on ? ' gold' : ''); b.textContent = txt; b.disabled = !on; b.onclick = fn; return b; };
   if (mkTab === 'comprar') {
-    const mine = n.account.name, act = mkData.active.filter(l => l.sellerName !== mine);
+    const mine = n.account.name, q = $('#mkQ').value.trim().toLowerCase(), slot = $('#mkSlot').value, rar = +$('#mkRar').value || 0, sort = $('#mkSort').value, use = $('#mkUse').checked;
+    let act = mkData.active.filter(l => l.sellerName !== mine && (!q || l.item.name.toLowerCase().includes(q)) && (!slot || l.item.slot === slot) && l.item.rar >= rar && (!use || ((l.item.slot !== 'weapon' || l.item.cls === G.char.cls) && TI.reqLvl(l.item) <= s.lvl)));
+    act = act.slice().sort(sort === 'cheap' ? (a, b) => a.price - b.price : sort === 'rich' ? (a, b) => b.price - a.price : sort === 'power' ? (a, b) => itemScore(b.item) - itemScore(a.item) : () => 0);
     $('#mkSub').innerHTML = `Itens à venda por outros Tecelões. Você tem <b style="color:var(--gold)">${s.gold}</b> Centelhas e ${BAG() - s.inv.length} espaços na bolsa.`;
-    if (!act.length) row(null, 'Nada à venda agora.<small>Volte mais tarde, ou anuncie você mesmo na aba Vender.</small>');
+    if (!act.length) row(null, mkData.active.length ? 'Nada com esses filtros.<small>Mude a busca ou os filtros.</small>' : 'Nada à venda agora.<small>Volte mais tarde, ou anuncie você mesmo na aba Vender.</small>');
     for (const l of act) row(l.item, `<span style="color:${RAR[l.item.rar].c}">${l.item.name}</span><small>de ${l.sellerName} · Poder ${itemScore(l.item)} · nível ${TI.reqLvl(l.item)}</small>`, [btn(l.price + ' ✦', s.gold >= l.price && s.inv.length < BAG(), () => marketOp(() => n.marketBuy(l.id), d => { s.gold -= d.price; s.spent = (s.spent || 0) + d.price; s.inv.push(d.item); toast('COMPRADO', true, d.item.name.toUpperCase() + ' · −' + d.price + ' CENTELHAS', RAR[d.item.rar].c); }), true)]);
   } else if (mkTab === 'vender') {
     $('#mkSub').innerHTML = `Escolha um item da bolsa e o preço. Ele sai da bolsa e fica no mercado até alguém comprar (ou você cancelar). Taxa da vila: ${Math.round(mkData.tax * 100)}% na hora de receber. Até ${mkData.max} anúncios.`;
@@ -269,6 +273,12 @@ function renderMarket() {
       const inp = document.createElement('input'); inp.type = 'number'; inp.min = '1'; inp.step = '10'; inp.value = String(Math.max(10, scrapVal(it) * 3)); inp.style.width = '86px'; inp.setAttribute('aria-label', 'Preço');
       r.appendChild(inp); r.appendChild(btn('Anunciar', true, () => { const price = Math.max(1, Math.min(1e7, Math.floor(+inp.value || 0))); marketOp(() => n.marketList(it.id, price), () => { const i = s.inv.findIndex(x => x.id === it.id); if (i >= 0) s.inv.splice(i, 1); toast('ANUNCIADO', false, it.name.toUpperCase() + ' · ' + price + ' CENTELHAS'); }); }, true));
     }
+  } else if (mkTab === 'hist') {
+    $('#mkSub').textContent = 'Suas últimas trocas diretas e o que você comprou e vendeu no mercado.';
+    if (!mkHist) { row(null, 'Carregando…'); n.history().then(h => { mkHist = h || []; if (G.menu === 'market' && mkTab === 'hist') renderMarket(); }); return; }
+    if (!mkHist.length) row(null, 'Nada ainda.<small>Troque com alguém (toque no nome dele) ou compre e venda aqui no mercado.</small>');
+    const when = d => { const m = Math.round((Date.now() - new Date(d).getTime()) / 60000); return m < 60 ? 'há ' + m + ' min' : m < 1440 ? 'há ' + Math.round(m / 60) + ' h' : 'há ' + Math.round(m / 1440) + ' d'; };
+    for (const e of mkHist) { const r = row(null, `<b>${e.kind === 'troca' ? 'Troca com ' + e.with : e.kind === 'venda' ? 'Vendeu para ' + e.with : 'Comprou de ' + e.with}</b><small>${e.gave.length ? 'deu: ' + e.gave.join(', ') : ''}${e.gave.length && e.got.length ? ' · ' : ''}${e.got.length ? 'recebeu: ' + e.got.join(', ') : ''}${e.gold ? ` · <span class="${e.gold > 0 ? 'gp' : 'gn'}">${e.gold > 0 ? '+' : ''}${e.gold} ✦</span>` : ''} · ${when(e.at)}</small>`); r.classList.add('hist'); }
   } else {
     const due = mkData.mine.filter(l => l.sold && !l.paid), total = due.reduce((a, l) => a + Math.floor(l.price * (1 - mkData.tax)), 0);
     $('#mkSub').innerHTML = due.length ? `Você vendeu ${due.length} ${due.length > 1 ? 'itens' : 'item'}: <b style="color:var(--gold)">${total}</b> Centelhas para receber (já sem a taxa).` : 'Seus anúncios. Os vendidos aparecem aqui para você receber as Centelhas.';

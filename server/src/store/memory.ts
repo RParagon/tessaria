@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Account, ClaimResult, FishScore, Listing, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
+import type { Account, ClaimResult, FishScore, HistoryEntry, Listing, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
 import { invMax } from '../../../shared/save';
 
 /**
@@ -29,7 +29,7 @@ export class MemoryStore implements Store {
   async fishTop(week: number, n: number) { return [...this.fish.values()].filter(e => e.week === week).sort((a, b) => b.points - a.points).slice(0, n).map(e => this.fishRow(e)); }
   async fishMine(week: number, accountId: string) { const e = this.fish.get(week + ':' + accountId); if (!e) return null; const rank = 1 + [...this.fish.values()].filter(o => o.week === week && o.points > e.points).length; return { ...this.fishRow(e), rank, claimed: e.claimed }; }
   async claimFishPrize(week: number, accountId: string) { const e = this.fish.get(week + ':' + accountId); if (!e || e.claimed) return false; e.claimed = true; return true; }
-  private market: Array<{ id: number; sellerId: string; sellerName: string; item: any; price: number; createdAt: Date; buyerId: string | null; buyerName: string | null; paid: boolean }> = [];
+  private market: Array<{ id: number; sellerId: string; sellerName: string; item: any; price: number; createdAt: Date; buyerId: string | null; buyerName: string | null; paid: boolean; soldAt?: Date }> = [];
   private marketSeq = 0;
   private bump(s: SaveRow) { s.rev++; s.updatedAt = new Date(); return s.rev; }
   private invOf(s: SaveRow) { s.data.inv = Array.isArray(s.data.inv) ? s.data.inv : []; return s.data.inv as any[]; }
@@ -55,7 +55,7 @@ export class MemoryStore implements Store {
     const inv = this.invOf(s); if (inv.length >= invMax(s.data)) return { ok: false as const, reason: 'bolsa-cheia' as const };
     s.data.gold -= m.price; s.data.spent = (Number(s.data.spent) || 0) + m.price; inv.push(this.clone(m.item)); const rev = this.bump(s);
     this.tombs.get(buyerId)?.delete(m.item.id);
-    m.buyerId = buyerId; m.buyerName = this.accounts.get(buyerId)?.name ?? null;
+    m.buyerId = buyerId; m.buyerName = this.accounts.get(buyerId)?.name ?? null; m.soldAt = new Date();
     return { ok: true as const, rev, item: this.clone(m.item), price: m.price };
   }
   async marketCancel(sellerId: string, id: number) {
@@ -85,6 +85,14 @@ export class MemoryStore implements Store {
     A.data.gold = A.data.gold - aGold + bGold; B.data.gold = B.data.gold - bGold + aGold;
     for (const [acc, ids, back] of [[aId, aItems, bItems], [bId, bItems, aItems]] as const) { if (!this.tombs.has(acc)) this.tombs.set(acc, new Set()); for (const i of ids) this.tombs.get(acc)!.add(i); for (const i of back) this.tombs.get(acc)!.delete(i); }
     return { ok: true as const, revA: this.bump(A), revB: this.bump(B), fromA: this.clone(fromA), fromB: this.clone(fromB) };
+  }
+  private tradeLog: Array<{ aId: string; bId: string; aName: string; bName: string; aItems: any[]; aGold: number; bItems: any[]; bGold: number; at: Date }> = [];
+  async logTrade(e: { aId: string; bId: string; aName: string; bName: string; aItems: any[]; aGold: number; bItems: any[]; bGold: number }) { this.tradeLog.push({ ...this.clone(e), at: new Date() }); }
+  async history(accountId: string, limit: number) {
+    const out: HistoryEntry[] = [], nm = (xs: any[]) => xs.map(i => String(i?.name ?? '?'));
+    for (const t of this.tradeLog) { if (t.aId === accountId) out.push({ kind: 'troca', with: t.bName, gave: nm(t.aItems), got: nm(t.bItems), gold: t.bGold - t.aGold, at: t.at }); else if (t.bId === accountId) out.push({ kind: 'troca', with: t.aName, gave: nm(t.bItems), got: nm(t.aItems), gold: t.aGold - t.bGold, at: t.at }); }
+    for (const m of this.market) { if (!m.buyerId) continue; const at = m.soldAt ?? m.createdAt; if (m.sellerId === accountId) out.push({ kind: 'venda', with: m.buyerName ?? '?', gave: nm([m.item]), got: [], gold: m.price, at }); if (m.buyerId === accountId) out.push({ kind: 'compra', with: m.sellerName, gave: [], got: nm([m.item]), gold: -m.price, at }); }
+    return out.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, limit);
   }
   async migrate() {}
   async close() {}

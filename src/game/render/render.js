@@ -30,6 +30,19 @@ function drawRain(t) {
     dyn(x, y, z, .9, 28, .085); dyn(x - wind * .12, y + .25, z, .7, 28, .07); dyn(x - wind * .24, y + .5, z, .45, 28, .055);
   }
 }
+/** Poças: aparecem no chão andável com a chuva e somem quando seca; na chuva, gotas fazem anéis na água. */
+function drawPuddles(t) {
+  const wv = G.wet || 0; if (wv < .05 || !outdoors() || !RG) return;
+  const rain = raining();
+  for (let cz = Math.floor((cam.z - 14) / 4); cz <= Math.floor((cam.z + 14) / 4); cz++) for (let cx = Math.floor((cam.x - 18) / 4); cx <= Math.floor((cam.x + 18) / 4); cx++) {
+    const h = frac(Math.sin(cx * 127.1 + cz * 311.7) * 43758.55); if (h > .16) continue;
+    const px = cx * 4 + 1 + frac(h * 91) * 2, pz = cz * 4 + 1 + frac(h * 57) * 2; if (blocked(Math.floor(px / T), Math.floor(pz / T))) continue;
+    const r = (.55 + frac(h * 37) * .8) * wv, y = groundAt(px, pz) + .03;
+    dyn(px, y, pz, .5, 15, .35 + r * .5);
+    for (let k = 0; k < 9; k++) { const a = k / 9 * 6.283; dyn(px + Math.cos(a) * r * .7, y, pz + Math.sin(a) * r * .45, .45, 15, .2 + r * .3); }
+    if (rain) { const q = frac(t * 1.4 + h * 7); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283; dyn(px + Math.cos(a) * q * r * .8, y + .01, pz + Math.sin(a) * q * r * .5, (1 - q) * .8, 28, .05); } }
+  }
+}
 /** À noite: a Guarda Tarsa faz a ronda com lanterna e a banca da Dora fica coberta enquanto ela está em casa. */
 function drawNightVillage(t) {
   const tar = npcs.find(n => n.id === 'tarsa');
@@ -186,7 +199,7 @@ function render(dt) {
     auraFx(0, 0, G.char.aura, t, dt);   /* a aura também aparece no espelho e no inventário */
   } else {
     if (RG && RG.key === 'hub') { drawLamps(t); drawNightVillage(t); }
-    drawRain(t);
+    drawRain(t); drawPuddles(t);
     drawRemotes(dt, t);
     for (const n of npcs) {
       if (!n.visible) continue;
@@ -199,6 +212,10 @@ function render(dt) {
       n.yaw += angDiff(n.yaw, want) * (1 - Math.exp(-dt * 6));
       n.act = talking ? 'talk' : ((((n.id === 'kiko' || n.id === 'nina') && (n.moveAmt || 0) < .2 && Math.sin(t * .7 + n.x) > .8) || (n.id === 'otto' && P && Math.hypot(P.x - n.x, P.z - n.z) < 9 && Math.sin(t * .9) > .6)) ? 'wave' : null);
       n.cls = n.cfg.cls; poseHuman(n.anim, n, t + n.x);
+      if (RG && RG.key === 'taverna') {   // vida na taverna: notas do alaúde do Lio e a caneca na mão da Mel
+        if (n.id === 'lio' && !talking && Math.random() < .05) spawn({ x: n.x + rr(-.3, .3), y: 1.7, z: n.z + .2, vx: rr(-.25, .25), vy: rr(.5, .8), life: 1.8, s0: .1, s1: .07, b0: 1, b1: .1, mat: [14, 26, 27][Math.floor(Math.random() * 3)] });
+        if (n.id === 'mel' && n.W && (n.moveAmt || 0) > .3) { const hp = tp(n.W[9] || n.W[4], [.38, .55, .2]); dyn(hp[0], hp[1] + .08, hp[2], .9, 14, .13); dyn(hp[0], hp[1] + .2, hp[2], .8, 28, .08); }
+      }
       if (n.sit && !talking) { applyEmote(n.anim, 'sentar', t, 1, n.cfg.cls); if (n.asleep) { n.anim[2].rx += .25 + Math.sin(t * 1.2) * .03; if (Math.random() < .012) spawn({ x: n.x + .2, y: 1.4, z: n.z, vx: .15, vy: .35, life: 2, s0: .07, s1: .12, b0: .9, b1: .1, mat: 28 }); } }   // sentado; dormindo, cochila (Zzz)
       if (n.id === 'lio' && !talking) { n.anim[5].rx = -.9 + Math.sin(t * 9) * .18; n.anim[4].rx = -.75; n.anim[4].ry = -.6; n.anim[3].rz = Math.sin(t * 2) * .08; }
       if (n.id === 'brann') { n.anim[2].rx += .22; n.anim[3].rx -= .1; }

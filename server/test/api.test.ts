@@ -38,7 +38,7 @@ for (const kind of STORES) {
       assert.equal((await api(S.url, 'POST', '/fish/catch', { fish: 'truta', kg: 30 }, a.token)).status, 422);   // truta de 30 kg não existe
       assert.equal((await api(S.url, 'POST', '/fish/catch', { fish: 'tubarao', kg: 1 }, a.token)).status, 422);
       const c1 = await api(S.url, 'POST', '/fish/catch', { fish: 'rei', kg: 39 }, a.token);
-      assert.equal(c1.status, 200); assert.ok(c1.body.points > 50, `pontos ${c1.body.points}`);
+      assert.equal(c1.status, 200); assert.ok(c1.body.points > 50, `pontos ${c1.body.points}`); assert.equal(c1.body.rank, 1);
       assert.equal((await api(S.url, 'POST', '/fish/catch', { fish: 'lambari', kg: .1 }, a.token)).status, 429);   // rápido demais
       assert.equal((await api(S.url, 'POST', '/fish/catch', { fish: 'lambari', kg: .2 }, b.token)).status, 200);
       const t = await api(S.url, 'GET', '/fish/tournament', undefined, a.token);
@@ -70,6 +70,8 @@ for (const kind of STORES) {
       const sb = (await api(S.url, 'GET', '/save', undefined, B.token)).body;
       assert.equal(sb.data.gold, 700); assert.equal(sb.data.inv[0].id, 'mk00001a'); assert.equal(sb.rev, b.body.rev);
       assert.equal((await api(S.url, 'POST', `/market/${l.body.id}/buy`, {}, B.token)).status, 409);   // já vendido
+      const hb = (await api(S.url, 'GET', '/history', undefined, B.token)).body.history[0], ha = (await api(S.url, 'GET', '/history', undefined, A.token)).body.history[0];
+      assert.deepEqual([hb.kind, hb.with, hb.gold], ['compra', A.account.name, -300]); assert.deepEqual([ha.kind, ha.with, ha.gold], ['venda', B.account.name, 300]);
       const c = await api(S.url, 'POST', '/market/collect', {}, A.token);
       assert.equal(c.status, 200); assert.equal(c.body.gold, 285);   // 5% de taxa
       assert.equal((await api(S.url, 'GET', '/save', undefined, A.token)).body.data.gold, 120 + 285);

@@ -299,7 +299,8 @@ test('rotina e interiores: à noite os moradores vão para casa e para a taverna
   const ev = src => page.evaluate(s => window.__T.ev(s), src);
   await ev('G.save.met.ysolde = true; G.save.gold = 1000; P.hp = P.maxHp = 1e9');
   // meio-dia: Brann e Mel na rua; 21h: Brann na taverna? não: 21h ele está em casa; Mel na taverna
-  expect(await ev('[npcs.find(n => n.id === "brann").visible, npcPlace("brann", 12), npcPlace("brann", 22), npcPlace("mel", 21)]')).toEqual([true, 'out', 'casa', 'taverna']);
+  await ev('G.forceHour = 10'); await page.waitForTimeout(200);
+  expect(await ev('[npcs.find(n => n.id === "brann").visible, npcPlace("brann", 10), npcPlace("brann", 13), npcPlace("brann", 22), npcPlace("mel", 21)]')).toEqual([true, 'out', 'taverna', 'casa', 'taverna']);   // de dia o Brann joga cartas na taverna
   await ev('G.forceHour = 22');
   await page.waitForFunction(() => window.__T.ev('!npcs.find(n => n.id === "brann").visible && !npcs.find(n => n.id === "mel").visible'), null, { timeout: 5000 });
   // a porta da taverna
