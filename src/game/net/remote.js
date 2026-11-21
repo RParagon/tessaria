@@ -11,7 +11,7 @@ const rslots = Array.from({ length: RSLOTS }, () => ({ id: 0, key: '', model: nu
 /** Aparência pública do próprio herói (o que os outros veem). */
 function lookOfPlayer() {
   const eq = (G.save && G.save.eq) || {};
-  return { cls: G.char.cls, body: G.char.body, skin: G.char.skin, hair: G.char.hair, hairCol: G.char.hairCol, outfit: G.char.outfit, trim: G.char.trim, glow: G.char.glow, acc: G.char.acc, cape: !!G.char.cape, beard: G.char.beard || 'nenhuma', armorStyle: G.char.armorStyle || 'classica', aura: G.char.aura || 'nenhuma', trail: G.char.trail || '', namecolor: G.char.namecolor || '', ctitle: G.char.ctitle || '', armor: eq.armor ? eq.armor.rar : null, charm: eq.charm ? eq.charm.rar : null, wr: eq.weapon ? eq.weapon.rar : 0 };
+  return { cls: G.char.cls, body: G.char.body, skin: G.char.skin, hair: G.char.hair, hairCol: G.char.hairCol, outfit: G.char.outfit, trim: G.char.trim, glow: G.char.glow, acc: G.char.acc, cape: !!G.char.cape, beard: G.char.beard || 'nenhuma', armorStyle: G.char.armorStyle || 'classica', aura: G.char.aura || 'nenhuma', trail: G.char.trail || '', namecolor: G.char.namecolor || '', ctitle: G.char.ctitle || '', tele: G.char.tele || '', death: G.char.death || '', frame: G.char.frame || '', armor: eq.armor ? eq.armor.rar : null, charm: eq.charm ? eq.charm.rar : null, wr: eq.weapon ? eq.weapon.rar : 0 };
 }
 
 // ---------- ganchos chamados pelo jogo ----------
@@ -206,7 +206,8 @@ function drawRemotes(dt, t) {
   for (const r of vis) {
     const s = rslots[r.slot]; if (!s || !s.model) continue;
     const k = 1 - Math.exp(-dt * 12);
-    if (r.x === undefined || Math.hypot(r.tx - r.x, r.tz - r.z) > 8) { r.x = r.tx; r.z = r.tz; r.yaw = r.tyaw; }
+    if (r.x === undefined || Math.hypot(r.tx - r.x, r.tz - r.z) > 8) { if (r.x !== undefined && r.look.tele) teleFx(r.tx, r.tz, r.look.tele); r.x = r.tx; r.z = r.tz; r.yaw = r.tyaw; }   // apareceu longe (portal, obelisco): efeito de teleporte
+    if (r.down && !r.wasDown && r.look.death) deathFx(r.x, r.z, r.look.death); r.wasDown = !!r.down;   // caiu: efeito de morte
     r.x = lerp(r.x, r.tx, k); r.z = lerp(r.z, r.tz, k); r.yaw += angDiff(r.yaw, r.tyaw) * k;
     r.walkPh = (r.walkPh || 0) + dt * 7 * r.m; r.emoteT = (r.emoteT ?? 9) + dt; r.chatT = (r.chatT ?? 9) + dt;
     if (!r.anim || r.anim.length !== s.model.bones.length) r.anim = newAnim(s.model);
@@ -251,6 +252,7 @@ function updateRemoteMarks() {
     if (el.classList.contains('ally') !== ally) el.classList.toggle('ally', ally);
     const foe = pvpFoe(r, n); if (el.classList.contains('foe') !== foe) el.classList.toggle('foe', foe);   // Ermo Profundo: pode atacar e ser atacado
     { const want = r.down ? 'CAÍDO · chegue perto para costurar' : (cosTitle(r.look.ctitle) || r.title); if (tt.textContent !== want) tt.textContent = want; }
+    { const fr = frameCss(r.look.frame); if (el._fr !== fr) { if (el._fr) el.classList.remove(el._fr); if (fr) el.classList.add(fr); el._fr = fr; } }   // moldura do nome (cosmético)
     { const nc = nameColorCss(r.look.namecolor), nm = el.querySelector('.rn'); if (nm && nm._nc !== nc) { nm._nc = nc; nm.classList.toggle('aurora', nc === 'aurora'); nm.style.color = nc && nc !== 'aurora' ? nc : ''; } }   // cor do nome (cosmético)
     const showBub = r.chat && r.chatT < 6;
     bub.hidden = !showBub; if (showBub && bub.textContent !== r.chat) bub.textContent = r.chat;

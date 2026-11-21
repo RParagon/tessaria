@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.45.0 · Prévia na loja, cosméticos novos e o plano das guildas
+- **Prévia na loja:** o botão Prévia mostra o seu herói girando no pedestal com o cosmético em loop (o rastro numa esquiva, o teleporte e a morte a cada 2,5 s) e o seu nome com a cor, o título e a moldura, antes de comprar
+- **Efeito de teleporte** (4): Coluna de Luz, Portal de Fios, Redemoinho de Folhas e Rasgo do Vazio. Toca quando você chega por portal, obelisco ou ao renascer, e os outros jogadores veem quando você aparece
+- **Efeito de morte** (3): Desfazer em Pétalas, Estilhaço de Vidro e Cinzas e Brasas. Toca quando você cai (os outros veem no grupo)
+- **Moldura do nome** (4): Dourada, de Luar, de Espinhos e de Fios Vivos (animada), no nome acima do herói
+- Tudo no Guarda-Roupa da casa, só com o que a conta tem; a vitrine semanal da loja passa a sortear também entre esses
+- **Plano das guildas** em `docs/GUILDS.md`: guilda com cargos e contribuição (Fios da Guilda), a Ilha da Guilda no Arquipélago do Tear com prédios que deixam a ilha mais forte e a Guerra de Guildas semanal em cerco, sempre sem vantagem paga
+
 ## 0.44.0 · Temporada 1: Passe do Tear, cosméticos e equilíbrio das classes
 - **Passe do Tear (tecla P ou botão Passe):** Temporada 1 · A Fenda de Vidro, 8 semanas e 40 níveis. Trilha grátis a cada 2 níveis (Centelhas, Fios do Tear, títulos e Fios Dourados) e trilha premium em todos os níveis, com 8 cosméticos exclusivos e 660 Fios Dourados de volta. O premium custa 950 Fios Dourados
 - **Missões:** 3 diárias e 3 semanais, iguais para todos, cumpridas jogando: matar monstros, elites e Alfas, Fendas, chefes, pescar, cozinhar, vender peixe, abrir baús, aprimorar, comer na taverna, obeliscos, caçar nos Ermos à noite. Quando uma termina, chega um aviso e um ponto vermelho no botão do passe

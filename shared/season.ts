@@ -3,7 +3,7 @@
 // Regra de ouro (docs/MONETIZATION.md): dinheiro compra estilo, nunca poder. Nada aqui dá dano, vida,
 // chance de item ou XP de personagem. Os Fios Dourados (moeda premium) ficam no servidor, não no save.
 
-export type CosSlot = 'trail' | 'title' | 'namecolor';
+export type CosSlot = 'trail' | 'title' | 'namecolor' | 'tele' | 'death' | 'frame';
 export interface Cosmetic { id: string; slot: CosSlot; n: string; rar: 0 | 1 | 2 | 3; price?: number; src: 'loja' | 'passe' | 'feito'; fx?: any }
 
 /** Catálogo. Os de "feito" (conquista) nunca são vendidos. */
@@ -30,7 +30,25 @@ export const COSMETICS: Cosmetic[] = [
   { id: 'tit_lenda', slot: 'title', n: 'Lenda do Tear', rar: 3, src: 'passe' },
   { id: 'tit_noturno', slot: 'title', n: 'Andarilho Noturno', rar: 1, price: 200, src: 'loja' },
   { id: 'tit_campeao', slot: 'title', n: 'Campeão do Torneio', rar: 3, src: 'feito' },
+  // efeito de teleporte (ao chegar por portal, obelisco ou ao renascer; os outros veem quando você aparece)
+  { id: 'tele_coluna', slot: 'tele', n: 'Coluna de Luz', rar: 1, price: 220, src: 'loja', fx: { mat: 14, kind: 'coluna' } },
+  { id: 'tele_fios', slot: 'tele', n: 'Portal de Fios', rar: 2, price: 380, src: 'loja', fx: { mat: 30, kind: 'fios' } },
+  { id: 'tele_folhas', slot: 'tele', n: 'Redemoinho de Folhas', rar: 1, price: 220, src: 'loja', fx: { mat: 10, kind: 'folhas' } },
+  { id: 'tele_vazio', slot: 'tele', n: 'Rasgo do Vazio', rar: 3, price: 650, src: 'loja', fx: { mat: 151, kind: 'vazio' } },
+  // efeito de morte (ao cair; visível no PvP e no grupo)
+  { id: 'morte_petalas', slot: 'death', n: 'Desfazer em Pétalas', rar: 1, price: 200, src: 'loja', fx: { mat: 16, kind: 'petalas' } },
+  { id: 'morte_vidro', slot: 'death', n: 'Estilhaço de Vidro', rar: 2, price: 350, src: 'loja', fx: { mat: 28, kind: 'vidro' } },
+  { id: 'morte_brasas', slot: 'death', n: 'Cinzas e Brasas', rar: 2, price: 350, src: 'loja', fx: { mat: 21, kind: 'brasas' } },
+  // moldura do nome (acima do herói, para os outros jogadores)
+  { id: 'mold_ouro', slot: 'frame', n: 'Moldura Dourada', rar: 2, price: 300, src: 'loja', fx: { css: 'fr-ouro' } },
+  { id: 'mold_lua', slot: 'frame', n: 'Moldura de Luar', rar: 1, price: 200, src: 'loja', fx: { css: 'fr-lua' } },
+  { id: 'mold_espinhos', slot: 'frame', n: 'Moldura de Espinhos', rar: 2, price: 300, src: 'loja', fx: { css: 'fr-espinhos' } },
+  { id: 'mold_fios', slot: 'frame', n: 'Moldura de Fios Vivos', rar: 3, price: 600, src: 'loja', fx: { css: 'fr-fios' } },
 ];
+/** Rótulo de cada tipo de cosmético. */
+export const COS_SLOT_N: Record<CosSlot, string> = { trail: 'Rastro de esquiva', namecolor: 'Cor do nome', title: 'Título', tele: 'Efeito de teleporte', death: 'Efeito de morte', frame: 'Moldura do nome' };
+/** Campo do visual (char) onde cada tipo fica equipado. */
+export const COS_FIELD: Record<CosSlot, string> = { trail: 'trail', namecolor: 'namecolor', title: 'ctitle', tele: 'tele', death: 'death', frame: 'frame' };
 export const cosById = (id: string) => COSMETICS.find(c => c.id === id);
 
 // ---------- temporada ----------

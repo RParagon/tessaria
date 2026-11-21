@@ -105,5 +105,12 @@ Online:
 
 - [x] Passe do Tear com trilhas grátis e premium, missões diárias e semanais, entrada diária e loja de cosméticos (0.44.0)
 - [ ] Ligar os pagamentos (Mercado Pago/Stripe na web, Google Play Billing no Android) com webhook
-- [ ] Prévia dos cosméticos da loja no próprio personagem
-- [ ] Mais categorias: efeito de teleporte, efeito de morte, molduras do nome, decoração da casa
+- [x] Prévia dos cosméticos da loja no próprio personagem (0.45.0)
+- [x] Efeito de teleporte, efeito de morte e molduras do nome (0.45.0)
+- [ ] Decoração da casa e da Ilha da Guilda com Fios Dourados
+
+## Fase 5 · Guildas (desenho em docs/GUILDS.md)
+
+- [ ] Guilda social: fundar, cargos, chat, emblema e contribuição (Fios da Guilda)
+- [ ] Ilha da Guilda no Arquipélago do Tear, com prédios e obras
+- [ ] Guerra de Guildas semanal em cerco (depende do combate com autoridade do servidor)

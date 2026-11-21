@@ -279,7 +279,8 @@ function hurtPlayer(dmg, sx, sz, kb = 7) {
   return true;
 }
 /** Morte de verdade: custo da dificuldade e volta no ponto seguro. */
-function playerDie() { P.hp = 0; P.dieT = 0; G.save.deaths++; toast('Você se desfez em fios…', true, 'o Tear vai costurar você de volta');
+function playerDie() { P.hp = 0; P.dieT = 0; G.save.deaths++; if (G.char.death) deathFx(P.x, P.z, G.char.death);   // efeito de morte (cosmético)
+  toast('Você se desfez em fios…', true, 'o Tear vai costurar você de volta');
   if (RG && RG.wild) {   // Ermos: tudo o que você carrega fica no chão por 5 min (equipados e banco ficam)
     const s = G.save, old = s.wloot && Date.now() - s.wloot.t < LOOT_MS ? s.wloot : null, items = s.inv.splice(0);
     s.wloot = { x: Math.round(P.x * 10) / 10, z: Math.round(P.z * 10) / 10, gold: s.gold + (old ? old.gold : 0), items: (old ? old.items : []).concat(items).slice(0, 40), t: Date.now() }; s.gold = 0; writeSave(); netLootDrop(s.wloot);   // online: o espólio vai para o chão da sala e qualquer um pega
@@ -292,7 +293,7 @@ function respawn() {
     if (boss) endBossFight(false);
     const cp = G.save.cp && G.save.cp.region === RG.key ? G.save.cp : null;
     const sx = cp ? cp.x : RG.start.wx, sz = cp ? cp.z : RG.start.wz + 2;
-    makePlayer(sx, sz); P.warp = true;   // online: o servidor aceita o salto
+    makePlayer(sx, sz); P.warp = true; if (G.char.tele) teleFx(sx, sz, G.char.tele);   // online: o servidor aceita o salto; efeito de teleporte (cosmético)
     G.respawning = false;
     fadeTo(0, .6);
   });

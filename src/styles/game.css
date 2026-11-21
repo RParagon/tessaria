@@ -442,3 +442,16 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 #seList .pass button{min-width:64px}
 .aurora{background:linear-gradient(90deg,#9cf6ff,#c79bff,#ffd27a,#6fe3a0,#9cf6ff);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:aurora 4s linear infinite}
 @keyframes aurora{to{background-position:300% 0}}
+
+/* prévia de cosmético: o painel vai para a direita e o herói aparece no pedestal */
+#season.previewing{background:transparent!important;backdrop-filter:none!important}
+#season.previewing .mbox{margin-left:auto;margin-right:4vw;max-width:340px}
+.prevtag .rn{font-size:15px}
+#season.previewing #seList,#season.previewing .ftabs,#season.previewing #seSub{display:none}
+.seprev{text-align:center;padding:10px 0}
+.prevtag{position:static!important;transform:none!important;display:inline-block;margin:6px auto}
+/* molduras do nome */
+.tag.rp.fr-ouro .rn,.prevtag.fr-ouro .rn{border:2px solid #ffbf3d;padding:0 6px;background:#2a1a05cc;box-shadow:0 0 6px #ffbf3d88}
+.tag.rp.fr-lua .rn,.prevtag.fr-lua .rn{border:2px solid #bfe3ff;padding:0 6px;background:#0b1424cc;border-radius:8px}
+.tag.rp.fr-espinhos .rn,.prevtag.fr-espinhos .rn{border:2px dashed #ff5a7a;padding:0 6px;background:#2a0610cc}
+.tag.rp.fr-fios .rn,.prevtag.fr-fios .rn{border:2px solid transparent;padding:0 6px;background:linear-gradient(#140f20,#140f20) padding-box,linear-gradient(90deg,#9cf6ff,#c79bff,#ffd27a,#9cf6ff) border-box;background-size:auto,300% 100%;animation:aurora 3s linear infinite}

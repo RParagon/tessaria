@@ -75,8 +75,8 @@ function openMenu(which) {
   if (which === 'forge') renderForge(); if (which === 'journal') renderJournal(); if (which === 'pause') renderPause();
   showOnly('#' + which); refreshHudVis();
 }
-function closeMenus() { showOnly(null); G.mode = 'play'; G.menu = null; refreshHudVis(); updateObjective(); }
-$('#bJournal').onclick = () => openMenu('journal'); $('#hPass').onclick = () => openSeason(); $('#seClose').onclick = () => closeMenus(); $('#bBag').onclick = () => openMenu('inv');
+function closeMenus() { if (G.cosPreview) cosPreviewEnd(); showOnly(null); G.mode = 'play'; G.menu = null; refreshHudVis(); updateObjective(); }
+$('#bJournal').onclick = () => openMenu('journal'); $('#hPass').onclick = () => openSeason(); $('#sePrevBack').onclick = () => { cosPreviewEnd(); sfx('ui'); }; $('#seClose').onclick = () => closeMenus(); $('#bBag').onclick = () => openMenu('inv');
 $('#abBag').onclick = () => openMenu('inv'); $('#abDash').onclick = () => doDash(); $('#abSkill').onclick = () => doSkill(); $('#abUlt').onclick = () => doUlt(); $('#abPot').onclick = () => drinkPotion();
 $('#iClose').onclick = closeMenus; $('#sClose').onclick = closeMenus; $('#kClose').onclick = closeMenus; $('#bdClose').onclick = closeMenus; $('#rClose').onclick = closeMenus;
 $('#bSkills').onclick = () => openMenu('skills');
@@ -631,9 +631,9 @@ function renderCreator() {
   $('#cArmorF').hidden = !W; if (W) { if (!G.char.armorStyle) G.char.armorStyle = 'classica'; optRow('#cArmor', ARMOR_STYLES.map(a => ({ label: a[1], value: a[0], cost: a[2] })), 'armorStyle'); $('#cArmorHint').hidden = !!(G.save.eq && G.save.eq.armor); }
   $('#cCosF').hidden = !W;
   if (W) {   // cosméticos da temporada: só os que a conta tem (vêm do servidor)
-    for (const k of ['trail', 'namecolor', 'ctitle']) if (G.char[k] === undefined) G.char[k] = '';
+    for (const k of ['trail', 'namecolor', 'ctitle', 'tele', 'death', 'frame']) if (G.char[k] === undefined) G.char[k] = '';
     const own = new Set(G.cosOwned || []), C = window.TessSeason.COSMETICS, mk = slot => [{ label: 'Nenhum', value: '' }].concat(C.filter(c => c.slot === slot && own.has(c.id)).map(c => ({ label: c.n, value: c.id })));
-    optRow('#cTrail', mk('trail'), 'trail'); optRow('#cNameCol', mk('namecolor'), 'namecolor'); optRow('#cCTitle', mk('title'), 'ctitle');
+    optRow('#cTrail', mk('trail'), 'trail'); optRow('#cNameCol', mk('namecolor'), 'namecolor'); optRow('#cCTitle', mk('title'), 'ctitle'); optRow('#cTele', mk('tele'), 'tele'); optRow('#cDeath', mk('death'), 'death'); optRow('#cFrame', mk('frame'), 'frame');
     $('#cCosHint').textContent = own.size ? 'Rastro de esquiva, cor do nome e título: os outros jogadores veem.' : 'Ganhe rastros, cores de nome e títulos no Passe do Tear (tecla P) ou compre na loja da temporada.';
   }
   $('#cCape').checked = G.char.cape;

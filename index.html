@@ -101,7 +101,7 @@
       <div class="field"><span class="lbl">Brilho dos olhos e da magia</span><div class="opts" id="cGlow"></div></div>
       <div class="field"><span class="lbl">Acessório</span><div class="opts" id="cAcc"></div></div>
       <div class="field" id="cAuraF" hidden><span class="lbl">Aura (efeito de partículas)</span><div class="opts" id="cAura"></div></div>
-      <div class="field" id="cCosF" hidden><span class="lbl">Cosméticos da temporada (Passe do Tear e loja)</span><div class="opts" id="cTrail"></div><div class="opts" id="cNameCol"></div><div class="opts" id="cCTitle"></div><p class="sub" id="cCosHint"></p></div>
+      <div class="field" id="cCosF" hidden><span class="lbl">Cosméticos da temporada (Passe do Tear e loja)</span><div class="opts" id="cTrail"></div><div class="opts" id="cNameCol"></div><div class="opts" id="cCTitle"></div><div class="opts" id="cTele"></div><div class="opts" id="cDeath"></div><div class="opts" id="cFrame"></div><p class="sub" id="cCosHint"></p></div>
       <div class="field" id="cArmorF" hidden><span class="lbl">Estilo da armadura</span><div class="opts" id="cArmor"></div><p class="sub" id="cArmorHint" hidden>Equipe uma armadura para ver o estilo. A raridade continua dando a cor.</p></div>
       <label class="chk" for="cCape"><input type="checkbox" id="cCape"> Usar capa</label>
       <div class="crow"><button class="px" id="cRand">Aleatório</button><button class="px" id="cBack">Voltar</button></div>
@@ -229,6 +229,8 @@
       <p class="sub" id="seHead"></p>
       <div class="ftabs" role="tablist"><button class="px" data-st="passe">Passe</button><button class="px" data-st="missoes">Missões</button><button class="px" data-st="loja">Loja</button><button class="px" data-st="entrada">Entrada</button></div>
       <p class="sub" id="seSub"></p>
+      <div id="sePrev" class="seprev" hidden></div>
+      <button class="px" id="sePrevBack" hidden>Voltar à loja</button>
       <div id="seList" style="display:flex;flex-direction:column;gap:8px"></div>
       <button class="px" id="seClose">Fechar</button>
     </div>

@@ -182,7 +182,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const ids = allItems(b.data).map(x => x.it?.id).filter((x): x is string => typeof x === 'string');
     const dead = await store.tombstoned(a.id, ids);
     if (dead.length) check.errors.push(`itens que já saíram pelo correio: ${dead.slice(0, 3).join(', ')}`);
-    { const c = (b.data as any).char || {}, want = [c.trail, c.namecolor, c.ctitle].filter((x: unknown) => typeof x === 'string' && x); if (want.length) { const own = new Set((await store.seasonGet(a.id, SEASON.id)).owned); for (const w of want) if (!own.has(w)) check.errors.push(`cosmético que a conta não tem: ${w}`); } }   // Fios Dourados e cosméticos: a posse é do servidor
+    { const c = (b.data as any).char || {}, want = [c.trail, c.namecolor, c.ctitle, c.tele, c.death, c.frame].filter((x: unknown) => typeof x === 'string' && x); if (want.length) { const own = new Set((await store.seasonGet(a.id, SEASON.id)).owned); for (const w of want) if (!own.has(w)) check.errors.push(`cosmético que a conta não tem: ${w}`); } }   // Fios Dourados e cosméticos: a posse é do servidor
     // Itens marcados como sorteados pelo servidor (g=1) precisam estar no registro.
     const claimed = allItems(b.data).filter(x => x.it && (x.it as any).g === 1).map(x => x.it.id).filter((x): x is string => typeof x === 'string');
     if (claimed.length) { const ok = new Set(await store.granted(claimed)); const fake = claimed.filter(id => !ok.has(id)); if (fake.length) check.errors.push(`itens do servidor desconhecidos: ${fake.slice(0, 3).join(', ')}`); }

@@ -104,7 +104,7 @@ function resize() {
   const w = Math.max(1, Math.round(canvas.clientWidth * dpr)), h = Math.max(1, Math.round(canvas.clientHeight * dpr));
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   // espelho (bolsa e criação): o dobro da resolução, para ver o personagem e os cosméticos de perto
-  const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv');
+  const pv = G.mode === 'create' || (G.mode === 'menu' && (G.menu === 'inv' || (G.menu === 'season' && !!G.cosPreview)));
   pxDev = Math.max(1, Math.round((pv ? Math.max(1, G.settings.px * .5) : G.settings.px) * dpr));
   resizeFB(Math.ceil(w / pxDev), Math.ceil(h / pxDev));
 }
@@ -138,7 +138,7 @@ function render(dt) {
   const proj = mPersp(fov, asp, .1, 220);
   let eye, tgt, regPal = curPal || REGPAL.hub, xray = 0, player = [0, -99, 0];
   dynN = 0;
-  const preview = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv');
+  const preview = G.mode === 'create' || (G.mode === 'menu' && (G.menu === 'inv' || (G.menu === 'season' && !!G.cosPreview)));
   if (G.mode === 'title' || (!P && G.mode !== 'create')) {
     const a = G.time * .06; tgt = [44, 1, 32]; eye = [44 + Math.sin(a) * 32, 21, 32 + Math.cos(a) * 32];
   } else if (preview) {
@@ -165,7 +165,7 @@ function render(dt) {
   gl.uniformMatrix4fv(U.u_vp, false, VP); gl.uniform3fv(U.u_cam, eye); gl.uniform3fv(U.u_light, light); gl.uniform3fv(U.u_player, player); gl.uniform1f(U.u_aspect, asp);
   { const pc = [VP[0] * player[0] + VP[4] * (1.0 + player[1]) + VP[8] * player[2] + VP[12], VP[1] * player[0] + VP[5] * (1.0 + player[1]) + VP[9] * player[2] + VP[13], VP[3] * player[0] + VP[7] * (1.0 + player[1]) + VP[11] * player[2] + VP[15]]; gl.uniform3fv(U.u_pclip, [pc[0] / pc[2], pc[1] / pc[2], pc[2]]); }
   gl.uniform1f(U.u_proj, FB.h / (2 * Math.tan(fov / 2))); gl.uniform1f(U.u_time, G.time);
-  { const preview0 = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); NIGHT = preview0 ? 0 : nightK(); DUSK = preview0 ? 0 : duskK() * (1 - NIGHT * .6); gl.uniform1f(U.u_night, NIGHT); if (NIGHT > 0) gl.uniform4fv(U.u_lamps, nightLamps(tgt)); }
+  { const preview0 = G.mode === 'create' || (G.mode === 'menu' && (G.menu === 'inv' || (G.menu === 'season' && !!G.cosPreview))); NIGHT = preview0 ? 0 : nightK(); DUSK = preview0 ? 0 : duskK() * (1 - NIGHT * .6); gl.uniform1f(U.u_night, NIGHT); if (NIGHT > 0) gl.uniform4fv(U.u_lamps, nightLamps(tgt)); }
   const camD = V.len(V.sub(eye, tgt)); gl.uniform1f(U.u_near, Math.max(.1, camD - 14)); gl.uniform1f(U.u_range, 30);
   // sombras
   const shadows = new Float32Array(32); let si = 0;
@@ -197,6 +197,7 @@ function render(dt) {
     poseHuman(P.anim, P, t); if (EMOTES_PV.includes(pose)) applyEmote(P.anim, pose, t, 1, G.char.cls);
     drawModel(playerModel, P.anim, 0, 0, 0, creatorYaw, 1);
     auraFx(0, 0, G.char.aura, t, dt);   /* a aura também aparece no espelho e no inventário */
+    if (G.cosPreview && G.menu === 'season') cosPreviewFx(t);   // prévia de cosmético da loja, em loop
   } else {
     if (RG && RG.key === 'hub') { drawLamps(t); drawNightVillage(t); }
     drawRain(t); drawPuddles(t);

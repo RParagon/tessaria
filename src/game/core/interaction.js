@@ -434,6 +434,7 @@ function loadRegion(key, atCp) {
   else if (isIndoor(key)) { const rm = REG[key].rooms[0]; sx = rm.x * T; sz = (rm.y + rm.h) * T - 1.6; }
   else { sx = RG.start.wx; sz = RG.start.wz + 1.5; G.save.cp = { region: key, x: sx, z: sz }; }
   if (!P) makePlayer(sx, sz); else { P.x = sx; P.z = sz; P.vx = P.vz = P.kx = P.kz = 0; P.dieT = -1; }
+  if (G.char.tele) setTimeout(() => { if (P) teleFx(P.x, P.z, G.char.tele); }, 250);   // efeito de teleporte ao chegar (cosmético)
   P.maxHp = stats().maxHp; if (key === 'hub') P.hp = P.maxHp;
   cam.x = P.x; cam.z = P.z;
   writeSave(); updateObjective(); setMusic(key === 'rift' ? G.rift.base : key); netRegion(key); MM.key = null; setupMinimap();
@@ -653,7 +654,7 @@ function useObelisk(it) {
   say([{ who: 'Obelisco', text: dests.length ? 'Os fios do obelisco vibram. Para onde?' : 'Os fios vibram, mas nenhum outro obelisco desperto responde. Desperte mais deles pelos Ermos.', choices }], () => { });
 }
 function obeliskJump(x, z, name) {
-  fadeTo(1, .3, () => { P.warp = true; P.x = x; P.z = z; P.vx = P.vz = P.kx = P.kz = 0; G.save.cp = { region: RG.key, x, z }; G.wzone = null; fadeTo(0, .5); toast(name.toUpperCase(), false, 'VIAGEM PELO OBELISCO'); });
+  fadeTo(1, .3, () => { P.warp = true; P.x = x; P.z = z; if (G.char.tele) teleFx(x, z, G.char.tele); P.vx = P.vz = P.kx = P.kz = 0; G.save.cp = { region: RG.key, x, z }; G.wzone = null; fadeTo(0, .5); toast(name.toUpperCase(), false, 'VIAGEM PELO OBELISCO'); });
 }
 /** Covil: uma caverna com mapa fixo (mesma semente sempre), no nível do bioma, com guardião; volta para a boca da caverna. */
 const CAVE_BOSS = [null, 'spider', 'spider', 'eye', 'knight', 'knight', 'eye', 'eye'];

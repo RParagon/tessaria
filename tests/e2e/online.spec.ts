@@ -582,6 +582,12 @@ test('Passe do Tear: entrada do dia, missão cumprida jogando vira XP do passe, 
   await A.page.locator('#seList button.gold', { hasText: '950 Fios Dourados' }).click();
   await A.page.waitForFunction(() => (window as any).__T.ev('SEAS.me.premium === true && SEAS.me.dourados === 150'), null, { timeout: 10_000 });
   await A.page.click('#season .ftabs button[data-st="loja"]');
+  // prévia: o herói no pedestal com o cosmético em loop, e volta para a loja
+  await A.page.locator('#seList button', { hasText: 'Prévia' }).first().click();
+  await expect(A.page.locator('#sePrev')).toBeVisible();
+  expect(await ev(A.page, '!!G.cosPreview && SEAS.shop.includes(G.cosPreview)')).toBe(true);
+  await A.page.click('#sePrevBack');
+  expect(await ev(A.page, 'G.cosPreview')).toBe(null);
   await A.page.locator('#seList .shoprow', { hasText: '500 Fios Dourados' }).first().locator('button').click();
   await A.page.waitForFunction(() => (window as any).__T.ev('SEAS.me.dourados === 650'), null, { timeout: 10_000 });
   const item = await ev(A.page, 'SEAS.shop[0]');
@@ -589,7 +595,7 @@ test('Passe do Tear: entrada do dia, missão cumprida jogando vira XP do passe, 
     await A.page.locator('#seList .shoprow', { hasText: await ev(A.page, `TS.cosById('${item}').n`) }).locator('button.gold').click();
     await A.page.waitForFunction(id => (window as any).__T.ev(`SEAS.me.owned.includes('${id}')`), item, { timeout: 10_000 });
     // veste e o outro jogador vê
-    const slot = await ev(A.page, `TS.cosById('${item}').slot`), key = slot === 'trail' ? 'trail' : slot === 'namecolor' ? 'namecolor' : 'ctitle';
+    const key = await ev(A.page, `TS.COS_FIELD[TS.cosById('${item}').slot]`);
     await ev(A.page, `G.char.${key} = '${item}'; netLook(); writeSave()`);
     await B.page.waitForFunction(([n, k, id]) => (window as any).TessNet.players().some((p: any) => p.name === n && p.look[k] === id), [A.name, key, item] as const, { timeout: 10_000 });
     await A.page.evaluate(() => (window as any).TessNet.flushNow());

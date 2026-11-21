@@ -39,7 +39,7 @@ async function seasonRefresh() { const n = NETON(); if (!n) return null; const v
 function rewardTxt(r) {
   if (!r) return '';
   if (r.dourados) return r.dourados + ' Fios Dourados'; if (r.centelhas) return r.centelhas + ' Centelhas'; if (r.fios) return r.fios + ' Fios do Tear';
-  const c = TS.cosById(r.cos); return c ? c.n + ' (' + ({ trail: 'rastro', namecolor: 'cor do nome', title: 'título' })[c.slot] + ')' : r.cos;
+  const c = TS.cosById(r.cos); return c ? c.n + ' (' + TS.COS_SLOT_N[c.slot].toLowerCase() + ')' : r.cos;
 }
 const RARC = ['#d8d2c4', '#5aa2ff', '#c07bff', '#ffbf3d'];
 /** Aplica no save local o que o servidor deu (Centelhas e Fios do Tear) para não divergir da nuvem. */
@@ -81,7 +81,7 @@ function renderSeason() {
   } else if (seTab === 'loja') {
     const own = new Set(me.owned);
     $('#seSub').innerHTML = 'Vitrine da semana (troca toda segunda). Cosméticos só mudam o visual. Os de conquista (como o título de Campeão do Torneio) nunca são vendidos.';
-    for (const id of SEAS.shop) { const c = TS.cosById(id); if (!c) continue; row(`<div class="nm"><b style="color:${RARC[c.rar]}">${c.n}</b><small>${({ trail: 'Rastro de esquiva', namecolor: 'Cor do nome', title: 'Título' })[c.slot]} · ${['comum', 'raro', 'épico', 'lendário'][c.rar]}</small></div>`, [own.has(id) ? btn('Seu', false) : btn(c.price + ' ✧', me.dourados >= c.price, () => seasonOp(() => n.shopBuy(id), () => toast(c.n.toUpperCase(), true, 'VISTA NO GUARDA-ROUPA DA SUA CASA', RARC[c.rar])), true)]); }
+    for (const id of SEAS.shop) { const c = TS.cosById(id); if (!c) continue; row(`<div class="nm"><b style="color:${RARC[c.rar]}">${c.n}</b><small>${TS.COS_SLOT_N[c.slot]} · ${['comum', 'raro', 'épico', 'lendário'][c.rar]}</small></div>`, [btn('Prévia', true, () => cosPreview(id)), own.has(id) ? btn('Seu', false) : btn(c.price + ' ✧', me.dourados >= c.price, () => seasonOp(() => n.shopBuy(id), () => toast(c.n.toUpperCase(), true, 'VISTA NO GUARDA-ROUPA DA SUA CASA', RARC[c.rar])), true)]); }
     row('<div class="nm"><b>Fios Dourados</b><small>' + (SEAS.payments === 'dev' ? 'Modo de desenvolvimento: os pacotes são creditados sem pagamento.' : 'Compras com dinheiro real chegam em breve (Pix, cartão e Google Play). Por enquanto, ganhe Fios Dourados no Passe e na entrada diária.') + '</small></div>');
     for (const p of SEAS.packs) row(`<div class="nm">${p.n} Fios Dourados<small>R$ ${p.brl.toFixed(2).replace('.', ',')}</small></div>`, [btn(SEAS.payments === 'dev' ? 'Creditar' : 'Em breve', SEAS.payments === 'dev', () => seasonOp(() => n.buyDourados(p.id), () => toast('+' + p.n + ' FIOS DOURADOS', false, 'MODO DE DESENVOLVIMENTO', '#ffd27a')))]);
   } else {
@@ -109,3 +109,44 @@ function trailFx(x, z, id, t) {
 /** Cor do nome (CSS), com a "aurora" animada. */
 function nameColorCss(id) { const c = id && TS.cosById(id); if (!c || c.slot !== 'namecolor') return ''; return c.fx.c === 'aurora' ? 'aurora' : c.fx.c; }
 const cosTitle = id => { const c = id && TS.cosById(id); return c && c.slot === 'title' ? c.n : ''; };
+
+/* ---- prévia na loja: o herói gira no pedestal com o cosmético em loop ---- */
+function cosPreview(id) {
+  const c = TS.cosById(id); if (!c) return;
+  G.cosPreview = id; $('#season').classList.add('previewing'); sfx('ui');
+  const nm = G.char.name || 'Tecelão', nc = c.slot === 'namecolor' ? nameColorCss(id) : nameColorCss(G.char.namecolor), fr = c.slot === 'frame' ? c.fx.css : frameCss(G.char.frame), ti = c.slot === 'title' ? c.n : cosTitle(G.char.ctitle);
+  $('#sePrev').innerHTML = `<div class="tag rp prevtag ${fr}"><span class="rn ${nc === 'aurora' ? 'aurora' : ''}" style="${nc && nc !== 'aurora' ? 'color:' + nc : ''}">${nm}</span><small class="rt">${ti}</small></div><p class="sub"><b style="color:${RARC[c.rar]}">${c.n}</b> · ${TS.COS_SLOT_N[c.slot]}${c.price ? ' · ' + c.price + ' ✧' : ''}</p>`;
+  $('#sePrev').hidden = false; $('#sePrevBack').hidden = false;
+}
+function cosPreviewEnd() { G.cosPreview = null; $('#season').classList.remove('previewing'); $('#sePrev').hidden = true; $('#sePrevBack').hidden = true; }
+/** O efeito do cosmético em prévia, repetindo (rastro numa esquiva de mentira, teleporte e morte a cada 2,5 s). */
+function cosPreviewFx(t) {
+  const c = TS.cosById(G.cosPreview); if (!c) return; const ph = t % 2.5, k = Math.floor(t / 2.5), fire = k !== G.cosPrevK; G.cosPrevK = k;   // dispara uma vez a cada 2,5 s, em qualquer taxa de quadros
+  if (c.slot === 'trail' && ph < .6) trailFx(Math.sin(t * 6) * .5, 0, c.id, t);
+  else if (c.slot === 'tele' && fire) teleFx(0, 0, c.id);
+  else if (c.slot === 'death' && fire) deathFx(0, 0, c.id);
+}
+/** Efeito de teleporte (ao chegar). */
+function teleFx(x, z, id) {
+  const c = id && TS.cosById(id); if (!c || c.slot !== 'tele') return; const f = c.fx, y0 = groundAt(x, z);
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * 6.283, o = { x: x + Math.cos(a) * .7, y: y0 + .05, z: z + Math.sin(a) * .7, life: rr(.6, 1.1), s0: .12, s1: .02, b0: 1, b1: .1, mat: f.mat };
+    if (f.kind === 'coluna') Object.assign(o, { x: x + Math.cos(a) * .35, z: z + Math.sin(a) * .35, vy: rr(3, 6) });
+    else if (f.kind === 'fios') Object.assign(o, { vx: -Math.sin(a) * 2, vz: Math.cos(a) * 2, vy: rr(1.5, 3), s0: .06 });
+    else if (f.kind === 'folhas') Object.assign(o, { vx: -Math.sin(a) * 3, vz: Math.cos(a) * 3, vy: rr(.5, 2.5), s0: .1, s1: .08, mat: i % 3 ? 10 : 13, drag: 1.5 });
+    else if (f.kind === 'vazio') Object.assign(o, { x: x + Math.cos(a) * 1.4, z: z + Math.sin(a) * 1.4, vx: -Math.cos(a) * 2.5, vz: -Math.sin(a) * 2.5, vy: rr(0, 1.5), mat: i % 4 ? 151 : 29 });
+    spawn(o);
+  }
+}
+/** Efeito de morte (ao cair). */
+function deathFx(x, z, id) {
+  const c = id && TS.cosById(id); if (!c || c.slot !== 'death') return; const f = c.fx, y0 = groundAt(x, z);
+  for (let i = 0; i < 70; i++) {
+    const o = { x: x + rr(-.35, .35), y: y0 + rr(.2, 1.8), z: z + rr(-.35, .35), vx: rr(-1.5, 1.5), vy: rr(.3, 2.5), vz: rr(-1.5, 1.5), life: rr(.8, 1.6), s0: .1, s1: .04, b0: 1, b1: .2, mat: f.mat, drag: 1 };
+    if (f.kind === 'vidro') Object.assign(o, { vy: rr(1, 4), buoy: -6, floor: true, s0: .08, mat: i % 3 ? 28 : 150 });
+    if (f.kind === 'brasas') Object.assign(o, { vy: rr(.8, 2), mat: i % 3 ? 21 : 29, s0: .09 });
+    spawn(o);
+  }
+}
+/** Classe CSS da moldura do nome. */
+function frameCss(id) { const c = id && TS.cosById(id); return c && c.slot === 'frame' ? c.fx.css : ''; }

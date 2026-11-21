@@ -1,7 +1,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { STORES, startServer, api, register, baseSave, type TestServer } from './helpers';
-import { cosById, PASS_FREE, PASS_PREM } from '../../shared/season';
+import { cosById, COS_FIELD, PASS_FREE, PASS_PREM } from '../../shared/season';
 
 for (const kind of STORES) {
   describe(`temporada (${kind})`, () => {
@@ -41,14 +41,14 @@ for (const kind of STORES) {
       const v = (await api(S.url, 'GET', '/season', undefined, a.token)).body, item = v.shop[0];
       assert.equal((await api(S.url, 'POST', '/shop/buy', { id: item }, a.token)).status, 402);
       assert.equal((await api(S.url, 'POST', '/shop/buy', { id: 'tit_campeao' }, a.token)).status, 404);   // de conquista: nunca vendido
-      await api(S.url, 'POST', '/shop/dourados', { pack: 'p500' }, a.token);
+      await api(S.url, 'POST', '/shop/dourados', { pack: 'p1100' }, a.token);
       const b = await api(S.url, 'POST', '/shop/buy', { id: item }, a.token);
-      assert.equal(b.status, 200); assert.ok(b.body.view.me.owned.includes(item)); assert.equal(b.body.view.me.dourados, 500 - cosById(item)!.price!);
+      assert.equal(b.status, 200); assert.ok(b.body.view.me.owned.includes(item)); assert.equal(b.body.view.me.dourados, 1100 - cosById(item)!.price!);
       assert.equal((await api(S.url, 'POST', '/shop/buy', { id: item }, a.token)).status, 409);
-      const slot = cosById(item)!.slot, field = slot === 'trail' ? 'trail' : slot === 'namecolor' ? 'namecolor' : 'ctitle';
+      const field = COS_FIELD[cosById(item)!.slot];
       const s0 = (await api(S.url, 'GET', '/save', undefined, a.token)).body;
       const other = v.shop.find((x: string) => x !== item);
-      assert.equal((await api(S.url, 'PUT', '/save', { rev: s0.rev, data: { ...s0.data, char: { ...s0.data.char, [cosById(other)!.slot === 'trail' ? 'trail' : cosById(other)!.slot === 'namecolor' ? 'namecolor' : 'ctitle']: other } } }, a.token)).status, 422);
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: s0.rev, data: { ...s0.data, char: { ...s0.data.char, [COS_FIELD[cosById(other)!.slot]]: other } } }, a.token)).status, 422);
       assert.equal((await api(S.url, 'PUT', '/save', { rev: s0.rev, data: { ...s0.data, char: { ...s0.data.char, [field]: item } } }, a.token)).status, 200);
       const l = await api(S.url, 'POST', '/login/claim', {}, a.token);
       assert.equal(l.status, 200); assert.equal(l.body.streak, 1); assert.deepEqual(l.body.reward, { centelhas: 300 });
