@@ -135,6 +135,12 @@ function updateIndoorNPCs(dt) {
     if ((n.wait -= dt) <= 0) { n.pi = (n.pi + 1) % n.path.length; n.wait = n.path[n.pi][2]; }
   }
 }
+/** O morador tem missão para oferecer ou em andamento? Então fica na rua a qualquer hora (a história nunca trava pela rotina). */
+function questHold(id) {
+  const sq = G.save.q || {};
+  for (const [qid, Q] of Object.entries(QUESTS)) { if (Q.giver !== id) continue; const st = sq[qid]; if (st ? st.st === 'active' : (!Q.req || Q.req(G.save))) return true; }
+  return false;
+}
 /** Onde cada morador fica à noite (x, z, para onde olha). */
 const NIGHT_SPOT = { kiko: [31.6, 26.2, 0], nina: [34.4, 26.2, 0] };
 function updateNPCs(dt) {
@@ -143,7 +149,7 @@ function updateNPCs(dt) {
   const vt = villageTime(), night = isNight(), hh = dayHour();
   if (G.save && G.mode !== 'title') for (const n of npcs) {   // rotina: quem está na taverna ou em casa some da rua (fale com ele lá dentro)
     if (n.visBase === undefined) n.visBase = n.visible;
-    const pl = (n.id === 'nina' && G.save.q && G.save.q.nina && G.save.q.nina.st === 'active') || requiredTalk() === n.id ? 'out' : npcPlace(n.id, hh); n.place = pl;   // missão em andamento: fica na rua
+    const pl = questHold(n.id) || requiredTalk() === n.id ? 'out' : npcPlace(n.id, hh); n.place = pl;   // missão para oferecer ou em andamento: fica na rua
     const vis = n.visBase && (pl === 'out' || pl === 'porta');
     if (vis !== n.visible) { n.visible = vis; if (n.el) n.el.hidden = !vis; }
   }

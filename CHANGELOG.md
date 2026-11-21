@@ -7,6 +7,7 @@
 - **Torneio de Pesca:** cada pesca online mostra os pontos ganhos, o total da semana e a sua posição, com um aviso grande quando você sobe no ranking. A taverna ganhou o **Quadro do Torneio**, com o ranking e os campeões
 - **Mercado da Vila:** busca pelo nome, filtro por tipo e por raridade, ordem (mais novos, menor e maior preço, mais poder) e "só o que eu posso usar" (classe e nível); agora mostra até 200 anúncios
 - **Histórico:** nova aba no mercado com as suas trocas diretas (com quem, o que deu, o que recebeu e as Centelhas) e as compras e vendas no mercado
+- Rotina: morador com missão para oferecer ou em andamento fica sempre na rua, a qualquer hora (a história nunca trava porque alguém foi para a taverna ou dormir)
 - Servidor: `GET /history`, posição no torneio na resposta de cada pesca, tabela `trade_log` (migração 006)
 
 ## 0.42.0 · Morro do Mirante
