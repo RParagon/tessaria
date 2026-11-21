@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { MIGRATIONS } from './migrations';
-import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult , Listing, HistoryEntry } from './types';
+import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult , Listing, HistoryEntry, SeasonRow } from './types';
 import { invMax } from '../../../shared/save';
 
 type Row = Record<string, any>;
@@ -118,6 +118,59 @@ export class PgStore implements Store {
     for (const t of tr) { const mine = t.a_id === accountId; out.push({ kind: 'troca', with: mine ? t.b_name : t.a_name, gave: nm(mine ? t.a_items : t.b_items), got: nm(mine ? t.b_items : t.a_items), gold: mine ? t.b_gold - t.a_gold : t.a_gold - t.b_gold, at: t.created_at }); }
     for (const m of mk) { if (m.seller_id === accountId) out.push({ kind: 'venda', with: m.buyer_name ?? '?', gave: nm([m.item]), got: [], gold: Number(m.price), at: m.sold_at }); if (m.buyer_id === accountId) out.push({ kind: 'compra', with: m.seller_name, gave: [], got: nm([m.item]), gold: -Number(m.price), at: m.sold_at }); }
     return out.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, limit);
+  }
+  // ---------- temporada, passe, carteira e cosméticos ----------
+  async seasonGet(a: string, season: number): Promise<SeasonRow> {
+    const [p] = await this.sql`SELECT xp, premium, claimed FROM season_progress WHERE account_id = ${a} AND season = ${season}`;
+    const [w] = await this.sql`SELECT dourados FROM wallet WHERE account_id = ${a}`;
+    const o = await this.sql`SELECT cosmetic_id FROM cosmetics_owned WHERE account_id = ${a}`;
+    const [l] = await this.sql`SELECT streak, last_day FROM login_streak WHERE account_id = ${a}`;
+    const c = p?.claimed ?? {};
+    return { xp: Number(p?.xp ?? 0), premium: !!p?.premium, free: c.free ?? [], prem: c.prem ?? [], missions: c.missions ?? [], dourados: Number(w?.dourados ?? 0), owned: o.map(x => x.cosmetic_id as string), streak: Number(l?.streak ?? 0), lastDay: Number(l?.last_day ?? 0) };
+  }
+  private async seasonRow(tx: any, a: string, season: number) {
+    await tx`INSERT INTO season_progress (account_id, season) VALUES (${a}, ${season}) ON CONFLICT DO NOTHING`;
+    const [p] = await tx`SELECT xp, premium, claimed FROM season_progress WHERE account_id = ${a} AND season = ${season} FOR UPDATE`;
+    return { xp: Number(p.xp), premium: !!p.premium, c: { free: [], prem: [], missions: [], ...(p.claimed ?? {}) } as { free: number[]; prem: number[]; missions: string[] } };
+  }
+  async seasonMission(a: string, season: number, id: string, xp: number) {
+    return this.sql.begin(async tx => { const r = await this.seasonRow(tx, a, season); if (r.c.missions.includes(id)) return false; r.c.missions.push(id);
+      await tx`UPDATE season_progress SET xp = xp + ${xp}, claimed = ${tx.json(r.c)} WHERE account_id = ${a} AND season = ${season}`; return true; }) as Promise<boolean>;
+  }
+  async seasonClaim(a: string, season: number, level: number, track: 'free' | 'prem') {
+    return this.sql.begin(async tx => { const r = await this.seasonRow(tx, a, season), arr = track === 'free' ? r.c.free : r.c.prem; if (arr.includes(level)) return false; arr.push(level);
+      await tx`UPDATE season_progress SET claimed = ${tx.json(r.c)} WHERE account_id = ${a} AND season = ${season}`; return true; }) as Promise<boolean>;
+  }
+  async seasonPremium(a: string, season: number, price: number) {
+    return this.sql.begin(async tx => { const r = await this.seasonRow(tx, a, season); if (r.premium) return 'ja';
+      const u = await tx`UPDATE wallet SET dourados = dourados - ${price} WHERE account_id = ${a} AND dourados >= ${price} RETURNING dourados`; if (!u.length) return 'sem-dourados';
+      await tx`UPDATE season_progress SET premium = true WHERE account_id = ${a} AND season = ${season}`; return 'ok'; }) as Promise<'ok' | 'ja' | 'sem-dourados'>;
+  }
+  async walletAdd(a: string, n: number) {
+    await this.sql`INSERT INTO wallet (account_id) VALUES (${a}) ON CONFLICT DO NOTHING`;
+    const u = await this.sql`UPDATE wallet SET dourados = dourados + ${n} WHERE account_id = ${a} AND dourados + ${n} >= 0 RETURNING dourados`; return u.length > 0;
+  }
+  async buyCosmetic(a: string, id: string, price: number) {
+    return this.sql.begin(async tx => {
+      const [h] = await tx`SELECT 1 FROM cosmetics_owned WHERE account_id = ${a} AND cosmetic_id = ${id}`; if (h) return 'ja';
+      await tx`INSERT INTO wallet (account_id) VALUES (${a}) ON CONFLICT DO NOTHING`;
+      const u = await tx`UPDATE wallet SET dourados = dourados - ${price} WHERE account_id = ${a} AND dourados >= ${price} RETURNING dourados`; if (!u.length) return 'sem-dourados';
+      await tx`INSERT INTO cosmetics_owned (account_id, cosmetic_id, source) VALUES (${a}, ${id}, 'loja')`; return 'ok'; }) as Promise<'ok' | 'ja' | 'sem-dourados'>;
+  }
+  async grantCosmetic(a: string, id: string, source: string) { await this.sql`INSERT INTO cosmetics_owned (account_id, cosmetic_id, source) VALUES (${a}, ${id}, ${source}) ON CONFLICT DO NOTHING`; }
+  async loginClaim(a: string, day: number) {
+    return this.sql.begin(async tx => {
+      await tx`INSERT INTO login_streak (account_id) VALUES (${a}) ON CONFLICT DO NOTHING`;
+      const [l] = await tx`SELECT streak, last_day FROM login_streak WHERE account_id = ${a} FOR UPDATE`;
+      if (Number(l.last_day) === day) return { ok: false, streak: Number(l.streak) };
+      const streak = Number(l.last_day) === day - 1 ? Number(l.streak) + 1 : 1;
+      await tx`UPDATE login_streak SET streak = ${streak}, last_day = ${day} WHERE account_id = ${a}`; return { ok: true, streak }; }) as Promise<{ ok: boolean; streak: number }>;
+  }
+  async saveReward(a: string, centelhas: number, fios: number) {
+    return this.sql.begin(async tx => {
+      const [s] = await tx`SELECT data FROM saves WHERE account_id = ${a} FOR UPDATE`; if (!s) return null;
+      const d = s.data; d.gold = (Number(d.gold) || 0) + centelhas; d.fios = (Number(d.fios) || 0) + fios;
+      const [u] = await tx`UPDATE saves SET data = ${tx.json(d)}, rev = rev + 1, updated_at = now() WHERE account_id = ${a} RETURNING rev`; return Number(u.rev); }) as Promise<number | null>;
   }
   // ---------- mercado da vila e troca direta ----------
   private toListing(x: any): Listing { return { id: Number(x.id), sellerName: x.seller_name, item: x.item, price: Number(x.price), createdAt: x.created_at, sold: !!x.buyer_id, paid: !!x.paid, buyerName: x.buyer_name ?? null }; }

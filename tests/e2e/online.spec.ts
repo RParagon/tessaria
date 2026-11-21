@@ -554,3 +554,47 @@ test('mercado da vila e troca direta: anunciar, comprar e receber; trocar itens 
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
   await A.ctx.close(); await B.ctx.close();
 });
+
+test('Passe do Tear: entrada do dia, missão cumprida jogando vira XP do passe, premium e loja com Fios Dourados, cosmético no guarda-roupa e visto pelos outros', async ({ browser }) => {
+  test.setTimeout(150_000);
+  const A = await onlinePlayer(browser, 'lamina'), B = await onlinePlayer(browser, 'arco');
+  const ev = (pg: Page, src: string) => pg.evaluate(s => (window as any).__T.ev(s), src);
+  await A.page.evaluate(() => (window as any).TessNet.flushNow());
+  const g0 = await ev(A.page, 'G.save.gold');
+  await A.page.keyboard.press('p');
+  await A.page.waitForSelector('#season:not([hidden])');
+  await expect(A.page.locator('#seHead')).toContainText('Passe nível 0', { timeout: 10_000 });
+  // entrada do dia (300 Centelhas)
+  await A.page.click('#season .ftabs button[data-st="entrada"]');
+  await A.page.locator('#seList button.gold', { hasText: 'Receber' }).click();
+  await A.page.waitForFunction(g => (window as any).__T.ev(`G.save.gold === ${g} + 300`), g0, { timeout: 10_000 });
+  // uma missão de hoje cumprida "jogando" (eventos do jogo) e resgatada
+  const m = await ev(A.page, 'TS.dailyMissions(Date.now())[0]');
+  await ev(A.page, `for (let i = 0; i < ${m.n}; i++) missionEvent('${m.kind}')`);
+  await A.page.click('#season .ftabs button[data-st="missoes"]');
+  await A.page.locator('#seList .shoprow', { hasText: m.t }).locator('button.gold').click();
+  await A.page.waitForFunction(xp => (window as any).__T.ev(`SEAS.me.xp === ${xp}`), m.xp, { timeout: 10_000 });
+  // Fios Dourados (modo de desenvolvimento), premium e um cosmético da vitrine
+  await A.page.click('#season .ftabs button[data-st="loja"]');
+  await A.page.locator('#seList .shoprow', { hasText: '1100 Fios Dourados' }).locator('button').click();
+  await A.page.waitForFunction(() => (window as any).__T.ev('SEAS.me.dourados === 1100'), null, { timeout: 10_000 });
+  await A.page.click('#season .ftabs button[data-st="passe"]');
+  await A.page.locator('#seList button.gold', { hasText: '950 Fios Dourados' }).click();
+  await A.page.waitForFunction(() => (window as any).__T.ev('SEAS.me.premium === true && SEAS.me.dourados === 150'), null, { timeout: 10_000 });
+  await A.page.click('#season .ftabs button[data-st="loja"]');
+  await A.page.locator('#seList .shoprow', { hasText: '500 Fios Dourados' }).first().locator('button').click();
+  await A.page.waitForFunction(() => (window as any).__T.ev('SEAS.me.dourados === 650'), null, { timeout: 10_000 });
+  const item = await ev(A.page, 'SEAS.shop[0]');
+  {
+    await A.page.locator('#seList .shoprow', { hasText: await ev(A.page, `TS.cosById('${item}').n`) }).locator('button.gold').click();
+    await A.page.waitForFunction(id => (window as any).__T.ev(`SEAS.me.owned.includes('${id}')`), item, { timeout: 10_000 });
+    // veste e o outro jogador vê
+    const slot = await ev(A.page, `TS.cosById('${item}').slot`), key = slot === 'trail' ? 'trail' : slot === 'namecolor' ? 'namecolor' : 'ctitle';
+    await ev(A.page, `G.char.${key} = '${item}'; netLook(); writeSave()`);
+    await B.page.waitForFunction(([n, k, id]) => (window as any).TessNet.players().some((p: any) => p.name === n && p.look[k] === id), [A.name, key, item] as const, { timeout: 10_000 });
+    await A.page.evaluate(() => (window as any).TessNet.flushNow());
+    expect(await A.page.evaluate(() => (window as any).TessNet.sync)).toBe('salvo');   // o servidor aceitou: a conta tem o cosmético
+  }
+  expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
+  await A.ctx.close(); await B.ctx.close();
+});

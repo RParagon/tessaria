@@ -37,7 +37,7 @@
       <div class="trk" id="hTrk"></div>
       <div class="buffs" id="buffs"></div>
     </div>
-    <div class="hud-r"><button class="px" id="bBag"><img data-ic="bag" alt=""><span>Bolsa</span></button><button class="px" id="bSkills"><img data-ic="nova" alt=""><span>Grimório</span></button><button class="px" id="bJournal"><img data-ic="book" alt=""><span>Diário</span></button><button class="px" id="bPause"><img data-ic="gear" alt=""><span>Menu</span></button></div>
+    <div class="hud-r"><button class="px" id="bBag"><img data-ic="bag" alt=""><span>Bolsa</span></button><button class="px" id="bSkills"><img data-ic="nova" alt=""><span>Grimório</span></button><button class="px" id="bJournal"><img data-ic="book" alt=""><span>Diário</span></button><button class="px" id="hPass" title="Passe do Tear (P)"><img data-ic="gem" alt=""><span>Passe</span></button><button class="px" id="bPause"><img data-ic="gear" alt=""><span>Menu</span></button></div>
     <div id="bossBar" hidden><div class="bname" id="bName"></div><div class="bar"><i id="bHp" style="width:100%"></i></div></div>
     <div id="streak" hidden><b id="stN">x0</b><span id="stL">SEQUÊNCIA</span><div class="sbar"><i id="stBar"></i></div></div>
     <div id="riftBar" hidden><div class="bname"><span id="rbName">FENDA</span><span id="rbTime">0:00</span></div><div class="bar"><i id="rbFill" style="width:0%"></i></div><div class="raff" id="rbAff"></div></div>
@@ -101,6 +101,7 @@
       <div class="field"><span class="lbl">Brilho dos olhos e da magia</span><div class="opts" id="cGlow"></div></div>
       <div class="field"><span class="lbl">Acessório</span><div class="opts" id="cAcc"></div></div>
       <div class="field" id="cAuraF" hidden><span class="lbl">Aura (efeito de partículas)</span><div class="opts" id="cAura"></div></div>
+      <div class="field" id="cCosF" hidden><span class="lbl">Cosméticos da temporada (Passe do Tear e loja)</span><div class="opts" id="cTrail"></div><div class="opts" id="cNameCol"></div><div class="opts" id="cCTitle"></div><p class="sub" id="cCosHint"></p></div>
       <div class="field" id="cArmorF" hidden><span class="lbl">Estilo da armadura</span><div class="opts" id="cArmor"></div><p class="sub" id="cArmorHint" hidden>Equipe uma armadura para ver o estilo. A raridade continua dando a cor.</p></div>
       <label class="chk" for="cCape"><input type="checkbox" id="cCape"> Usar capa</label>
       <div class="crow"><button class="px" id="cRand">Aleatório</button><button class="px" id="cBack">Voltar</button></div>
@@ -219,6 +220,17 @@
       <h3 class="hsec">JORNADA</h3>
       <div class="statgrid" id="pfJourney"></div>
       <div class="crow"><button class="px" id="pfWard">Guarda-Roupa (na sua casa)</button><button class="px" id="pfClose">Fechar</button></div>
+    </div>
+  </section>
+
+  <section id="season" class="screen modal" hidden>
+    <div class="mbox panel">
+      <h2>Passe do Tear</h2>
+      <p class="sub" id="seHead"></p>
+      <div class="ftabs" role="tablist"><button class="px" data-st="passe">Passe</button><button class="px" data-st="missoes">Missões</button><button class="px" data-st="loja">Loja</button><button class="px" data-st="entrada">Entrada</button></div>
+      <p class="sub" id="seSub"></p>
+      <div id="seList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="px" id="seClose">Fechar</button>
     </div>
   </section>
 

@@ -5,3 +5,6 @@ import * as TessItems from '../shared/items';
 // Pesqueiro: peixes, iscas, varas, nível de Pescador e o mercado (as mesmas regras do servidor).
 import * as TessFish from '../shared/fish';
 (window as any).TessFish = TessFish;
+// Temporada: Passe do Tear, missões, entrada diária e catálogo de cosméticos (as mesmas regras do servidor).
+import * as TessSeason from '../shared/season';
+(window as any).TessSeason = TessSeason;

@@ -283,6 +283,7 @@ function render(dt) {
       else if (P.emote) { P.emoteT = (P.emoteT || 0) + dt; if ((P.emoteT > 6 && P.emote !== 'sentar') || (P.moveAmt || 0) > .2 || P.act) P.emote = null; else applyEmote(P.anim, P.emote, t, Math.min(1, P.emoteT / .4), G.char.cls); }
       if (G.fishing || G.fishCatch) poseFishing(P.anim, t);
       if (P.ghosts) for (const g of P.ghosts) if (g.t < .18) drawModel(playerModel, P.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
+      if (P.dashT > 0 && G.char.trail) trailFx(P.x, P.z, G.char.trail, t);   // rastro de esquiva (cosmético)
       for (const k in G.buffs) if (G.buffs[k] > 0 && Math.random() < .35) spawn({ x: P.x + rr(-.45, .45), y: rr(.1, 1.8), z: P.z + rr(-.45, .45), vy: rr(.3, .8), life: .6, s0: .09, s1: .02, b0: 1, b1: .2, mat: BUFFS[k].mat });
       const blink = P.iframe > 0 && P.dashT <= 0 && P.dieT < 0 && Math.floor(t * 20) % 2 === 0;
       if (G.settings.halo !== false && P.dieT < 0) for (let k = 0; k < 18; k++) { const a = k / 18 * 6.283 + t * .6; dyn(P.x + Math.cos(a) * .62, .07, P.z + Math.sin(a) * .62, k % 3 ? .45 : .75, 30, .13); }   // anel de destaque do herói

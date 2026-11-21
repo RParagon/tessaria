@@ -21,7 +21,7 @@ function updateHud() {
   if (!P) return;
   const s = G.save, st = stats();
   { const w = weatherNow(); setTxt('#hClock', outdoors() ? (nightK() > .5 ? '☾ ' : '☀ ') + hourStr() + (w.k > .4 && WEATHER[w.type].ic ? ' ' + WEATHER[w.type].ic : '') : ''); } { const ck = $('#hClock'); if (ck) ck.style.color = nightK() > .5 ? '#9cb8ff' : duskK() > .3 ? '#ff9a5a' : '#ffd27a'; }
-  setTxt('#hName', G.char.name); setTxt('#hLv', eloLvl(s) !== s.lvl ? s.lvl + '→' + eloLvl(s) : eloMentor() ? s.lvl + '★' : s.lvl);
+  setTxt('#hName', G.char.name); { const nc = nameColorCss(G.char.namecolor), hn = $('#hName'); if (hn && hn._nc !== nc) { hn._nc = nc; hn.classList.toggle('aurora', nc === 'aurora'); hn.style.color = nc && nc !== 'aurora' ? nc : ''; } } setTxt('#hLv', eloLvl(s) !== s.lvl ? s.lvl + '→' + eloLvl(s) : eloMentor() ? s.lvl + '★' : s.lvl);
   $('#hHp').style.width = clamp(P.hp / P.maxHp, 0, 1) * 100 + '%'; setTxt('#hHpT', `${Math.ceil(P.hp)} / ${P.maxHp}`);
   $('#hXp').style.width = clamp(s.xp / xpNeed(s.lvl), 0, 1) * 100 + '%';
   setTxt('#hGold', s.gold); setTxt('#hPot', s.potions + '/' + st.maxPot); setTxt('#hFrag', s.frags.length + '/9');
@@ -61,7 +61,7 @@ function refreshHudVis() {
   $('#keys').hidden = G.touch; $('#abar').hidden = G.touch;
   { const pv = G.mode === 'create' || (G.mode === 'menu' && G.menu === 'inv'); $('#poseBar').hidden = !pv; if (!pv) { G.pvPose = null; G.pvZoom = 1; document.querySelectorAll('#poseBar button').forEach(x => x.classList.remove('on')); } }
 }
-function showOnly(id) { for (const s of ['#bank', '#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap', '#fishery', '#market', '#trade']) $(s).hidden = s !== id; }
+function showOnly(id) { for (const s of ['#bank', '#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap', '#fishery', '#market', '#trade', '#season']) $(s).hidden = s !== id; }
 function openMenu(which) {
   if (G.mode !== 'play' && !(G.mode === 'dialog' && (which === 'forge' || which === 'shop' || which === 'fishery'))) return;
   $('#dialog').hidden = true; DLG.q = []; DLG.cur = null;
@@ -71,12 +71,12 @@ function openMenu(which) {
   if (which === 'inv') { invSel = null; renderInv(); } if (which === 'shop') { invSel = null; G.sellAllArm = false; renderShop(); }
   if (which === 'home') renderHome(); if (which === 'stash') { stSel = null; renderStash(); } if (which === 'mail') { mlSel = null; G.mailCode = null; resetMailOnline(); renderMail(); }
   if (which === 'profile') renderProfile(); if (which === 'bank') renderBank();
-  if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap(); if (which === 'fishery') renderFishery(); if (which === 'market') renderMarket(); if (which === 'trade') renderTrade();
+  if (which === 'wshop') renderWShop(); if (which === 'wmap') renderWMap(); if (which === 'fishery') renderFishery(); if (which === 'market') renderMarket(); if (which === 'trade') renderTrade(); if (which === 'season') renderSeason();
   if (which === 'forge') renderForge(); if (which === 'journal') renderJournal(); if (which === 'pause') renderPause();
   showOnly('#' + which); refreshHudVis();
 }
 function closeMenus() { showOnly(null); G.mode = 'play'; G.menu = null; refreshHudVis(); updateObjective(); }
-$('#bJournal').onclick = () => openMenu('journal'); $('#bBag').onclick = () => openMenu('inv');
+$('#bJournal').onclick = () => openMenu('journal'); $('#hPass').onclick = () => openSeason(); $('#seClose').onclick = () => closeMenus(); $('#bBag').onclick = () => openMenu('inv');
 $('#abBag').onclick = () => openMenu('inv'); $('#abDash').onclick = () => doDash(); $('#abSkill').onclick = () => doSkill(); $('#abUlt').onclick = () => doUlt(); $('#abPot').onclick = () => drinkPotion();
 $('#iClose').onclick = closeMenus; $('#sClose').onclick = closeMenus; $('#kClose').onclick = closeMenus; $('#bdClose').onclick = closeMenus; $('#rClose').onclick = closeMenus;
 $('#bSkills').onclick = () => openMenu('skills');
@@ -186,7 +186,7 @@ async function sellFishUI(id, n) {
   try { const net = NETON(); const r = net ? await net.sellFish(id, n) : null; if (r) { total = r.total; fsPrices = r.prices; } } catch (e) { }
   if (total === null) { s.fmkt = s.fmkt || {}; total = TF.sellFish(s.fmkt, id, n, Date.now()); }   // offline: mercado local
   fsBusy = false;
-  s.fish[id] -= n; if (!s.fish[id]) delete s.fish[id];
+  s.fish[id] -= n; if (!s.fish[id]) delete s.fish[id]; missionEvent('sellfish', n);
   s.gold += total; sfx('clink'); toast('+' + total + ' CENTELHAS', false, n + '× ' + TF.fishById(id).n.toUpperCase(), '#ffbf3d'); writeSave(); renderFishery();
 }
 function renderFishery() {
@@ -499,7 +499,7 @@ $('#mlGet').onclick = () => {
 };
 function upCost(it) { return Math.round(itemPrice(it) * .5 * Math.pow(1.5, it.up || 0) * (hasF('bancada') ? .7 : 1)); }
 function upgradeItem(it) {
-  const u = it.up || 0; if (u >= 10) return; const c = upCost(it); if (G.save.gold < c) return; spend(c);
+  const u = it.up || 0; if (u >= 10) return; const c = upCost(it); if (G.save.gold < c) return; spend(c); missionEvent('upgrade');
   if (Math.random() < UPCH[u]) {
     it.up = u + 1; for (const k in it.st) it.st[k] = Math.max(it.st[k] + 1, Math.round(it.st[k] * 1.08));
     it.name = it.name.replace(/ \+\d+$/, '') + ' +' + it.up; afterEquip();
@@ -629,6 +629,13 @@ function renderCreator() {
   optRow('#cBeard', BEARDS.map(b => ({ label: b[1], value: b[0] })), 'beard');
   $('#cAuraF').hidden = !W; if (W) { if (!G.char.aura) G.char.aura = 'nenhuma'; optRow('#cAura', AURAS.map(a => ({ label: a[1], value: a[0], cost: a[2] || undefined })), 'aura'); }
   $('#cArmorF').hidden = !W; if (W) { if (!G.char.armorStyle) G.char.armorStyle = 'classica'; optRow('#cArmor', ARMOR_STYLES.map(a => ({ label: a[1], value: a[0], cost: a[2] })), 'armorStyle'); $('#cArmorHint').hidden = !!(G.save.eq && G.save.eq.armor); }
+  $('#cCosF').hidden = !W;
+  if (W) {   // cosméticos da temporada: só os que a conta tem (vêm do servidor)
+    for (const k of ['trail', 'namecolor', 'ctitle']) if (G.char[k] === undefined) G.char[k] = '';
+    const own = new Set(G.cosOwned || []), C = window.TessSeason.COSMETICS, mk = slot => [{ label: 'Nenhum', value: '' }].concat(C.filter(c => c.slot === slot && own.has(c.id)).map(c => ({ label: c.n, value: c.id })));
+    optRow('#cTrail', mk('trail'), 'trail'); optRow('#cNameCol', mk('namecolor'), 'namecolor'); optRow('#cCTitle', mk('title'), 'ctitle');
+    $('#cCosHint').textContent = own.size ? 'Rastro de esquiva, cor do nome e título: os outros jogadores veem.' : 'Ganhe rastros, cores de nome e títulos no Passe do Tear (tecla P) ou compre na loja da temporada.';
+  }
   $('#cCape').checked = G.char.cape;
 }
 let rebuildTimer = 0;
@@ -637,6 +644,7 @@ function scheduleRebuild() { clearTimeout(rebuildTimer); rebuildTimer = setTimeo
 function openWardrobe() {
   G.wardrobe = { prev: { ...G.char } }; G.mode = 'create'; G.pvPose = null; $('#prompt').hidden = true; $('#tUse').hidden = true;
   renderCreator(); rebuildPlayerModel(); uploadPalette(RG.key); getModel('pedestal');
+  seasonRefresh().then(v => { if (v && G.wardrobe) renderCreator(); });   // cosméticos da conta
   showOnly('#create'); refreshHudVis(); sfx('ui');
 }
 function closeWardrobe(keep) {

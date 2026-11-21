@@ -30,6 +30,7 @@ function onEnemyKilled(e) {
   const rmul = G.rift ? (1 + .3 * G.rift.L) * (G.rift.aff.includes('sangrenta') ? 1.3 : 1) : 1, st2 = G.save.st = G.save.st || {};
   gainXp(Math.round(e.def.xp * rmul * (e.elite ? 4 : 1) * monsterScale().xp * (e.wxp || 1)));
   streakKill();
+  if (!e.dummy) { missionEvent('kill'); if (e.elite) missionEvent('elite'); if (e.alpha) missionEvent('alpha'); if (RG && RG.wild && isNight()) missionEvent('wilds_night'); }   // missões do Passe do Tear
   if (e.thief) {
     st2.thieves = (st2.thieves || 0) + 1; dropGold(e.x, e.z, 45); for (let i = 0; i < 3; i++) dropItem(e.x + rr(-1, 1), e.z + rr(-1, 1), rollRar(2));
     toast('LADRÃO DERROTADO!', true, 'ele derruba tudo o que roubou'); sfx('legend'); G.shake = Math.max(G.shake, .25);
@@ -117,7 +118,7 @@ function aoeDamage(x, z, r, dmg, skip) {
 function solBurst(x, z, dmg) { for (let i = 0; i < 26; i++) { const a = rr(0, 6.28); spawn({ x, y: .8, z, vx: Math.cos(a) * 4, vy: rr(0, 2), vz: Math.sin(a) * 4, life: .4, s0: .2, s1: .04, b0: 1, b1: .2, mat: 124, drag: 2 }); } aoeDamage(x, z, 2, dmg * .6); }
 function projHit(p, e) {
   if (p.frost) e.slowT = 2.2;
-  if (p.bolt && !p.child) { burst(e.x, 1, e.z, 8, 7, 2.5, .25, .12); aoeDamage(e.x, e.z, 1.4, p.dmg * .4, e); }
+  if (p.bolt && !p.child) { burst(e.x, 1, e.z, 10, 7, 2.8, .25, .12); aoeDamage(e.x, e.z, 1.8, p.dmg * .6, e); }   // explosão do projétil arcano
   if (p.boom) { burst(e.x, .8, e.z, 14, 7, 3, .3, .14); aoeDamage(e.x, e.z, p.boom, p.dmg * .5); }
   if (p.bolt && !p.child && hasPow('ultbrasa')) { const a0 = Math.atan2(p.vx, p.vz); for (const off of [-.7, 0, .7]) shoot({ x: p.x, y: p.y, z: p.z, vx: Math.sin(a0 + off) * 11, vz: Math.cos(a0 + off) * 11, life: .5, dmg: p.dmg * .45, team: 'p', mat: 124, size: .24, r: .35, homing: 6, trail: .8, bolt: true, child: true, hit: new Set(p.hit || []) }); }
   if (p.comet) { explodeComet(p); p.pierce = -1; }
@@ -333,6 +334,7 @@ function startRift(L) {
   travel('rift');
 }
 function finishRift(b) {
+  missionEvent('rift'); missionEvent('boss');
   const R = G.rift, L = R.L, s = G.save; R.done = true;
   const rank = R.t < 180 ? 'S' : R.t < 300 ? 'A' : R.t < 480 ? 'B' : 'C';
   gainXp(Math.round(90 * (1 + .3 * L))); dropGold(b.x, b.z, 20 + 6 * L);

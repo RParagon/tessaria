@@ -25,11 +25,12 @@ addEventListener('keydown', e => {
   keys.add(k);
   if (G.mode === 'dialog') { if (k === 'Space' || k === 'Enter' || k === 'KeyE') advanceDialog(); return; }
   if (G.mode === 'story') { if (k === 'Space' || k === 'Enter' || k === 'KeyE') storyNext(); return; }
-  if (G.mode === 'menu') { if (k === 'Escape' || (k === 'Tab' && !$('#journal').hidden) || (k === 'KeyI' && !$('#inv').hidden) || (k === 'KeyM' && !$('#wmap').hidden)) { G.wmTravel = null; closeMenus(); } return; }
+  if (G.mode === 'menu') { if (k === 'Escape' || (k === 'Tab' && !$('#journal').hidden) || (k === 'KeyI' && !$('#inv').hidden) || (k === 'KeyM' && !$('#wmap').hidden) || (k === 'KeyP' && !$('#season').hidden)) { G.wmTravel = null; closeMenus(); } return; }
   if (G.mode !== 'play') return;
   if (k === 'Escape') openMenu('pause');
   else if (k === 'Tab') openMenu('journal');
   else if (k === 'KeyI' || k === 'KeyB') openMenu('inv');
+  else if (k === 'KeyP') openSeason();
   else if (k === 'KeyM') { if (!hasMap()) toast('Você não tem mapa', false, 'O MERCADOR OTTO VENDE O MAPA DO CARTÓGRAFO'); else if (RG && RG.key !== 'home' && !isIndoor(RG.key)) { G.wmTravel = null; openMenu('wmap'); } }
   else if (k === 'KeyG') openMenu('skills');
   else if (k === 'Space' || k === 'ShiftLeft' || k === 'ShiftRight') doDash();

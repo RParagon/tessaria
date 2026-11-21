@@ -164,4 +164,32 @@ CREATE TABLE IF NOT EXISTS trade_log (
 CREATE INDEX IF NOT EXISTS trade_log_a ON trade_log (a_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS trade_log_b ON trade_log (b_id, created_at DESC);
 ` },
+  { id: '007_temporada', sql: `
+-- Temporada e cosméticos: carteira de Fios Dourados (moeda premium, só no servidor), cosméticos da conta,
+-- progresso do Passe do Tear por temporada e a sequência de entradas diárias.
+CREATE TABLE IF NOT EXISTS wallet (
+  account_id  uuid PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  dourados    integer NOT NULL DEFAULT 0 CHECK (dourados >= 0)
+);
+CREATE TABLE IF NOT EXISTS cosmetics_owned (
+  account_id  uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  cosmetic_id text NOT NULL,
+  source      text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (account_id, cosmetic_id)
+);
+CREATE TABLE IF NOT EXISTS season_progress (
+  account_id  uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  season      integer NOT NULL,
+  xp          integer NOT NULL DEFAULT 0,
+  premium     boolean NOT NULL DEFAULT false,
+  claimed     jsonb NOT NULL DEFAULT '{}'::jsonb,
+  PRIMARY KEY (account_id, season)
+);
+CREATE TABLE IF NOT EXISTS login_streak (
+  account_id  uuid PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  streak      integer NOT NULL DEFAULT 0,
+  last_day    integer NOT NULL DEFAULT 0
+);
+` },
 ];

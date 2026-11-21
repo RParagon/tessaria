@@ -64,6 +64,23 @@ export interface Store {
   /** Histórico: registra uma troca feita e lista as trocas e as compras e vendas no mercado de uma conta (mais novas primeiro). */
   logTrade(e: { aId: string; bId: string; aName: string; bName: string; aItems: any[]; aGold: number; bItems: any[]; bGold: number }): Promise<void>;
   history(accountId: string, limit: number): Promise<HistoryEntry[]>;
+  // ---------- temporada, passe, carteira e cosméticos (fonte de verdade no servidor) ----------
+  seasonGet(accountId: string, season: number): Promise<SeasonRow>;
+  /** Marca a missão como resgatada e soma a XP de passe (false se já estava). */
+  seasonMission(accountId: string, season: number, missionId: string, xp: number): Promise<boolean>;
+  /** Marca o nível da trilha como resgatado (false se já estava). */
+  seasonClaim(accountId: string, season: number, level: number, track: 'free' | 'prem'): Promise<boolean>;
+  /** Liga o premium gastando Fios Dourados (motivo se não deu). */
+  seasonPremium(accountId: string, season: number, price: number): Promise<'ok' | 'ja' | 'sem-dourados'>;
+  /** Soma (ou tira, se n < 0) Fios Dourados; false se o saldo ficaria negativo. */
+  walletAdd(accountId: string, n: number): Promise<boolean>;
+  /** Compra um cosmético com Fios Dourados (motivo se não deu). */
+  buyCosmetic(accountId: string, id: string, price: number): Promise<'ok' | 'ja' | 'sem-dourados'>;
+  grantCosmetic(accountId: string, id: string, source: string): Promise<void>;
+  /** Entrada do dia: true e a sequência nova se ainda não entrou hoje. */
+  loginClaim(accountId: string, day: number): Promise<{ ok: boolean; streak: number }>;
+  /** Centelhas e Fios do Tear vão para o save da nuvem (como no mercado); devolve a revisão nova. */
+  saveReward(accountId: string, centelhas: number, fios: number): Promise<number | null>;
   /** Registra itens sorteados pelo servidor. */
   grantItems(accountId: string, itemIds: string[], source: string): Promise<void>;
   /** Dos ids dados, os que o servidor concedeu (para qualquer conta). */
@@ -98,3 +115,4 @@ export interface FishScore { name: string; points: number; bestFish: string; bes
 export interface Listing { id: number; sellerName: string; item: any; price: number; createdAt: Date; sold: boolean; paid: boolean; buyerName?: string | null }
 /** Entrada do histórico: troca (com quem, o que foi e veio, Centelhas líquidas) ou mercado (venda/compra). */
 export interface HistoryEntry { kind: 'troca' | 'venda' | 'compra'; with: string; gave: string[]; got: string[]; gold: number; at: Date }
+export interface SeasonRow { xp: number; premium: boolean; free: number[]; prem: number[]; missions: string[]; dourados: number; owned: string[]; streak: number; lastDay: number }

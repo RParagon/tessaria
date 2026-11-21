@@ -308,7 +308,7 @@ function interact() {
     sfx('heal'); toast('Você descansou. Progresso salvo.');
     for (let i = 0; i < 40; i++) { const a = rr(0, 6.28); spawn({ x: it.x + Math.cos(a) * .7, y: rr(.5, 2), z: it.z + Math.sin(a) * .7, vy: rr(1, 2.5), life: rr(.6, 1.2), s0: .1, s1: .02, b0: 1, b1: .2, mat: 31 }); }
   } else if (it.kind === 'chest') {
-    it.open = true; it.openT = 0; G.save.chests.push(it.id); sfx('open');
+    it.open = true; it.openT = 0; G.save.chests.push(it.id); sfx('open'); missionEvent('chest');
     const g = Math.round(({ forest: 45, crypt: 70, peaks: 100, swamp: 140, glass: 180 }[RG.key] || 40) * curDiff().gold); dropGold(it.x, it.z, Math.round(g / 3));
     G.save.gold += g - Math.round(g / 3); dropItem(it.x, it.z + 1.3, rollRar(1));
     if (G.save.potions < stats().maxPot) { G.save.potions++; toast(`+${g} Centelhas e uma poção`); } else toast(`+${g} Centelhas`);
@@ -442,6 +442,7 @@ function loadRegion(key, atCp) {
   if (key === 'hub' && G.save.met.ysolde && !G.save.met.houseTip && G.save.met.wildTip) { G.save.met.houseTip = true; setTimeout(() => toast('CASA À VENDA', true, 'a leste da forja · baú, correio e mobília com bônus'), 4200); }
   if (key === 'hub' && G.save.met.ysolde && !G.save.met.wildTip) { G.save.met.wildTip = true; setTimeout(() => toast('NOVO: OS ERMOS', true, 'o portão ao sul da vila leva às terras selvagens · bichos para upar'), 4200); }
   if (key === 'wilds') setTimeout(() => toast('Quanto mais longe da vila, mais perigoso', false, 'OITO BIOMAS · DESPERTE OS OBELISCOS PARA VIAJAR'), 3200);
+  if (key === 'hub' && NETON()) seasonRefresh().then(v => { if (v && !v.me.loginToday && !G.loginTip) { G.loginTip = true; setTimeout(() => toast('RECOMPENSA DO DIA', true, 'ABRA O PASSE DO TEAR (TECLA P) · DIA ' + (((v.me.lastDay === window.TessSeason.dayIndex(Date.now()) - 1 ? v.me.streak : 0) % 7) + 1) + ' DE 7', '#ffd27a'), 6500); } });   // temporada: entrada do dia
   if (key === 'hub' && G.save.met.ysolde && !G.save.met.diffTip) { G.save.met.diffTip = true; setTimeout(() => toast('Quer mais desafio?', false, 'A DIFICULDADE FICA NO MENU (ESC)'), 5600); }
   updateDiffHud();
 }
@@ -466,7 +467,7 @@ const recipeNeed = r => Object.entries(r.need).map(([k, n]) => n + '× ' + TF.fi
 function cook(r) {
   const s = G.save; if (!recipeOk(r)) return;
   for (const [k, n] of Object.entries(r.need)) { s.fish[k] -= n; if (!s.fish[k]) delete s.fish[k]; }
-  G.buffs[r.id] = r.s; P.maxHp = stats().maxHp; P.hp = Math.min(P.maxHp, P.hp + P.maxHp * .3);
+  G.buffs[r.id] = r.s; P.maxHp = stats().maxHp; missionEvent('cook'); P.hp = Math.min(P.maxHp, P.hp + P.maxHp * .3);
   s.st = s.st || {}; s.st.cooked = (s.st.cooked || 0) + 1;
   burst(P.x, 1, P.z, 18, 14, 2, .5, .1); sfx('heal'); toast(r.n.toUpperCase(), true, BUFFS[r.id].d + ' por ' + Math.round(r.s / 60) + ' min', BUFFS[r.id].c); writeSave();
 }
@@ -477,7 +478,7 @@ function openCook() {
 }
 /** Cardápio da Mel (na rua de dia e no balcão da taverna à noite). */
 function melMenu() {
-  const s = G.save, buy = (id, c, n) => { if (s.gold < c) { toast('Centelhas insuficientes', false, n.toUpperCase() + ' CUSTA ' + c); return; } spend(c); G.buffs[id] = 480; P.maxHp = stats().maxHp; sfx('heal'); toast(n.toUpperCase(), true, BUFFS[id].d + ' por 8 min', BUFFS[id].c); writeSave(); };
+  const s = G.save, buy = (id, c, n) => { if (s.gold < c) { toast('Centelhas insuficientes', false, n.toUpperCase() + ' CUSTA ' + c); return; } spend(c); G.buffs[id] = 480; P.maxHp = stats().maxHp; missionEvent('meal'); sfx('heal'); toast(n.toUpperCase(), true, BUFFS[id].d + ' por 8 min', BUFFS[id].c); writeSave(); };
   return { who: 'Padeira Mel', text: 'Hoje tem sopa e torta. Quer alguma coisa?', choices: [{ t: 'Sopa da Mel (40 ✦): +10% de vida', fn: () => buy('sopa', 40, 'Sopa da Mel') }, { t: 'Torta de Maçã (90 ✦): +10% de dano e +25% de Centelhas', fn: () => buy('torta', 90, 'Torta de Maçã') }, { t: 'Só passando.' }] };
 }
 /** Nome da casa de um morador (pela placa da porta). */
@@ -642,6 +643,7 @@ function wildsHazard(x, z, r, dur, mat, dmg, warn) {
 /** Obelisco: desperta (uma vez) e leva a outros obeliscos despertos, ou ao portão da vila. */
 function useObelisk(it) {
   const ob = obelList();
+  missionEvent('obelisk');
   if (!ob.includes(it.obId)) { ob.push(it.obId); writeSave(); sfx('lvl'); burst(it.x, 1.5, it.z, 40, 7, 4, .6, .1); toast('OBELISCO DESPERTO', true, obName(it.obId).toUpperCase() + ' · VIAGEM RÁPIDA LIBERADA', '#9ff6ff'); }
   G.wmTravel = it.obId; openMenu('wmap'); return;   // mapa de viagem: escolha o destino no mapa
   const dests = RG.rooms.filter(r => r.kind === 'obelisk' && r.ob !== it.zone && ob.includes(r.ob));
@@ -711,6 +713,7 @@ function fishAction(spot = 0) {
   const kg = TF.fishKg(f.id); s.frec = s.frec || {}; const rec = kg > (s.frec[f.id] || 0); if (rec) s.frec[f.id] = kg;   // peso e recorde
   { const n = NETON(); if (n) n.fishCatch(f.id, kg); }   // torneio semanal (online)
   gainXp(Math.round(f.g * .35));
+  missionEvent('fish');
   G.fishCatch = { t: 0, f, from: fishBob(G.time) };   // o peixe salta da água até a mão do herói
   const rare = (f.rare || 0) >= 2;
   setTimeout(() => {

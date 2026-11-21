@@ -12,6 +12,8 @@ export interface Config {
   corsOrigins: string[];          // vazio = qualquer origem (só em desenvolvimento)
   googleClientId: string | null;
   metricsToken: string | null;
+  /** Compras de Fios Dourados de mentira, só para desenvolvimento e testes (nunca em produção). */
+  devPayments: boolean;
   sessionDays: number;
   trustProxy: boolean;
   logLevel: string;
@@ -29,6 +31,7 @@ export function loadConfig(over: Partial<Config> = {}): Config {
     corsOrigins: list(env.CORS_ORIGINS),
     googleClientId: env.GOOGLE_CLIENT_ID || null,
     metricsToken: env.METRICS_TOKEN || null,
+    devPayments: !production && env.DEV_PAYMENTS === '1',
     sessionDays: Number(env.SESSION_DAYS || 30),
     trustProxy: env.TRUST_PROXY ? env.TRUST_PROXY !== 'false' : production,
     logLevel: env.LOG_LEVEL || (production ? 'info' : 'warn'),

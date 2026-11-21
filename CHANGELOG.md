@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.44.0 · Temporada 1: Passe do Tear, cosméticos e equilíbrio das classes
+- **Passe do Tear (tecla P ou botão Passe):** Temporada 1 · A Fenda de Vidro, 8 semanas e 40 níveis. Trilha grátis a cada 2 níveis (Centelhas, Fios do Tear, títulos e Fios Dourados) e trilha premium em todos os níveis, com 8 cosméticos exclusivos e 660 Fios Dourados de volta. O premium custa 950 Fios Dourados
+- **Missões:** 3 diárias e 3 semanais, iguais para todos, cumpridas jogando: matar monstros, elites e Alfas, Fendas, chefes, pescar, cozinhar, vender peixe, abrir baús, aprimorar, comer na taverna, obeliscos, caçar nos Ermos à noite. Quando uma termina, chega um aviso e um ponto vermelho no botão do passe
+- **Entrada diária:** 7 dias seguidos com recompensas crescentes (o 7º dá Fios Dourados); perdeu um dia, recomeça
+- **Loja de cosméticos:** vitrine de 4 itens que muda toda segunda, com Fios Dourados. Cosmético de conquista nunca é vendido (o 1º lugar do Torneio de Pesca ganha o título "Campeão do Torneio")
+- **Cosméticos novos, visíveis para os outros:** 8 rastros de esquiva (brasas, pétalas, gelo, vidro estilhaçado, fios de luz, sombra, poeira de estrelas, folhas), 5 cores de nome (inclusive a Aurora, animada) e 6 títulos. Escolha no Guarda-Roupa da casa
+- **Fios Dourados** ficam no servidor (não no save) e o servidor recusa equipar o que a conta não tem. A compra com dinheiro real ainda não está ligada ("em breve"); por enquanto eles vêm do passe e da entrada diária
+- **Equilíbrio das classes** (pelo simulador): o Arcano era o mais fraco em tudo; agora tem mais dano (12 → 13,5), ataque mais rápido (0,38 → 0,34 s), Nova a cada 6 s e explosão maior (60% num raio de 1,8 m) e virou o melhor em área. O Arco ganhou +7% de dano. As três classes ficaram a menos de 12% uma da outra num alvo, cada uma com o seu forte
+- Servidor: `GET /season`, `POST /season/mission`, `POST /season/claim`, `POST /season/premium`, `POST /login/claim`, `POST /shop/buy`, `POST /shop/dourados`; tabelas `wallet`, `cosmetics_owned`, `season_progress` e `login_streak` (migração 007); `DEV_PAYMENTS` só para testes
+
 ## 0.43.0 · Acabamento: interiores, clima, torneio, mercado e histórico
 - **Interiores mais vivos:** mesas com tampo de tábuas e borda escura (que se leem bem de cima), toalhas xadrez, cadeiras com encosto viradas para a mesa, pratos, canecas e velas, quadros e ervas secando nas paredes. Na taverna, a Mel circula entre o balcão e as mesas levando a caneca, e o alaúde do Lio solta notas no ar. De dia também tem gente: o Otto almoça lá do meio-dia à 13h30 e o Vovô Brann joga cartas das 12h às 15h
 - **Som do clima:** chuva contínua (forte na tempestade, abafada dentro de casa) e trovão de verdade, com estalo e ronco longo

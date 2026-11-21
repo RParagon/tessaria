@@ -11,7 +11,7 @@ const rslots = Array.from({ length: RSLOTS }, () => ({ id: 0, key: '', model: nu
 /** Aparência pública do próprio herói (o que os outros veem). */
 function lookOfPlayer() {
   const eq = (G.save && G.save.eq) || {};
-  return { cls: G.char.cls, body: G.char.body, skin: G.char.skin, hair: G.char.hair, hairCol: G.char.hairCol, outfit: G.char.outfit, trim: G.char.trim, glow: G.char.glow, acc: G.char.acc, cape: !!G.char.cape, beard: G.char.beard || 'nenhuma', armorStyle: G.char.armorStyle || 'classica', aura: G.char.aura || 'nenhuma', armor: eq.armor ? eq.armor.rar : null, charm: eq.charm ? eq.charm.rar : null, wr: eq.weapon ? eq.weapon.rar : 0 };
+  return { cls: G.char.cls, body: G.char.body, skin: G.char.skin, hair: G.char.hair, hairCol: G.char.hairCol, outfit: G.char.outfit, trim: G.char.trim, glow: G.char.glow, acc: G.char.acc, cape: !!G.char.cape, beard: G.char.beard || 'nenhuma', armorStyle: G.char.armorStyle || 'classica', aura: G.char.aura || 'nenhuma', trail: G.char.trail || '', namecolor: G.char.namecolor || '', ctitle: G.char.ctitle || '', armor: eq.armor ? eq.armor.rar : null, charm: eq.charm ? eq.charm.rar : null, wr: eq.weapon ? eq.weapon.rar : 0 };
 }
 
 // ---------- ganchos chamados pelo jogo ----------
@@ -215,6 +215,7 @@ function drawRemotes(dt, t) {
     { const stepN = Math.floor(r.walkPh / Math.PI); if (stepN !== r.lastStep) { r.lastStep = stepN; if (r.m > .55 && !(r.dashT > 0) && Math.hypot(r.x - P.x, r.z - P.z) < 24) { const sd = stepN % 2 ? .15 : -.15, cx = Math.cos(r.yaw), sx2 = -Math.sin(r.yaw); for (let i = 0; i < 3; i++) spawn({ x: r.x + cx * sd + rr(-.08, .08), y: .08, z: r.z + sx2 * sd + rr(-.08, .08), vx: rr(-.3, .3), vy: rr(.2, .5), vz: rr(-.3, .3), life: rr(.3, .5), s0: .09, s1: .18, b0: .3, b1: .05, mat: 120, drag: 2 }); } } }
     poseRemote(r, t);
     if (r.ghosts) for (const g of r.ghosts) if (g.t < .18) drawModel(s.model, r.anim, g.x, 0, g.z, g.yaw, 1, { flash: .55 - g.t * 2 });
+    if (r.dashT > 0 && r.look.trail) trailFx(r.x, r.z, r.look.trail, t);
     r.W = drawModel(s.model, r.anim, r.x, groundAt(r.x, r.z), r.z, r.yaw, 1, {}); auraFx(r.x, r.z, r.look.aura, t, dt);
     if (r.emote === 'comemorar' && r.emoteT < 2 && Math.random() < .5) spawn({ x: r.x + rr(-.4, .4), y: rr(.5, 2), z: r.z + rr(-.4, .4), vy: rr(1, 2), life: .7, s0: .1, s1: .02, b0: 1, b1: .2, mat: 30 });
   }
@@ -249,7 +250,8 @@ function updateRemoteMarks() {
     const ally = !!(n.party && n.party.members.some(m => m.name === r.name));
     if (el.classList.contains('ally') !== ally) el.classList.toggle('ally', ally);
     const foe = pvpFoe(r, n); if (el.classList.contains('foe') !== foe) el.classList.toggle('foe', foe);   // Ermo Profundo: pode atacar e ser atacado
-    { const want = r.down ? 'CAÍDO · chegue perto para costurar' : r.title; if (tt.textContent !== want) tt.textContent = want; }
+    { const want = r.down ? 'CAÍDO · chegue perto para costurar' : (cosTitle(r.look.ctitle) || r.title); if (tt.textContent !== want) tt.textContent = want; }
+    { const nc = nameColorCss(r.look.namecolor), nm = el.querySelector('.rn'); if (nm && nm._nc !== nc) { nm._nc = nc; nm.classList.toggle('aurora', nc === 'aurora'); nm.style.color = nc && nc !== 'aurora' ? nc : ''; } }   // cor do nome (cosmético)
     const showBub = r.chat && r.chatT < 6;
     bub.hidden = !showBub; if (showBub && bub.textContent !== r.chat) bub.textContent = r.chat;
   }

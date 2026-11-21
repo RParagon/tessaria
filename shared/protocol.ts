@@ -48,11 +48,12 @@ export const EMOTE_LABEL: Record<Emote, string> = { acenar: 'Acenar', comemorar:
 /** Aparência pública do personagem (o que os outros veem). */
 export interface Look {
   cls: string; body: number; skin: number; hair: string; hairCol: number; outfit: number; trim: number;
-  glow: number; acc: string; cape: boolean; beard: string; armor: number | null; charm: number | null; wr: number; armorStyle?: string; aura?: string;
+  glow: number; acc: string; cape: boolean; beard: string; armor: number | null; charm: number | null; wr: number; armorStyle?: string; aura?: string; trail?: string; namecolor?: string; ctitle?: string;
 }
 
 const int = (v: unknown, lo: number, hi: number, d: number) => (Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi ? (v as number) : d);
 const word = (v: unknown, d: string) => (typeof v === 'string' && /^[a-z]{1,14}$/.test(v) ? v : d);
+const cosId = (v: unknown) => (typeof v === 'string' && /^[a-z_]{1,24}$/.test(v) ? v : '');
 
 /** Normaliza uma aparência vinda da rede (nunca confia no que chega). */
 export function sanitizeLook(x: any): Look {
@@ -67,6 +68,7 @@ export function sanitizeLook(x: any): Look {
     wr: int(o.wr, 0, 4, 0),
     armorStyle: word(o.armorStyle, 'classica'),
     aura: word(o.aura, 'nenhuma'),
+    trail: cosId(o.trail), namecolor: cosId(o.namecolor), ctitle: cosId(o.ctitle),   // cosméticos da temporada (a posse é conferida no save)
   };
 }
 

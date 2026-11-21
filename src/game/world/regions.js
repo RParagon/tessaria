@@ -165,8 +165,8 @@ const MODEL_FN = { dummy: buildDummy, gosmo: buildGosmo, wisp: buildWisp, skel: 
 const getModel = k => k === 'reflexo' ? makeModel('reflexo:' + JSON.stringify(G.char), MODEL_FN.reflexo) : makeModel(k, MODEL_FN[k]);
 const CLS = {
   lamina: { label: 'Lâmina', desc: 'Corte em arco de perto. Hab.: Giro Flamejante.', hp: 130, dmg: 17, spd: 5.2, atkCd: .36, skillCd: 6 },
-  arcano: { label: 'Arcano', desc: 'Projéteis teleguiados que explodem em área. Hab.: Nova Arcana.', hp: 90, dmg: 12, spd: 5.0, atkCd: .38, skillCd: 7 },
-  arco: { label: 'Arco', desc: 'Flechas que atravessam. Hab.: Chuva de Flechas.', hp: 110, dmg: 12, spd: 5.6, atkCd: .25, skillCd: 6 },
+  arcano: { label: 'Arcano', desc: 'Projéteis teleguiados que explodem em área. Hab.: Nova Arcana.', hp: 90, dmg: 13.5, spd: 5.0, atkCd: .34, skillCd: 6 },   // 0.44: mais dano e área (era o mais fraco no simulador)
+  arco: { label: 'Arco', desc: 'Flechas que atravessam. Hab.: Chuva de Flechas.', hp: 110, dmg: 12.8, spd: 5.6, atkCd: .25, skillCd: 6 },   // 0.44: +7% de dano (menor dano num alvo no simulador)
 };
 const UPG = [
   { k: 'pow', t: 'Têmpera', d: '+15% de dano em todos os ataques.', max: 5 },

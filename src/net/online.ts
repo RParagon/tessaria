@@ -216,6 +216,15 @@ export class Net {
   async history(): Promise<any[] | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/history', undefined, 8000); return r.status === 200 ? r.data.history : null; }
   async fishTourney(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/fish/tournament', undefined, 8000); return r.status === 200 ? r.data : null; }
   async fishClaim(): Promise<{ gold: number; rank: number } | null> { if (!this.account || this.offline) return null; const r = await call('POST', '/fish/tournament/claim', {}, 8000); return r.status === 200 ? r.data : null; }
+  // ---------- temporada: Passe do Tear, missões, entrada diária, loja de cosméticos ----------
+  /** Estado da temporada (null offline). As recompensas em Centelhas e Fios do Tear chegam pelo save da nuvem (rev). */
+  async season(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/season', undefined, 8000); return r.status === 200 ? r.data : null; }
+  seasonMission(id: string) { return this.saveOp('POST', '/season/mission', { id }); }
+  seasonClaim(level: number, track: 'free' | 'prem') { return this.saveOp('POST', '/season/claim', { level, track }); }
+  seasonPremium() { return this.saveOp('POST', '/season/premium'); }
+  loginClaim() { return this.saveOp('POST', '/login/claim'); }
+  shopBuy(id: string) { return this.saveOp('POST', '/shop/buy', { id }); }
+  buyDourados(pack: string) { return this.saveOp('POST', '/shop/dourados', { pack }); }
   // ---------- mercado da vila ----------
   async market(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/market', undefined, 8000); return r.status === 200 ? r.data : null; }
   /** Operações que mexem no save da nuvem: sincroniza antes e adota a revisão nova depois. */

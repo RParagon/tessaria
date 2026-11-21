@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Account, ClaimResult, FishScore, HistoryEntry, Listing, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
+import type { Account, ClaimResult, FishScore, HistoryEntry, Listing, SeasonRow, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
 import { invMax } from '../../../shared/save';
 
 /**
@@ -94,6 +94,20 @@ export class MemoryStore implements Store {
     for (const m of this.market) { if (!m.buyerId) continue; const at = m.soldAt ?? m.createdAt; if (m.sellerId === accountId) out.push({ kind: 'venda', with: m.buyerName ?? '?', gave: nm([m.item]), got: [], gold: m.price, at }); if (m.buyerId === accountId) out.push({ kind: 'compra', with: m.sellerName, gave: [], got: nm([m.item]), gold: -m.price, at }); }
     return out.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, limit);
   }
+  private seasons = new Map<string, { xp: number; premium: boolean; free: number[]; prem: number[]; missions: string[] }>();
+  private wallet = new Map<string, number>();
+  private owned = new Map<string, Set<string>>();
+  private logins = new Map<string, { streak: number; lastDay: number }>();
+  private seasonOf(a: string, s: number) { const k = s + ':' + a; let e = this.seasons.get(k); if (!e) { e = { xp: 0, premium: false, free: [], prem: [], missions: [] }; this.seasons.set(k, e); } return e; }
+  async seasonGet(a: string, s: number): Promise<SeasonRow> { const e = this.seasonOf(a, s), l = this.logins.get(a) ?? { streak: 0, lastDay: 0 }; return { ...this.clone(e), dourados: this.wallet.get(a) ?? 0, owned: [...(this.owned.get(a) ?? [])], streak: l.streak, lastDay: l.lastDay }; }
+  async seasonMission(a: string, s: number, id: string, xp: number) { const e = this.seasonOf(a, s); if (e.missions.includes(id)) return false; e.missions.push(id); e.xp += xp; return true; }
+  async seasonClaim(a: string, s: number, level: number, track: 'free' | 'prem') { const e = this.seasonOf(a, s), arr = track === 'free' ? e.free : e.prem; if (arr.includes(level)) return false; arr.push(level); return true; }
+  async seasonPremium(a: string, s: number, price: number) { const e = this.seasonOf(a, s); if (e.premium) return 'ja' as const; if ((this.wallet.get(a) ?? 0) < price) return 'sem-dourados' as const; this.wallet.set(a, (this.wallet.get(a) ?? 0) - price); e.premium = true; return 'ok' as const; }
+  async walletAdd(a: string, n: number) { const v = (this.wallet.get(a) ?? 0) + n; if (v < 0) return false; this.wallet.set(a, v); return true; }
+  async buyCosmetic(a: string, id: string, price: number) { const o = this.owned.get(a) ?? new Set<string>(); if (o.has(id)) return 'ja' as const; if ((this.wallet.get(a) ?? 0) < price) return 'sem-dourados' as const; this.wallet.set(a, (this.wallet.get(a) ?? 0) - price); o.add(id); this.owned.set(a, o); return 'ok' as const; }
+  async grantCosmetic(a: string, id: string) { const o = this.owned.get(a) ?? new Set<string>(); o.add(id); this.owned.set(a, o); }
+  async loginClaim(a: string, day: number) { const l = this.logins.get(a) ?? { streak: 0, lastDay: 0 }; if (l.lastDay === day) return { ok: false, streak: l.streak }; l.streak = l.lastDay === day - 1 ? l.streak + 1 : 1; l.lastDay = day; this.logins.set(a, l); return { ok: true, streak: l.streak }; }
+  async saveReward(a: string, centelhas: number, fios: number) { const s = this.saves.get(a); if (!s) return null; s.data.gold = (Number(s.data.gold) || 0) + centelhas; s.data.fios = (Number(s.data.fios) || 0) + fios; return this.bump(s); }
   async migrate() {}
   async close() {}
 

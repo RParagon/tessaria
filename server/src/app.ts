@@ -14,6 +14,7 @@ import { inc, render as renderMetrics } from './metrics';
 import { nameProblem, maskText, cleanChat } from '../../shared/text';
 import { allItems, validateSave, MAX_SAVE_BYTES } from '../../shared/save';
 import { PROTOCOL_VERSION, HUB_CAP } from '../../shared/protocol';
+import { COSMETICS, cosById, DOURADOS_PACKS, LOGIN_REWARDS, PASS_FREE, PASS_PREM, SEASON, dailyMissions, dayIndex, missionNow, passLevel, seasonEnds, shopRotation, weeklyMissions, type Reward } from '../../shared/season';
 import { FISH, FISH_KG, fishById, fishPoints, fishPrice, fishTrendDelta, sellFish, tourneyEnds, tourneyWeek, TOURNEY_PRIZES, type MarketState } from '../../shared/fish';
 
 declare module 'fastify' { interface FastifyRequest { account?: Account } }
@@ -181,6 +182,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const ids = allItems(b.data).map(x => x.it?.id).filter((x): x is string => typeof x === 'string');
     const dead = await store.tombstoned(a.id, ids);
     if (dead.length) check.errors.push(`itens que já saíram pelo correio: ${dead.slice(0, 3).join(', ')}`);
+    { const c = (b.data as any).char || {}, want = [c.trail, c.namecolor, c.ctitle].filter((x: unknown) => typeof x === 'string' && x); if (want.length) { const own = new Set((await store.seasonGet(a.id, SEASON.id)).owned); for (const w of want) if (!own.has(w)) check.errors.push(`cosmético que a conta não tem: ${w}`); } }   // Fios Dourados e cosméticos: a posse é do servidor
     // Itens marcados como sorteados pelo servidor (g=1) precisam estar no registro.
     const claimed = allItems(b.data).filter(x => x.it && (x.it as any).g === 1).map(x => x.it.id).filter((x): x is string => typeof x === 'string');
     if (claimed.length) { const ok = new Set(await store.granted(claimed)); const fake = claimed.filter(id => !ok.has(id)); if (fake.length) check.errors.push(`itens do servidor desconhecidos: ${fake.slice(0, 3).join(', ')}`); }
@@ -271,6 +273,65 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     return { rev: r.rev, gold: r.gold, n: r.n };
   });
 
+  // ---------- temporada: Passe do Tear, missões, entrada diária, loja de cosméticos ----------
+  // Fios Dourados e cosméticos ficam no servidor. Centelhas e Fios do Tear das recompensas vão para o save da nuvem.
+  const seasonView = async (id: string) => {
+    const now = Date.now(), me = await store.seasonGet(id, SEASON.id);
+    return { season: SEASON, endsAt: seasonEnds(), me: { ...me, level: passLevel(me.xp), loginToday: me.lastDay === dayIndex(now) }, daily: dailyMissions(now), weekly: weeklyMissions(now), shop: shopRotation(now), packs: DOURADOS_PACKS, payments: config.devPayments ? 'dev' : 'em-breve' };
+  };
+  const giveReward = async (id: string, r: Reward, source: string) => {
+    if ('dourados' in r) { await store.walletAdd(id, r.dourados); return {}; }
+    if ('cos' in r) { await store.grantCosmetic(id, r.cos, source); return {}; }
+    const rev = await store.saveReward(id, 'centelhas' in r ? r.centelhas : 0, 'fios' in r ? r.fios : 0); return { rev };
+  };
+  app.get('/season', { preHandler: auth }, async req => seasonView(req.account!.id));
+  const MissionBody = z.object({ id: z.string().max(40) });
+  app.post('/season/mission', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const b = parse(MissionBody, req.body, rep); if (!b) return;
+    const m = missionNow(b.id, Date.now()); if (!m) return fail(rep, 404, 'Essa missão já passou.');
+    if (!(await store.seasonMission(req.account!.id, SEASON.id, m.id, m.xp))) return fail(rep, 409, 'Missão já resgatada.');
+    inc('season_missions'); return { xp: m.xp, view: await seasonView(req.account!.id) };
+  });
+  const ClaimBody = z.object({ level: z.number().int().min(1).max(200), track: z.enum(['free', 'prem']) });
+  app.post('/season/claim', { preHandler: auth, config: perAccount(60) }, async (req, rep) => {
+    const b = parse(ClaimBody, req.body, rep); if (!b) return;
+    const id = req.account!.id, me = await store.seasonGet(id, SEASON.id), r = (b.track === 'free' ? PASS_FREE : PASS_PREM)[b.level];
+    if (!r) return fail(rep, 404, 'Sem recompensa nesse nível.');
+    if (passLevel(me.xp) < b.level) return fail(rep, 403, 'Nível do passe ainda não alcançado.');
+    if (b.track === 'prem' && !me.premium) return fail(rep, 403, 'Recompensa do Passe Premium.');
+    if (!(await store.seasonClaim(id, SEASON.id, b.level, b.track))) return fail(rep, 409, 'Já resgatada.');
+    const out = await giveReward(id, r, `passe${SEASON.id}_${b.track}_${b.level}`);
+    return { reward: r, ...out, view: await seasonView(id) };
+  });
+  app.post('/season/premium', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
+    const r = await store.seasonPremium(req.account!.id, SEASON.id, SEASON.premiumPrice);
+    if (r === 'ja') return fail(rep, 409, 'Você já tem o Passe Premium.'); if (r === 'sem-dourados') return fail(rep, 402, 'Fios Dourados insuficientes.');
+    await store.audit(req.account!.id, 'passe_premium', { temporada: SEASON.id }); return { view: await seasonView(req.account!.id) };
+  });
+  app.post('/login/claim', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
+    const id = req.account!.id, r = await store.loginClaim(id, dayIndex(Date.now()));
+    if (!r.ok) return fail(rep, 409, 'Você já recebeu a recompensa de hoje.');
+    const rw = LOGIN_REWARDS[(r.streak - 1) % LOGIN_REWARDS.length], out = await giveReward(id, rw, 'entrada');
+    return { reward: rw, streak: r.streak, ...out, view: await seasonView(id) };
+  });
+  const BuyCos = z.object({ id: z.string().max(40) });
+  app.post('/shop/buy', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const b = parse(BuyCos, req.body, rep); if (!b) return;
+    const c = cosById(b.id); if (!c || c.src !== 'loja' || !c.price) return fail(rep, 404, 'Esse cosmético não está à venda.');
+    if (!shopRotation(Date.now()).includes(c.id)) return fail(rep, 409, 'Esse cosmético não está na vitrine desta semana.');
+    const r = await store.buyCosmetic(req.account!.id, c.id, c.price);
+    if (r === 'ja') return fail(rep, 409, 'Você já tem esse cosmético.'); if (r === 'sem-dourados') return fail(rep, 402, 'Fios Dourados insuficientes.');
+    inc('shop_bought'); await store.audit(req.account!.id, 'loja_cosmetico', { id: c.id, preco: c.price }); return { view: await seasonView(req.account!.id) };
+  });
+  // Compra de Fios Dourados com dinheiro real: falta ligar um meio de pagamento (Mercado Pago/Stripe na web,
+  // Google Play Billing no Android) com confirmação por webhook. Até lá, só o modo de desenvolvimento credita.
+  app.post('/shop/dourados', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
+    const b = parse(z.object({ pack: z.string().max(10) }), req.body, rep); if (!b) return;
+    const p = DOURADOS_PACKS.find(x => x.id === b.pack); if (!p) return fail(rep, 404, 'Pacote desconhecido.');
+    if (!config.devPayments) return fail(rep, 501, 'Compras com dinheiro real chegam em breve.');
+    await store.walletAdd(req.account!.id, p.n); return { view: await seasonView(req.account!.id) };
+  });
+
   // ---------- torneio semanal de pesca ----------
   // Cada pesca vale pontos pelo peso (relativo à espécie) e pela raridade; a semana vira toda segunda 00:00 UTC.
   // Os 10 primeiros da semana passada resgatam o prêmio uma vez. Fase 1: o jogo diz o que pescou; o servidor confere a espécie, a faixa de peso e o ritmo.
@@ -295,7 +356,8 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const wk = tourneyWeek(Date.now()) - 1, id = req.account!.id, me = await store.fishMine(wk, id);
     if (!me || me.rank > TOURNEY_PRIZES.length) return fail(rep, 404, 'Sem prêmio na semana passada.');
     if (!(await store.claimFishPrize(wk, id))) return fail(rep, 409, 'Prêmio já resgatado.');
-    const gold = TOURNEY_PRIZES[me.rank - 1]; await store.audit(id, 'torneio_premio', { semana: wk, posicao: me.rank, centelhas: gold });
+    const gold = TOURNEY_PRIZES[me.rank - 1]; if (me.rank === 1) await store.grantCosmetic(id, 'tit_campeao', 'torneio');   // título de conquista: nunca vendido
+    await store.audit(id, 'torneio_premio', { semana: wk, posicao: me.rank, centelhas: gold });
     return { gold, rank: me.rank };
   });
 

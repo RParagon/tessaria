@@ -34,7 +34,7 @@ export default defineConfig({
       // Servidor do jogo em memória para os testes online (porta fixada em .env.test).
       command: 'npx tsx server/src/index.ts',
       url: 'http://localhost:2599/health',
-      env: { PORT: '2599', AUTH_PER_MINUTE: '100000', LOG_LEVEL: 'warn', NODE_ENV: 'test' },
+      env: { PORT: '2599', AUTH_PER_MINUTE: '100000', LOG_LEVEL: 'warn', NODE_ENV: 'test', DEV_PAYMENTS: '1' },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },

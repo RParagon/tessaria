@@ -37,6 +37,7 @@ No projeto do Easypanel (por exemplo `tessaria`), crie um serviço **Postgres**.
    | `TRUST_PROXY` | recomendada | `1` atrás do proxy do Easypanel, para os limites por IP usarem o IP real. Já é o padrão em produção. |
    | `GOOGLE_CLIENT_ID` | não | Liga o botão "Entrar com Google" (ID de cliente OAuth do tipo *Web* no Google Cloud). |
    | `METRICS_TOKEN` | não | Libera `GET /metrics` (Prometheus) com `Authorization: Bearer <token>`. Sem ele, a rota não existe. |
+   | `DEV_PAYMENTS` | **nunca em produção** | `1` credita pacotes de Fios Dourados sem pagamento (só desenvolvimento e testes). Em produção é ignorado. |
    | `SESSION_DAYS` | não | Validade das sessões (padrão 30). |
    | `AUTH_PER_MINUTE` | não | Tentativas de login/cadastro por IP por minuto (padrão 12). |
    | `LOG_LEVEL` | não | `info` (padrão), `warn`, `debug`. |

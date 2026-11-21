@@ -434,3 +434,11 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 .mkfilt input[type=search],.mkfilt select{flex:1;min-width:110px;background:#140f20;color:var(--ink,#f3e6c8);border:2px solid #000;padding:6px;font:inherit;font-size:12px}
 .mkmine{font-size:11px;display:flex;align-items:center;gap:4px;color:var(--dim)}
 .hist .gp{color:#6fd36a}.hist .gn{color:#ff8a6a}
+
+/* Passe do Tear */
+#hPass{position:relative}
+#hPass.dot::after{content:'';position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:#ff5a5a;border:2px solid #000}
+#seList .pass.locked{opacity:.6}
+#seList .pass button{min-width:64px}
+.aurora{background:linear-gradient(90deg,#9cf6ff,#c79bff,#ffd27a,#6fe3a0,#9cf6ff);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:aurora 4s linear infinite}
+@keyframes aurora{to{background-position:300% 0}}

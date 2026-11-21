@@ -100,3 +100,10 @@ Pesqueiro:
 Online:
 - [ ] Monstros compartilhados nas salas públicas dos Ermos (o servidor simula)
 - [x] Troca direta e mercado da vila (0.41.0)
+
+## Fase 4 · Temporada e monetização
+
+- [x] Passe do Tear com trilhas grátis e premium, missões diárias e semanais, entrada diária e loja de cosméticos (0.44.0)
+- [ ] Ligar os pagamentos (Mercado Pago/Stripe na web, Google Play Billing no Android) com webhook
+- [ ] Prévia dos cosméticos da loja no próprio personagem
+- [ ] Mais categorias: efeito de teleporte, efeito de morte, molduras do nome, decoração da casa
