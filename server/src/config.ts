@@ -14,6 +14,14 @@ export interface Config {
   metricsToken: string | null;
   /** Compras de Fios Dourados de mentira, só para desenvolvimento e testes (nunca em produção). */
   devPayments: boolean;
+  /** Mercado Pago (Checkout Pro): Access Token de produção. Só por variável de ambiente, nunca no repositório. */
+  mpAccessToken: string | null;
+  /** Assinatura secreta dos webhooks do Mercado Pago (opcional, recomendada): confere o cabeçalho x-signature. */
+  mpWebhookSecret: string | null;
+  /** Endereço público da API (para o Mercado Pago chamar o webhook). Vazio = deduzido da requisição. */
+  publicApiUrl: string | null;
+  /** Endereço do site do jogo (volta do checkout). Vazio = a primeira origem de CORS_ORIGINS. */
+  siteUrl: string | null;
   sessionDays: number;
   trustProxy: boolean;
   logLevel: string;
@@ -32,6 +40,10 @@ export function loadConfig(over: Partial<Config> = {}): Config {
     googleClientId: env.GOOGLE_CLIENT_ID || null,
     metricsToken: env.METRICS_TOKEN || null,
     devPayments: !production && env.DEV_PAYMENTS === '1',
+    mpAccessToken: env.MP_ACCESS_TOKEN?.trim() || null,
+    mpWebhookSecret: env.MP_WEBHOOK_SECRET?.trim() || null,
+    publicApiUrl: (env.PUBLIC_API_URL || '').replace(/\/+$/, '') || null,
+    siteUrl: (env.SITE_URL || '').replace(/\/+$/, '') || null,
     sessionDays: Number(env.SESSION_DAYS || 30),
     trustProxy: env.TRUST_PROXY ? env.TRUST_PROXY !== 'false' : production,
     logLevel: env.LOG_LEVEL || (production ? 'info' : 'warn'),

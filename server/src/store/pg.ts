@@ -146,6 +146,24 @@ export class PgStore implements Store {
       const u = await tx`UPDATE wallet SET dourados = dourados - ${price} WHERE account_id = ${a} AND dourados >= ${price} RETURNING dourados`; if (!u.length) return 'sem-dourados';
       await tx`UPDATE season_progress SET premium = true WHERE account_id = ${a} AND season = ${season}`; return 'ok'; }) as Promise<'ok' | 'ja' | 'sem-dourados'>;
   }
+  async paymentCredit(p: { id: string; provider: string; accountId: string; pack: string; dourados: number; amount: number }) {
+    try {
+      return await this.sql.begin(async tx => {
+        const ins = await tx`INSERT INTO payments (id, provider, account_id, pack, dourados, amount, status) VALUES (${p.id}, ${p.provider}, ${p.accountId}, ${p.pack}, ${p.dourados}, ${p.amount}, 'aprovado') ON CONFLICT (id) DO NOTHING RETURNING id`;
+        if (!ins.length) return false;
+        await tx`INSERT INTO wallet (account_id, dourados) VALUES (${p.accountId}, ${p.dourados}) ON CONFLICT (account_id) DO UPDATE SET dourados = wallet.dourados + ${p.dourados}`;
+        return true;
+      }) as boolean;
+    } catch (e: any) { if (e?.code === '23503' || e?.code === '22P02') return false; throw e; }   // conta inexistente ou id inválido
+  }
+  async paymentRevoke(id: string, status: string) {
+    return this.sql.begin(async tx => {
+      const [r] = await tx`UPDATE payments SET status = ${status}, updated_at = now() WHERE id = ${id} AND status = 'aprovado' RETURNING account_id, dourados`;
+      if (!r) return null;
+      await tx`UPDATE wallet SET dourados = GREATEST(0, dourados - ${r.dourados}) WHERE account_id = ${r.account_id}`;
+      return { accountId: r.account_id as string, dourados: r.dourados as number };
+    }) as Promise<{ accountId: string; dourados: number } | null>;
+  }
   async walletAdd(a: string, n: number) {
     await this.sql`INSERT INTO wallet (account_id) VALUES (${a}) ON CONFLICT DO NOTHING`;
     const u = await this.sql`UPDATE wallet SET dourados = dourados + ${n} WHERE account_id = ${a} AND dourados + ${n} >= 0 RETURNING dourados`; return u.length > 0;

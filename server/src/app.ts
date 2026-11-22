@@ -11,6 +11,7 @@ import { Hub, type HubOptions } from './hub';
 import { acceptFriend, removeFriend, requestFriend, setBlock } from './social';
 import { FRIEND_REQ_DAYS, type FriendsList } from '../../shared/social';
 import { inc, render as renderMetrics } from './metrics';
+import { mpCreatePreference, mpGetPayment, mpSignatureOk, notificationPaymentId, paymentMatches, parseRef } from './payments';
 import { nameProblem, maskText, cleanChat } from '../../shared/text';
 import { allItems, validateSave, MAX_SAVE_BYTES } from '../../shared/save';
 import { PROTOCOL_VERSION, HUB_CAP } from '../../shared/protocol';
@@ -277,7 +278,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
   // Fios Dourados e cosméticos ficam no servidor. Centelhas e Fios do Tear das recompensas vão para o save da nuvem.
   const seasonView = async (id: string) => {
     const now = Date.now(), me = await store.seasonGet(id, SEASON.id);
-    return { season: SEASON, endsAt: seasonEnds(), me: { ...me, level: passLevel(me.xp), loginToday: me.lastDay === dayIndex(now) }, daily: dailyMissions(now), weekly: weeklyMissions(now), shop: shopRotation(now), packs: DOURADOS_PACKS, payments: config.devPayments ? 'dev' : 'em-breve' };
+    return { season: SEASON, endsAt: seasonEnds(), me: { ...me, level: passLevel(me.xp), loginToday: me.lastDay === dayIndex(now) }, daily: dailyMissions(now), weekly: weeklyMissions(now), shop: shopRotation(now), packs: DOURADOS_PACKS, payments: config.mpAccessToken ? 'mp' : config.devPayments ? 'dev' : 'em-breve' };
   };
   const giveReward = async (id: string, r: Reward, source: string) => {
     if ('dourados' in r) { await store.walletAdd(id, r.dourados); return {}; }
@@ -323,13 +324,46 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     if (r === 'ja') return fail(rep, 409, 'Você já tem esse cosmético.'); if (r === 'sem-dourados') return fail(rep, 402, 'Fios Dourados insuficientes.');
     inc('shop_bought'); await store.audit(req.account!.id, 'loja_cosmetico', { id: c.id, preco: c.price }); return { view: await seasonView(req.account!.id) };
   });
-  // Compra de Fios Dourados com dinheiro real: falta ligar um meio de pagamento (Mercado Pago/Stripe na web,
-  // Google Play Billing no Android) com confirmação por webhook. Até lá, só o modo de desenvolvimento credita.
+  // Compra de Fios Dourados com dinheiro real: Mercado Pago (Checkout Pro, Pix e cartão) na web.
+  // O crédito só acontece no webhook, depois de o servidor conferir o pagamento na API do Mercado Pago.
+  // Sem MP_ACCESS_TOKEN, só o modo de desenvolvimento credita (nunca em produção).
   app.post('/shop/dourados', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
     const b = parse(z.object({ pack: z.string().max(10) }), req.body, rep); if (!b) return;
     const p = DOURADOS_PACKS.find(x => x.id === b.pack); if (!p) return fail(rep, 404, 'Pacote desconhecido.');
+    if (config.mpAccessToken) {
+      const api = config.publicApiUrl ?? `${req.protocol}://${req.host}`;
+      const site = config.siteUrl ?? config.corsOrigins.find(o => !/\/\/(localhost|127\.0\.0\.1)(:|$)/.test(o)) ?? null;
+      try {
+        const pref = await mpCreatePreference(config.mpAccessToken, { pack: p, accountId: req.account!.id, notificationUrl: `${api}/payments/mp/webhook`, siteUrl: site });
+        inc('mp_checkout'); await store.audit(req.account!.id, 'mp_checkout', { pack: p.id, preferencia: pref.id });
+        return { checkout: pref.url };
+      } catch (e: any) { req.log.error({ err: e?.message }, 'mercado pago: falha ao criar a preferência'); return fail(rep, 502, 'Não foi possível abrir o pagamento agora. Tente de novo em instantes.'); }
+    }
     if (!config.devPayments) return fail(rep, 501, 'Compras com dinheiro real chegam em breve.');
     await store.walletAdd(req.account!.id, p.n); return { view: await seasonView(req.account!.id) };
+  });
+  // Webhook do Mercado Pago. Responde 200 sempre que a notificação foi entendida (senão ele reenvia por dias);
+  // 500 só quando a API do Mercado Pago falhou, para ele tentar de novo depois.
+  app.post('/payments/mp/webhook', { config: { rateLimit: { max: 600, timeWindow: '1 minute' } } }, async (req, rep) => {
+    if (!config.mpAccessToken) return rep.code(404).send({ error: 'Pagamentos desligados.' });
+    const id = notificationPaymentId(req.body, req.query); if (!id) return { ok: true };
+    if (config.mpWebhookSecret) {
+      const dataId = String((req.query as any)?.['data.id'] ?? (req.body as any)?.data?.id ?? id);
+      if (!mpSignatureOk(config.mpWebhookSecret, req.headers['x-signature'], req.headers['x-request-id'], dataId)) { inc('mp_bad_signature'); return rep.code(401).send({ error: 'Assinatura inválida.' }); }
+    }
+    let pay; try { pay = await mpGetPayment(config.mpAccessToken, id); } catch (e: any) { req.log.error({ err: e?.message, id }, 'mercado pago: falha ao consultar o pagamento'); return rep.code(500).send({ error: 'Tente de novo.' }); }
+    if (!pay) return { ok: true };
+    const ref = parseRef(pay.ref); if (!ref) { req.log.warn({ id }, 'mercado pago: pagamento sem referência do jogo'); return { ok: true }; }
+    if (pay.status === 'refunded' || pay.status === 'charged_back') {
+      const r = await store.paymentRevoke(pay.id, pay.status === 'refunded' ? 'estornado' : 'contestado');
+      if (r) { inc('mp_revoked'); await store.audit(r.accountId, 'mp_estorno', { pagamento: pay.id, dourados: r.dourados, status: pay.status }); }
+      return { ok: true };
+    }
+    if (!paymentMatches(pay, ref.pack)) { if (pay.status === 'approved') req.log.warn({ id, valor: pay.amount, moeda: pay.currency }, 'mercado pago: valor não confere com o pacote'); return { ok: true }; }
+    if (await store.paymentCredit({ id: pay.id, provider: 'mercadopago', accountId: ref.accountId, pack: ref.pack.id, dourados: ref.pack.n, amount: pay.amount })) {
+      inc('mp_credited'); await store.audit(ref.accountId, 'mp_credito', { pagamento: pay.id, pacote: ref.pack.id, dourados: ref.pack.n });
+    }
+    return { ok: true };
   });
 
   // ---------- torneio semanal de pesca ----------

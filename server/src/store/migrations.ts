@@ -192,4 +192,19 @@ CREATE TABLE IF NOT EXISTS login_streak (
   last_day    integer NOT NULL DEFAULT 0
 );
 ` },
+  { id: '008_pagamentos', sql: `
+-- Pagamentos com dinheiro real (Mercado Pago). O id do pagamento é a chave: cada pagamento credita uma vez só.
+CREATE TABLE IF NOT EXISTS payments (
+  id          text PRIMARY KEY,
+  provider    text NOT NULL,
+  account_id  uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  pack        text NOT NULL,
+  dourados    integer NOT NULL,
+  amount      numeric(10,2) NOT NULL,
+  status      text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS payments_account ON payments (account_id, created_at DESC);
+` },
 ];

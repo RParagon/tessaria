@@ -34,7 +34,44 @@ function seasonClaimable() {
   return false;
 }
 /** Lê a temporada do servidor (ao entrar online e ao abrir a tela). */
-async function seasonRefresh() { const n = NETON(); if (!n) return null; const v = await n.season(); if (v) { SEAS = v; G.cosOwned = v.me.owned; seasonDot(seasonClaimable()); } return v; }
+async function seasonRefresh() { const n = NETON(); if (!n) return null; const v = await n.season(); if (v) { SEAS = v; G.cosOwned = v.me.owned; seasonDot(seasonClaimable()); if (PAY_RET) payReturn(); } return v; }
+
+// ---------- compra de Fios Dourados (Mercado Pago) ----------
+// O servidor cria o checkout e só credita quando o Mercado Pago confirma o pagamento (webhook).
+// Aqui o jogo abre a página de pagamento e fica de olho no saldo por alguns minutos.
+// No app Android (Capacitor) a compra fica escondida: lá a loja exige o Google Play Billing.
+const NATIVE_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+let PAY_RET = null, payTimer = 0;
+try {   // volta do checkout: ?pagamento=ok | pendente | falhou
+  const u = new URL(location.href), r = u.searchParams.get('pagamento');
+  if (r) { PAY_RET = r; u.searchParams.delete('pagamento'); for (const k of ['collection_id', 'collection_status', 'payment_id', 'status', 'external_reference', 'payment_type', 'merchant_order_id', 'preference_id', 'site_id', 'processing_mode', 'merchant_account_id']) u.searchParams.delete(k); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+} catch (e) { }
+function payReturn() {
+  const r = PAY_RET; PAY_RET = null;
+  if (r === 'falhou') toast('Pagamento não concluído', false, 'NADA FOI COBRADO. TENTE DE NOVO QUANDO QUISER', '#ff8a7a');
+  else { toast(r === 'ok' ? 'Pagamento recebido' : 'Pagamento em análise', true, r === 'ok' ? 'OS FIOS DOURADOS CHEGAM EM INSTANTES' : 'PIX OU BOLETO: CREDITAMOS ASSIM QUE O MERCADO PAGO CONFIRMAR', '#ffd27a'); payWatch(SEAS ? SEAS.me.dourados : 0, r === 'ok' ? 3 : 15); }
+}
+/** Confere o saldo a cada 5 s (por `min` minutos) e avisa quando os Fios Dourados chegarem. */
+function payWatch(before, min = 3) {
+  clearInterval(payTimer); const end = Date.now() + min * 60_000;
+  payTimer = setInterval(async () => {
+    if (Date.now() > end || !NETON()) { clearInterval(payTimer); return; }
+    const n = NETON(), v = await n.season(); if (!v) return;
+    SEAS = v; G.cosOwned = v.me.owned;
+    if (v.me.dourados > before) { clearInterval(payTimer); toast('+' + (v.me.dourados - before) + ' FIOS DOURADOS', true, 'OBRIGADO POR APOIAR FIOS DE TESSÁRIA!', '#ffd27a'); sfx('frag'); if (G.menu === 'season') renderSeason(); }
+  }, 5000);
+}
+async function buyPack(p) {
+  const n = NETON(); if (!n || seBusy) return;
+  if (SEAS.payments === 'dev') return seasonOp(() => n.buyDourados(p.id), () => toast('+' + p.n + ' FIOS DOURADOS', false, 'MODO DE DESENVOLVIMENTO', '#ffd27a'));
+  // abre a aba já no clique (senão o navegador bloqueia o pop-up) e põe o endereço quando o servidor responder
+  let w = null; try { w = window.open('', '_blank'); if (w) w.document.write('<p style="font:16px sans-serif;padding:24px">Abrindo o Mercado Pago…</p>'); } catch (e) { w = null; }
+  seBusy = true; const r = await n.buyDourados(p.id); seBusy = false;
+  if (!r.ok || !r.data || !r.data.checkout) { if (w) w.close(); toast('Não deu certo', false, String(r.ok ? 'Pagamento indisponível' : r.error).toUpperCase()); sfx('ui'); return; }
+  const before = SEAS.me.dourados;
+  if (w) { w.location.href = r.data.checkout; toast('Pagamento aberto', true, 'CONCLUA NA ABA DO MERCADO PAGO · OS FIOS DOURADOS CHEGAM AQUI SOZINHOS', '#ffd27a'); payWatch(before, 15); }
+  else location.href = r.data.checkout;   // pop-up bloqueado: vai na mesma aba e volta com ?pagamento=
+}
 
 function rewardTxt(r) {
   if (!r) return '';
@@ -82,8 +119,15 @@ function renderSeason() {
     const own = new Set(me.owned);
     $('#seSub').innerHTML = 'Vitrine da semana (troca toda segunda). Cosméticos só mudam o visual. Os de conquista (como o título de Campeão do Torneio) nunca são vendidos.';
     for (const id of SEAS.shop) { const c = TS.cosById(id); if (!c) continue; row(`<div class="nm"><b style="color:${RARC[c.rar]}">${c.n}</b><small>${TS.COS_SLOT_N[c.slot]} · ${['comum', 'raro', 'épico', 'lendário'][c.rar]}</small></div>`, [btn('Prévia', true, () => cosPreview(id)), own.has(id) ? btn('Seu', false) : btn(c.price + ' ✧', me.dourados >= c.price, () => seasonOp(() => n.shopBuy(id), () => toast(c.n.toUpperCase(), true, 'VISTA NO GUARDA-ROUPA DA SUA CASA', RARC[c.rar])), true)]); }
-    row('<div class="nm"><b>Fios Dourados</b><small>' + (SEAS.payments === 'dev' ? 'Modo de desenvolvimento: os pacotes são creditados sem pagamento.' : 'Compras com dinheiro real chegam em breve (Pix, cartão e Google Play). Por enquanto, ganhe Fios Dourados no Passe e na entrada diária.') + '</small></div>');
-    for (const p of SEAS.packs) row(`<div class="nm">${p.n} Fios Dourados<small>R$ ${p.brl.toFixed(2).replace('.', ',')}</small></div>`, [btn(SEAS.payments === 'dev' ? 'Creditar' : 'Em breve', SEAS.payments === 'dev', () => seasonOp(() => n.buyDourados(p.id), () => toast('+' + p.n + ' FIOS DOURADOS', false, 'MODO DE DESENVOLVIMENTO', '#ffd27a')))]);
+    if (NATIVE_APP) row('<div class="nm"><b>Fios Dourados</b><small>No aplicativo, as compras chegam com o Google Play. Por enquanto, compre pelo site do jogo (a conta é a mesma) ou ganhe Fios Dourados no Passe e na entrada diária.</small></div>');
+    else {
+      const info = SEAS.payments === 'mp' ? 'Pagamento seguro pelo Mercado Pago: Pix ou cartão. Os Fios Dourados chegam na sua conta assim que o pagamento for aprovado. Só compram estilo, nunca poder.'
+        : SEAS.payments === 'dev' ? 'Modo de desenvolvimento: os pacotes são creditados sem pagamento.'
+          : 'Compras com dinheiro real chegam em breve. Por enquanto, ganhe Fios Dourados no Passe e na entrada diária.';
+      row('<div class="nm"><b>Fios Dourados</b><small>' + info + '</small></div>');
+      const lbl = SEAS.payments === 'mp' ? 'Comprar' : SEAS.payments === 'dev' ? 'Creditar' : 'Em breve';
+      for (const p of SEAS.packs) row(`<div class="nm">${p.n} Fios Dourados<small>R$ ${p.brl.toFixed(2).replace('.', ',')}</small></div>`, [btn(lbl, SEAS.payments !== 'em-breve', () => buyPack(p))]);
+    }
   } else {
     $('#seSub').textContent = 'Entre todo dia: a recompensa cresce até o 7º dia seguido (que dá Fios Dourados). Faltou um dia, recomeça.';
     const streak = me.streak || 0, today = me.loginToday, next = today ? streak : (me.lastDay === TS.dayIndex(now) - 1 ? streak + 1 : 1);

@@ -103,6 +103,15 @@ export class MemoryStore implements Store {
   async seasonMission(a: string, s: number, id: string, xp: number) { const e = this.seasonOf(a, s); if (e.missions.includes(id)) return false; e.missions.push(id); e.xp += xp; return true; }
   async seasonClaim(a: string, s: number, level: number, track: 'free' | 'prem') { const e = this.seasonOf(a, s), arr = track === 'free' ? e.free : e.prem; if (arr.includes(level)) return false; arr.push(level); return true; }
   async seasonPremium(a: string, s: number, price: number) { const e = this.seasonOf(a, s); if (e.premium) return 'ja' as const; if ((this.wallet.get(a) ?? 0) < price) return 'sem-dourados' as const; this.wallet.set(a, (this.wallet.get(a) ?? 0) - price); e.premium = true; return 'ok' as const; }
+  private payments = new Map<string, { accountId: string; dourados: number; status: string }>();
+  async paymentCredit(p: { id: string; provider: string; accountId: string; pack: string; dourados: number; amount: number }) {
+    if (this.payments.has(p.id) || !this.accounts.has(p.accountId)) return false;
+    this.payments.set(p.id, { accountId: p.accountId, dourados: p.dourados, status: 'aprovado' }); this.wallet.set(p.accountId, (this.wallet.get(p.accountId) ?? 0) + p.dourados); return true;
+  }
+  async paymentRevoke(id: string, status: string) {
+    const e = this.payments.get(id); if (!e || e.status !== 'aprovado') return null; e.status = status;
+    this.wallet.set(e.accountId, Math.max(0, (this.wallet.get(e.accountId) ?? 0) - e.dourados)); return { accountId: e.accountId, dourados: e.dourados };
+  }
   async walletAdd(a: string, n: number) { const v = (this.wallet.get(a) ?? 0) + n; if (v < 0) return false; this.wallet.set(a, v); return true; }
   async buyCosmetic(a: string, id: string, price: number) { const o = this.owned.get(a) ?? new Set<string>(); if (o.has(id)) return 'ja' as const; if ((this.wallet.get(a) ?? 0) < price) return 'sem-dourados' as const; this.wallet.set(a, (this.wallet.get(a) ?? 0) - price); o.add(id); this.owned.set(a, o); return 'ok' as const; }
   async grantCosmetic(a: string, id: string) { const o = this.owned.get(a) ?? new Set<string>(); o.add(id); this.owned.set(a, o); }

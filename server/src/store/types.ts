@@ -74,6 +74,10 @@ export interface Store {
   seasonPremium(accountId: string, season: number, price: number): Promise<'ok' | 'ja' | 'sem-dourados'>;
   /** Soma (ou tira, se n < 0) Fios Dourados; false se o saldo ficaria negativo. */
   walletAdd(accountId: string, n: number): Promise<boolean>;
+  /** Credita um pagamento aprovado uma vez só (false se esse pagamento já foi creditado). */
+  paymentCredit(p: { id: string; provider: string; accountId: string; pack: string; dourados: number; amount: number }): Promise<boolean>;
+  /** Estorno/chargeback de um pagamento creditado: tira os Fios Dourados (até zerar). null se não havia o que estornar. */
+  paymentRevoke(id: string, status: string): Promise<{ accountId: string; dourados: number } | null>;
   /** Compra um cosmético com Fios Dourados (motivo se não deu). */
   buyCosmetic(accountId: string, id: string, price: number): Promise<'ok' | 'ja' | 'sem-dourados'>;
   grantCosmetic(accountId: string, id: string, source: string): Promise<void>;

@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.46.0 · Fios Dourados pelo Mercado Pago e as decisões das guildas
+- **Compra de Fios Dourados com Pix ou cartão** pelo Mercado Pago (Checkout Pro). Na loja do Passe, o botão **Comprar** abre a página de pagamento numa aba nova; quando o pagamento é aprovado, os Fios Dourados chegam sozinhos (o jogo confere o saldo e avisa). Pix pendente é creditado assim que o Mercado Pago confirmar
+- **Seguro do lado do servidor:** o crédito só acontece no webhook, depois de o servidor consultar o pagamento direto na API do Mercado Pago (aprovado, em reais e com o valor exato do pacote), e uma única vez por pagamento. Webhook com assinatura conferida (`x-signature`), estorno e chargeback tiram os Fios Dourados de volta, e tudo fica no registro de auditoria
+- No app Android a compra fica escondida (a Google Play exige o Billing dela); dá para comprar pelo site com a mesma conta
+- **Guildas:** decisões registradas em `docs/GUILDS.md`. A ilha é só para membros e convidados, a guerra pareia as guildas pelo peso de guerra (como nos jogos de clã, com escalações do mesmo tamanho e estrelas por ataque) e a guilda acompanha o jogador em regiões e servidores futuros
+- Servidor: `POST /payments/mp/webhook`, `POST /shop/dourados` devolve o link do checkout, tabela `payments` (migração 008), variáveis `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `PUBLIC_API_URL` e `SITE_URL` (veja `docs/DEPLOY.md`)
+
 ## 0.45.0 · Prévia na loja, cosméticos novos e o plano das guildas
 - **Prévia na loja:** o botão Prévia mostra o seu herói girando no pedestal com o cosmético em loop (o rastro numa esquiva, o teleporte e a morte a cada 2,5 s) e o seu nome com a cor, o título e a moldura, antes de comprar
 - **Efeito de teleporte** (4): Coluna de Luz, Portal de Fios, Redemoinho de Folhas e Rasgo do Vazio. Toca quando você chega por portal, obelisco ou ao renascer, e os outros jogadores veem quando você aparece

@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.45.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.46.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -175,7 +175,7 @@ Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 <img src="docs/img/coop.png" alt="Dois jogadores do mesmo grupo lado a lado na Fenda do Tear" width="100%">
 
 - **Ermos abertos:** sem grupo, você cai numa sala pública dos Ermos (até 30 jogadores) e vê os outros Tecelões. No **Ermo Profundo** o PvP é ativo: o nome de quem pode ser atacado fica vermelho, o dano entre jogadores é reduzido, e **amigos e grupo nunca se acertam**. Quem cai larga o espólio por 5 minutos e **o primeiro que chega leva**.
-- **Passe do Tear (Temporada 1):** tecla P. 3 missões por dia e 3 por semana (iguais para todos) dão XP do passe; 40 níveis com trilha grátis e premium; recompensa diária de 7 dias; loja de cosméticos com vitrine semanal. Cosméticos (rastro de esquiva, cor do nome, título, efeito de teleporte, efeito de morte e moldura do nome) aparecem para os outros jogadores, com prévia no herói antes de comprar. **Dinheiro compra estilo, nunca poder** (veja [docs/MONETIZATION.md](docs/MONETIZATION.md)).
+- **Passe do Tear (Temporada 1):** tecla P. 3 missões por dia e 3 por semana (iguais para todos) dão XP do passe; 40 níveis com trilha grátis e premium; recompensa diária de 7 dias; loja de cosméticos com vitrine semanal. Cosméticos (rastro de esquiva, cor do nome, título, efeito de teleporte, efeito de morte e moldura do nome) aparecem para os outros jogadores, com prévia no herói antes de comprar. Fios Dourados à venda pelo **Mercado Pago** (Pix e cartão) no site, com crédito só depois de o servidor confirmar o pagamento. **Dinheiro compra estilo, nunca poder** (veja [docs/MONETIZATION.md](docs/MONETIZATION.md)).
 - **Mercado da Vila e troca direta:** nas bancas da praça norte, anuncie itens da bolsa pelo preço que quiser, compre o que os outros Tecelões venderam e receba as vendas (5% de taxa da vila). Na mesma sala, toque no nome de alguém e escolha **Propor troca**: cada um oferece itens e Centelhas, e quando os dois confirmam o servidor troca tudo de uma vez.
 - **Fenda do grupo e Ermos do grupo:** o líder abre e todos recebem o aviso **Pronto?**. Quem entra cai no mesmo mapa.
 - **Os mesmos monstros para todos:** o jogo do líder comanda os inimigos e o chefe; o golpe de qualquer um vale; os monstros atacam quem estiver mais perto.

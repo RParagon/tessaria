@@ -1,6 +1,6 @@
 # Monetização
 
-## Estado (0.44.0): o que já está no jogo
+## Estado (0.46.0): o que já está no jogo
 
 - **Fios Dourados** (moeda premium) ficam **só no servidor** (tabela `wallet`), nunca no save. Cosméticos da conta ficam em `cosmetics_owned`; o save só guarda o que está equipado, e o servidor recusa o save que equipa algo que a conta não tem.
 - **Passe do Tear, Temporada 1 · A Fenda de Vidro:** 8 semanas, **40 níveis** de 1000 XP. Trilha grátis a cada 2 níveis (Centelhas, Fios do Tear, 2 títulos e 200 Fios Dourados no total); trilha premium em todos os níveis (8 cosméticos exclusivos e 660 Fios Dourados de volta). Premium: **950 Fios Dourados**.
@@ -9,7 +9,7 @@
 - **Loja de cosméticos:** vitrine de 4 itens que gira toda segunda (rastros de esquiva, cores do nome, títulos), com Fios Dourados. Cosmético de conquista (como "Campeão do Torneio") nunca é vendido.
 - **Cosméticos visíveis para os outros:** rastro de esquiva, cor do nome (inclusive a "Aurora", animada) e título, no Guarda-Roupa da casa.
 - **Os estilos raros de antes** (acessórios, cabelos, armaduras e auras) continuam com Centelhas, de graça para quem joga.
-- **Pagamentos:** a compra de Fios Dourados com dinheiro real **ainda não está ligada**. A rota `POST /shop/dourados` responde 501 ("em breve") até um meio de pagamento ser configurado. Pacotes planejados: 500 (R$ 9,90), 1100 (R$ 19,90) e 2400 (R$ 39,90). Para ligar: Mercado Pago ou Stripe (Pix e cartão) na web e Google Play Billing no Android, sempre com confirmação por webhook no servidor antes de creditar.
+- **Pagamentos (0.46.0): Mercado Pago, Checkout Pro (Pix e cartão) na web.** `POST /shop/dourados` cria a preferência e devolve o link do checkout; o crédito só acontece em `POST /payments/mp/webhook`, depois de o servidor consultar o pagamento na API do Mercado Pago (aprovado, BRL, valor exato do pacote), uma vez por pagamento (tabela `payments`). Estorno e chargeback descontam os Fios Dourados. Pacotes: 500 (R$ 9,90), 1100 (R$ 19,90) e 2400 (R$ 39,90). No app Android a compra fica escondida até ligarmos o Google Play Billing. Configuração em `docs/DEPLOY.md`.
 - **Economia de quem não paga:** com a trilha grátis e as entradas diárias, dá para ganhar cerca de 440 Fios Dourados por temporada, o bastante para 1 ou 2 cosméticos da vitrine, mas não o premium.
 
 

@@ -37,6 +37,10 @@ No projeto do Easypanel (por exemplo `tessaria`), crie um serviço **Postgres**.
    | `TRUST_PROXY` | recomendada | `1` atrás do proxy do Easypanel, para os limites por IP usarem o IP real. Já é o padrão em produção. |
    | `GOOGLE_CLIENT_ID` | não | Liga o botão "Entrar com Google" (ID de cliente OAuth do tipo *Web* no Google Cloud). |
    | `METRICS_TOKEN` | não | Libera `GET /metrics` (Prometheus) com `Authorization: Bearer <token>`. Sem ele, a rota não existe. |
+   | `MP_ACCESS_TOKEN` | para vender | **Access Token de produção** do Mercado Pago (Suas integrações → sua aplicação → Credenciais de produção). Liga a compra de Fios Dourados por Pix e cartão. **Segredo:** só no painel, nunca no repositório nem em conversa. |
+   | `MP_WEBHOOK_SECRET` | recomendada | Assinatura secreta dos webhooks (Suas integrações → Webhooks). Com ela, o servidor recusa notificações sem `x-signature` válida. |
+   | `PUBLIC_API_URL` | recomendada | Endereço público desta API, ex.: `https://api.seu-dominio.com`. O Mercado Pago chama `PUBLIC_API_URL/payments/mp/webhook`. Sem ela, é deduzido da requisição. |
+   | `SITE_URL` | recomendada | Endereço do site do jogo, para onde o checkout volta (`?pagamento=ok`). Sem ela, usa a primeira origem de `CORS_ORIGINS` que não seja localhost. |
    | `DEV_PAYMENTS` | **nunca em produção** | `1` credita pacotes de Fios Dourados sem pagamento (só desenvolvimento e testes). Em produção é ignorado. |
    | `SESSION_DAYS` | não | Validade das sessões (padrão 30). |
    | `AUTH_PER_MINUTE` | não | Tentativas de login/cadastro por IP por minuto (padrão 12). |
@@ -46,6 +50,17 @@ No projeto do Easypanel (por exemplo `tessaria`), crie um serviço **Postgres**.
 6. Teste: `https://api.seu-dominio.com/health` deve responder `{"ok":true,...,"db":"ok"}`.
 
 > Segredos (senha do banco, tokens) ficam só no painel do Easypanel. Nunca no repositório.
+
+#### Mercado Pago (venda de Fios Dourados)
+
+1. No [painel de desenvolvedor do Mercado Pago](https://www.mercadopago.com.br/developers/panel/app), crie uma aplicação do tipo **Checkout Pro** (pagamentos online).
+2. Em **Credenciais de produção**, copie o **Access Token** e coloque em `MP_ACCESS_TOKEN` no Easypanel. A Public Key não é necessária (o checkout abre na página do Mercado Pago).
+3. Em **Webhooks → Configurar notificações**, use a URL `https://SUA-API/payments/mp/webhook`, marque o evento **Pagamentos** e salve. Copie a **assinatura secreta** para `MP_WEBHOOK_SECRET`.
+4. Defina `PUBLIC_API_URL` e `SITE_URL` e reinicie o serviço. `GET /season` passa a dizer `"payments":"mp"` e a loja do jogo mostra o botão **Comprar**.
+5. Teste com um pacote pequeno. O servidor só credita depois de consultar o pagamento na API do Mercado Pago: aprovado, em reais e com o valor exato do pacote, uma única vez por pagamento (tabela `payments`). Estorno e chargeback tiram os Fios Dourados de volta (até zerar). Tudo fica no registro de auditoria (`mp_checkout`, `mp_credito`, `mp_estorno`).
+6. Se um token vazar (por exemplo, colado num chat ou num commit), **renove-o** no painel do Mercado Pago na hora e troque no Easypanel.
+
+No app Android a compra fica escondida: a Google Play exige o Google Play Billing para itens digitais. O jogador pode comprar pelo site com a mesma conta.
 
 ### 3. Versão web na VPS (opcional)
 
