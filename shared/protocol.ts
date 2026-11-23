@@ -26,6 +26,11 @@ export const INST_EMPTY_MS = 60_000;       // instância vazia fecha depois diss
 export const WILDS_CAP = 30;          // jogadores por sala pública dos Ermos
 /** Ermo Profundo (o anel de fora), em unidades do mundo (ladrilho = 2). Aproximação sem o ruído da borda: o jogo confere o bioma exato. */
 export const deepWilds = (x: number, z: number) => Math.hypot(x / 2 - 200, (z / 2 - 175) * 1.15) > 132;
+/** Duelos na vila: o desafio vale 20 s; os dois precisam estar a até 15 m; contagem de 3 s; dura até 90 s. */
+export const DUEL_INVITE_MS = 20_000, DUEL_RANGE = 15, DUEL_GO_MS = 3_000, DUEL_MS = 90_000;
+/** Ranking dos duelos (Elo): começa em 1000; cada dupla conta no ranking no máximo 3 vezes por dia (contra farm). */
+export const DUEL_ELO_START = 1000, DUEL_ELO_K = 32, DUEL_PAIR_DAY = 3;
+export function eloDelta(winner: number, loser: number, k = DUEL_ELO_K) { const exp = 1 / (1 + 10 ** ((loser - winner) / 400)); return Math.max(1, Math.round(k * (1 - exp))); }
 /** Chat local: nas áreas abertas (vila, Ermos, Fenda do grupo), a mensagem chega a quem está até este raio. */
 export const CHAT_RADIUS = 30;
 export const PVP_RANGE = 30;          // distância máxima de um acerto entre jogadores
@@ -104,6 +109,9 @@ export type ClientMsg =
   // amigos e grupo (docs/ONLINE.md). Fora da vila a conexão continua aberta só para isso.
   // Ermos abertos: PvP no Ermo Profundo e espólio que qualquer um pega
   | { t: 'pvp'; to: number; dmg: number }      // acertei este jogador (o servidor confere zona, amizade e grupo)
+  | { t: 'duel'; name: string }                // desafiar para um duelo (na vila, perto)
+  | { t: 'dans'; from: string; ok: boolean }   // responder ao desafio
+  | { t: 'dlost' }                             // caí no duelo
   | { t: 'ldrop'; x: number; z: number; gold: number; items: unknown[]; at: number }   // caí: meu espólio fica no chão (at: hora da queda no save, wloot.t)
   | { t: 'ltake'; id: string; free: number }    // pegar um espólio (free: espaços livres na bolsa)
   // troca direta (na mesma sala)
@@ -128,7 +136,10 @@ export type ServerMsg =
   | { t: 'hx'; from: number; d: any }
   | { t: 'gx'; from: number; d: any }
   | { t: 'px'; from: number; d: any }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
-  | { t: 'pvp'; from: number; name: string; dmg: number }   // outro jogador me acertou no Ermo Profundo
+  | { t: 'pvp'; from: number; name: string; dmg: number }   // outro jogador me acertou no Ermo Profundo (ou no duelo)
+  | { t: 'dinv'; from: string; ms: number }                  // desafio de duelo
+  | { t: 'dstart'; opp: number; name: string; ms: number; go: number }   // o duelo começa em `go` ms e dura `ms`
+  | { t: 'dend'; result: 'venceu' | 'perdeu' | 'empate'; opp: string; rating: number | null; delta: number }
   | { t: 'ldrop'; id: string; x: number; z: number; by: number; name: string; gold: number; n: number; ms: number }   // espólio no chão da sala (ms: quanto falta)
   | { t: 'lgot'; id: string; gold: number; items: any[]; own: boolean; left: number }   // você pegou (left: itens que ficaram por falta de espaço)
   | { t: 'lgone'; id: string; by?: string; at?: number }   // espólio sumiu (pego ou expirou); by: quem pegou o SEU; t: hora da sua queda

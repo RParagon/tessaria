@@ -82,6 +82,11 @@ export interface Store {
   deleteAccount(accountId: string): Promise<void>;
   /** Todos os dados da conta, para o jogador baixar (LGPD). */
   exportAccount(accountId: string): Promise<Record<string, unknown>>;
+  // ---------- duelos ----------
+  /** Registra o resultado; conta no ranking só se a dupla não passou do limite do dia. Devolve as notas novas (ou null se não contou). */
+  duelResult(winnerId: string, loserId: string, o: { day: number; pairMax: number; start: number; k: number }): Promise<{ winner: number; loser: number; delta: number } | null>;
+  duelTop(limit: number): Promise<Array<{ name: string; rating: number; wins: number; losses: number }>>;
+  duelMine(accountId: string): Promise<{ rating: number; wins: number; losses: number; rank: number | null }>;
   // ---------- guildas ----------
   guildOf(accountId: string): Promise<{ guild: GuildRow; role: GuildMember['role'] } | null>;
   guildMembers(guildId: string): Promise<GuildMember[]>;

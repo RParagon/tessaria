@@ -270,4 +270,22 @@ CREATE TABLE IF NOT EXISTS guild_log (
 );
 CREATE INDEX IF NOT EXISTS guild_log_guild ON guild_log (guild_id, id DESC);
 ` },
+  { id: '011_duelos', sql: `
+-- Duelos na vila: ranking Elo e a contagem diária por dupla (contra farm de vitórias combinadas).
+CREATE TABLE IF NOT EXISTS duel_ratings (
+  account_id  uuid PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  rating      integer NOT NULL DEFAULT 1000,
+  wins        integer NOT NULL DEFAULT 0,
+  losses      integer NOT NULL DEFAULT 0,
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS duel_ratings_top ON duel_ratings (rating DESC);
+CREATE TABLE IF NOT EXISTS duel_pairs (
+  a           uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  b           uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  day         integer NOT NULL,
+  n           integer NOT NULL DEFAULT 0,
+  PRIMARY KEY (a, b, day)
+);
+` },
 ];

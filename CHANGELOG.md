@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.53.0 · Duelos e ranking
+- **Desafie para um duelo** tocando no nome de outro jogador na vila (opção "Desafiar para duelo") ou com `/duelo Nome`. Os dois precisam estar perto (até 15 m)
+- O desafiado recebe um cartão com **Aceitar** e **Recusar** (vale 20 s). Aceito, começa uma **contagem de 3 s** e o duelo dura até 90 s, com um marcador no topo da tela
+- **PvP só entre os dois** (as mesmas regras de dano do Ermo Profundo, 30% do golpe e até 20% da vida por acerto). **Ninguém morre:** quem cair primeiro perde e volta com a vida cheia. Sem perda de itens nem de Centelhas
+- Sair da sala no meio do duelo (por exemplo, entrar na taverna) conta como desistência; no fim do tempo, empate
+- **Ranking de duelos (Elo):** todo mundo começa com 1000. A mesma dupla conta no ranking no máximo 3 vezes por dia (contra vitórias combinadas). Veja na conta online, em "Ranking de duelos"
+- A vila inteira vê o começo e o resultado de cada duelo no chat
+- Servidor: mensagens `duel`, `dans`, `dlost`, `dinv`, `dstart` e `dend`, rota `GET /duels` e tabelas `duel_ratings` e `duel_pairs` (migração 011). O teto de dano PvP e a contagem de suspeitas valem também nos duelos
+
 ## 0.52.0 · Decoração da casa
 - **Decoração com Fios Dourados**, sempre à venda (não depende da vitrine da semana), no catálogo da sua casa: 13 peças em 6 lugares fixos
   - **Tapete da sala:** Tapete Real, Tapete do Mar e Tapete de Fios Vivos (que brilha)

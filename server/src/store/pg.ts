@@ -164,6 +164,27 @@ export class PgStore implements Store {
       return { accountId: r.account_id as string, dourados: r.dourados as number };
     }) as Promise<{ accountId: string; dourados: number } | null>;
   }
+  // ---------- duelos ----------
+  async duelResult(w: string, l: string, o: { day: number; pairMax: number; start: number; k: number }) {
+    const [a, b] = w < l ? [w, l] : [l, w];
+    return this.sql.begin(async tx => {
+      const [pr] = await tx`INSERT INTO duel_pairs (a, b, day, n) VALUES (${a}, ${b}, ${o.day}, 1) ON CONFLICT (a, b, day) DO UPDATE SET n = duel_pairs.n + 1 RETURNING n`;
+      if (pr.n > o.pairMax) return null;
+      await tx`INSERT INTO duel_ratings (account_id, rating) VALUES (${w}, ${o.start}), (${l}, ${o.start}) ON CONFLICT DO NOTHING`;
+      const rows = await tx`SELECT account_id, rating FROM duel_ratings WHERE account_id IN (${w}, ${l}) FOR UPDATE`;
+      const rw = rows.find(r => r.account_id === w)!.rating as number, rl = rows.find(r => r.account_id === l)!.rating as number;
+      const ex = 1 / (1 + 10 ** ((rl - rw) / 400)), d = Math.max(1, Math.round(o.k * (1 - ex)));
+      await tx`UPDATE duel_ratings SET rating = rating + ${d}, wins = wins + 1, updated_at = now() WHERE account_id = ${w}`;
+      await tx`UPDATE duel_ratings SET rating = GREATEST(0, rating - ${d}), losses = losses + 1, updated_at = now() WHERE account_id = ${l}`;
+      return { winner: rw + d, loser: Math.max(0, rl - d), delta: d };
+    }) as any;
+  }
+  async duelTop(n: number) { const r = await this.sql`SELECT a.name, d.rating, d.wins, d.losses FROM duel_ratings d JOIN accounts a ON a.id = d.account_id WHERE d.wins + d.losses > 0 ORDER BY d.rating DESC, d.wins DESC LIMIT ${n}`; return r.map(x => ({ name: x.name, rating: x.rating, wins: x.wins, losses: x.losses })); }
+  async duelMine(a: string) {
+    const [m] = await this.sql`SELECT rating, wins, losses FROM duel_ratings WHERE account_id = ${a}`; if (!m) return { rating: 1000, wins: 0, losses: 0, rank: null };
+    const [r] = await this.sql`SELECT count(*)::int + 1 AS rank FROM duel_ratings WHERE rating > ${m.rating} AND wins + losses > 0`;
+    return { rating: m.rating, wins: m.wins, losses: m.losses, rank: m.wins + m.losses > 0 ? r.rank : null };
+  }
   // ---------- guildas ----------
   private toGuild(r: any): GuildRow { return { id: r.id, name: r.name, tag: r.tag, emblem: r.emblem, motd: r.motd, fios: Number(r.fios), createdAt: r.created_at }; }
   async guildOf(a: string) {

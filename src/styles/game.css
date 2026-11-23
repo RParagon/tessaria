@@ -492,3 +492,7 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 
 /* decoração da casa */
 .up.deco .deco-opts{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.up.deco .deco-opts .px{font-size:10px;padding:5px 7px}.up.deco .deco-opts .px.on{border-color:var(--gold);color:var(--gold)}
+
+/* duelos */
+.net-invite.duel b{color:#ff8a5a}
+.net-duelbar{display:flex;gap:10px;align-items:center;padding:6px 12px;border-color:#a8323a}.net-duelbar b{color:#ff8a5a}

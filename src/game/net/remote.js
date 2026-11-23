@@ -313,7 +313,9 @@ function resetMailOnline() { mlOnlineSel = null; mlInbox = null; }
 /** O ponto está no Ermo Profundo, fora de acampamento (lá não há acampamentos, mas confere). */
 const deepAt = (x, z) => !!(RG && RG.wild) && wZone(x / T, z / T) === 7 && !inCamp(x, z);
 /** Pode bater neste jogador? Sala pública dos Ermos, os dois no Ermo Profundo, e ele não é amigo nem do grupo. */
-function pvpFoe(r, n = NETON()) { return !!(n && n.inOpenWilds && P && r.x !== undefined && deepAt(P.x, P.z) && deepAt(r.x, r.z) && !n.isAlly(r.name)); }
+/** Duelo em andamento com este jogador (depois da contagem)? */
+function duelFoe(r, n = NETON()) { const d = n && n.duel; return !!(d && d.opp === r.id && Date.now() >= d.go); }
+function pvpFoe(r, n = NETON()) { return !!(n && P && r.x !== undefined && (duelFoe(r, n) || (n.inOpenWilds && deepAt(P.x, P.z) && deepAt(r.x, r.z) && !n.isAlly(r.name)))); }
 const pvpCd = new Map();   // id → hora do último acerto (um acerto por golpe, mesmo com área)
 function pvpStrike(r, dmg, n) {
   const now = performance.now(); if (now - (pvpCd.get(r.id) || 0) < 200) return false; pvpCd.set(r.id, now);
@@ -322,7 +324,7 @@ function pvpStrike(r, dmg, n) {
 }
 /** Golpe em área (giro, especial) ou em arco (golpe corpo a corpo): acerta os jogadores hostis no alcance. */
 function pvpArea(x, z, rad, dmg, yaw, arc) {
-  const n = NETON(); if (!n || !n.inOpenWilds || !deepAt(P.x, P.z)) return;
+  const n = NETON(); if (!n || (!n.duel && (!n.inOpenWilds || !deepAt(P.x, P.z)))) return;
   for (const r of n.players()) {
     if (!pvpFoe(r, n)) continue;
     const dx = r.x - x, dz = r.z - z, d = Math.hypot(dx, dz) - .45;
@@ -332,7 +334,7 @@ function pvpArea(x, z, rad, dmg, yaw, arc) {
 }
 /** Projétil do jogador: acerta um jogador hostil no caminho (true: o projétil some). */
 function pvpProj(p) {
-  const n = NETON(); if (!n || !n.inOpenWilds || !deepAt(P.x, P.z)) return false;
+  const n = NETON(); if (!n || (!n.duel && (!n.inOpenWilds || !deepAt(P.x, P.z)))) return false;
   for (const r of n.players()) {
     if ((p.hitR && p.hitR.has(r.id)) || !pvpFoe(r, n) || Math.hypot(r.x - p.x, r.z - p.z) > .45 + p.r) continue;
     pvpStrike(r, p.dmg, n); (p.hitR || (p.hitR = new Set())).add(r.id);
@@ -343,7 +345,8 @@ function pvpProj(p) {
 /** Entre jogadores o dano é menor que o dos monstros: uma luta dura alguns golpes, não um. */
 const PVP_MUL = .3;
 function pvpHurt(from, name, dmg) {
-  const n = NETON(); if (!n || !P || G.mode !== 'play' || P.dieT >= 0 || P.iframe > 0 || P.dashT > 0 || !deepAt(P.x, P.z) || n.isAlly(name)) return;
+  const n = NETON(), duel = !!(n && n.duel && n.duel.opp === from && Date.now() >= n.duel.go);
+  if (!n || !P || G.mode !== 'play' || P.dieT >= 0 || P.iframe > 0 || P.dashT > 0 || (!duel && (!deepAt(P.x, P.z) || n.isAlly(name)))) return;
   const r = n.players().find(q => q.id === from);
   let d = Math.max(1, Math.round(Math.min(dmg * PVP_MUL, P.maxHp * .2) * (1 - stats().dr)));
   if (P.ultT > 0) d = Math.round(d * .5);
@@ -351,6 +354,7 @@ function pvpHurt(from, name, dmg) {
   P.hp -= d; P.iframe = .25; P.flash = 1; G.hurt = 1; G.shake = Math.max(G.shake, .2);
   if (r && r.x !== undefined) { const dx = P.x - r.x, dz = P.z - r.z, l = Math.hypot(dx, dz) || 1; P.kx = dx / l * 5; P.kz = dz / l * 5; }
   popNum(P.x, 2.2, P.z, '-' + d, 'hurt'); sfx('hurt');
+  if (P.hp <= 0 && duel) { P.hp = P.maxHp; P.iframe = 1.5; n.duelLost(); burst(P.x, 1, P.z, 30, 21, 4, .6, .15); return; }   // no duelo ninguém morre: quem cai perde e volta com a vida cheia
   if (P.hp <= 0) { G.pvpBy = name; playerDie(); setTimeout(() => toast('ABATIDO POR ' + name.toUpperCase(), true, 'ERMO PROFUNDO · PVP ATIVO', '#ff5a7a'), 2600); }
 }
 // Espólio. O próprio (G.save.wloot) ganha o id do servidor (sid); os dos outros ficam em TessNet.loots.
@@ -405,6 +409,14 @@ window.TessGame = {
   remoteChat: (id, text) => { const r = NETON() && NETON().players().find(p => p.id === id); if (r) { r.chat = text; r.chatT = 0; } },
   myEmote: e => { if (!P) return; P.emote = e; P.emoteT = 0; },
   pvpHurt,
+  /** Duelo: contagem, fim e resultado (o servidor decide). */
+  duelStart(name, goMs) { toast('DUELO CONTRA ' + name.toUpperCase(), true, 'COMEÇA EM ' + Math.round(goMs / 1000) + ' S · QUEM CAIR PRIMEIRO PERDE', '#ff8a5a', { now: true }); sfx('ui'); G.later.push({ t: goMs / 1000, fn: () => { toast('JÁ!', true, '', '#ff5a5a', { now: true }); sfx('hit'); } }); },
+  duelEnd(m) {
+    if (P && P.hp < P.maxHp * .3) P.hp = Math.max(P.hp, Math.round(P.maxHp * .3));
+    const rt = m.rating !== null ? ' · RANKING ' + m.rating + ' (' + (m.delta >= 0 ? '+' : '') + m.delta + ')' : m.result === 'empate' ? '' : ' · ESSA DUPLA JÁ CONTOU 3 VEZES HOJE';
+    toast(m.result === 'venceu' ? 'VITÓRIA NO DUELO' : m.result === 'perdeu' ? 'DERROTA NO DUELO' : 'EMPATE NO DUELO', true, 'CONTRA ' + m.opp.toUpperCase() + rt, m.result === 'venceu' ? '#ffd27a' : m.result === 'perdeu' ? '#ff8a6a' : '#cfc8ba', { now: true });
+    sfx(m.result === 'venceu' ? 'legend' : 'ui');
+  },
   // torneio de pesca: pontos da pesca e a posição na semana
   fishPts: d => { if (!d) return; const up = G.tourRank && d.rank && d.rank < G.tourRank; G.tourInfo = d; if (up) setTimeout(() => toast('SUBIU PARA ' + d.rank + 'º NO TORNEIO', true, 'TOTAL DA SEMANA: ' + d.total + ' PONTOS', '#ffbf3d'), 2400); if (d.rank) G.tourRank = d.rank; },   // os pontos de cada pesca já aparecem no aviso do peixe
   // troca direta

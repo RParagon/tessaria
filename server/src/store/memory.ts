@@ -106,6 +106,19 @@ export class MemoryStore implements Store {
   async seasonPremium(a: string, s: number, price: number) { const e = this.seasonOf(a, s); if (e.premium) return 'ja' as const; if ((this.wallet.get(a) ?? 0) < price) return 'sem-dourados' as const; this.wallet.set(a, (this.wallet.get(a) ?? 0) - price); e.premium = true; return 'ok' as const; }
   private payments = new Map<string, { accountId: string; dourados: number; status: string }>();
   private reports: Array<{ id: number; accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown>; at: Date }> = [];
+  // ---------- duelos ----------
+  private duels = new Map<string, { rating: number; wins: number; losses: number }>();
+  private dpairs = new Map<string, number>();
+  async duelResult(w: string, l: string, o: { day: number; pairMax: number; start: number; k: number }) {
+    const key = (w < l ? w + ':' + l : l + ':' + w) + ':' + o.day, n = (this.dpairs.get(key) ?? 0) + 1; this.dpairs.set(key, n);
+    if (n > o.pairMax) return null;
+    const W = this.duels.get(w) ?? { rating: o.start, wins: 0, losses: 0 }, L = this.duels.get(l) ?? { rating: o.start, wins: 0, losses: 0 };
+    const ex = 1 / (1 + 10 ** ((L.rating - W.rating) / 400)), d = Math.max(1, Math.round(o.k * (1 - ex)));
+    W.rating += d; W.wins++; L.rating = Math.max(0, L.rating - d); L.losses++; this.duels.set(w, W); this.duels.set(l, L);
+    return { winner: W.rating, loser: L.rating, delta: d };
+  }
+  async duelTop(n: number) { return [...this.duels].filter(([, d]) => d.wins + d.losses > 0).sort((a, b) => b[1].rating - a[1].rating || b[1].wins - a[1].wins).slice(0, n).map(([id, d]) => ({ name: this.accounts.get(id)?.name ?? '?', ...d })); }
+  async duelMine(a: string) { const m = this.duels.get(a); if (!m) return { rating: 1000, wins: 0, losses: 0, rank: null }; return { ...m, rank: m.wins + m.losses > 0 ? [...this.duels.values()].filter(d => d.rating > m.rating && d.wins + d.losses > 0).length + 1 : null }; }
   // ---------- guildas ----------
   private guilds = new Map<string, GuildRow>();
   private gmem = new Map<string, { guildId: string; role: GuildMember['role']; week: number; weekFios: number; totalFios: number; donateDay: number; donateFios: number; joinedAt: Date }>();
@@ -195,7 +208,7 @@ export class MemoryStore implements Store {
   async setReportStatus(id: number, status: string) { const r = this.reports.find(x => x.id === id); if (!r) return false; (r as any).status = status; return true; }
   async addReport(r: { accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown> }) { const id = this.reports.length + 1; this.reports.push({ id, ...r, at: new Date() }); return id; }
   async deleteAccount(a: string) {
-    this.gmem.delete(a); for (const [k, v] of this.ginv) if (v.accountId === a) this.ginv.delete(k);
+    this.duels.delete(a); this.gmem.delete(a); for (const [k, v] of this.ginv) if (v.accountId === a) this.ginv.delete(k);
     this.accounts.delete(a); this.saves.delete(a); this.tombs.delete(a); this.wallet.delete(a); this.owned.delete(a); this.logins.delete(a);
     for (const [k, v] of this.sessions) if (v.accountId === a) this.sessions.delete(k);
     for (const [k, v] of this.friends) if (v.from === a || v.to === a) this.friends.delete(k);

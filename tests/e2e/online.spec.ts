@@ -713,3 +713,23 @@ test('decoração da casa: compra com Fios Dourados, coloca nos lugares e a nuve
   expect(A.errors.filter(e => !/status of 422/.test(e))).toEqual([]);
   await A.ctx.close();
 });
+
+test('duelo na vila: desafio pelo chat, aceitar no cartão, contagem, quem cai perde sem morrer e o ranking aparece', async ({ browser }) => {
+  const A = await onlinePlayer(browser), B = await onlinePlayer(browser);
+  await expect.poll(() => A.page.evaluate(n => (window as any).TessNet.players().some((p: any) => p.name === n), B.name), { timeout: 15_000 }).toBe(true);
+  await A.page.evaluate(n => (window as any).TessNet.chat('/duelo ' + n), B.name);
+  await B.page.locator('.net-invite.duel button.gold').click();
+  await expect(A.page.locator('.net-duelbar')).toContainText('Duelo contra ' + B.name);
+  await expect(B.page.locator('.net-duelbar')).toContainText('Duelo contra ' + A.name);
+  await A.page.waitForTimeout(3300);   // contagem
+  const bid = await A.page.evaluate(n => (window as any).TessNet.players().find((p: any) => p.name === n).id, B.name);
+  await B.page.bringToFront();   // o jogo de B precisa estar rodando (aba em primeiro plano) para sentir os golpes
+  // no teste o jogo roda lento: a invulnerabilidade curta pós-golpe dura mais, então são precisas mais tentativas
+  for (let i = 0; i < 40 && !(await A.page.evaluate(() => !(window as any).TessNet.duel)); i++) { await A.page.evaluate(id => (window as any).TessNet.pvpHit(id, 400), bid); await A.page.waitForTimeout(420); }
+  await expect.poll(() => A.page.evaluate(() => (window as any).TessNet.duel), { timeout: 10_000 }).toBeNull();
+  expect(await B.page.evaluate(() => { const P = (window as any).__T.P; return [P.dieT < 0, P.hp === P.maxHp || P.hp > 0]; })).toEqual([true, true]);   // ninguém morreu
+  await expect(A.page.locator('.net-log')).toContainText(`${A.name} venceu o duelo contra ${B.name}`);
+  const R = await A.page.evaluate(() => (window as any).TessNet.duels());
+  expect(R.me.wins).toBe(1); expect(R.me.rating).toBe(1016);
+  for (const P of [A, B]) { expect(P.errors).toEqual([]); await P.ctx.close(); }
+});

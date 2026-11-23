@@ -71,6 +71,7 @@ export function mountOnlineUI(net: Net) {
     box.innerHTML = '';
     if (view === 'amigos') return renderFriends();
     if (view === 'guilda') return renderGuild();
+    if (view === 'duelos') return renderDuels();
     const close = h('button', { class: 'net-x', 'aria-label': 'Fechar', onclick: closeModal, text: '✕' });
     if (view === 'entrar') {
       box.append(close, h('h2', { id: 'netTitle', text: 'Jogar online' }),
@@ -91,7 +92,7 @@ export function mountOnlineUI(net: Net) {
       box.append(close, h('h2', { id: 'netTitle', text: a.name }),
         h('p', { class: 'sub', text: a.guest ? 'Conta de convidado: proteja com e-mail e senha para não perder o progresso se trocar de aparelho.' : (a.email ? `Conta ${a.email}${a.google ? ' · Google' : ''}` : 'Conta Google') }),
         h('button', { class: 'px gold', onclick: () => chooseProgress(), text: 'Continuar online' }),
-        h('button', { class: 'px', onclick: () => openModal('amigos'), text: 'Amigos' }), h('button', { class: 'px', onclick: () => { void net.guild(); openModal('guilda'); }, text: 'Guilda' }));
+        h('button', { class: 'px', onclick: () => openModal('amigos'), text: 'Amigos' }), h('button', { class: 'px', onclick: () => { void net.guild(); openModal('guilda'); }, text: 'Guilda' }), h('button', { class: 'px', onclick: () => openModal('duelos'), text: 'Ranking de duelos' }));
       if (a.guest) {
         const f = h('form', { class: 'net-form', onsubmit: (e: Event) => { e.preventDefault(); act(() => net.upgrade(($('#netEmail', box) as HTMLInputElement).value, ($('#netPass', box) as HTMLInputElement).value, ($('#netName', box) as HTMLInputElement).value || undefined), () => { game()?.toast('CONTA PROTEGIDA', true, 'agora você entra com e-mail e senha'); render(); }); } },
           h('h3', { class: 'hsec', text: 'PROTEGER CONTA' }), field('Novo nome (opcional)', 'netName', 'text', { maxlength: 16, placeholder: a.name }), field('E-mail', 'netEmail', 'email', { maxlength: 254 }), field('Senha', 'netPass', 'password', { maxlength: 200, autocomplete: 'new-password' }), h('button', { class: 'px', type: 'submit', text: 'Proteger conta' }));
@@ -168,6 +169,19 @@ export function mountOnlineUI(net: Net) {
       box.append(h('h3', { class: 'hsec', text: 'BLOQUEADOS' }));
       for (const f of L.blocked) box.append(row(f.name, 'não pode pedir amizade, convidar nem falar com você', null, b('Desbloquear', () => net.unblock(f.name))));
     }
+  }
+  // ---------- ranking dos duelos ----------
+  let duelData: any = null;
+  function renderDuels() {
+    const close = h('button', { class: 'net-x', 'aria-label': 'Fechar', onclick: closeModal, text: '✕' });
+    box.append(close, h('h2', { id: 'netTitle', text: 'Ranking de duelos' }), h('p', { class: 'sub', text: 'Desafie alguém na vila tocando no nome dele. Ninguém morre: quem cair primeiro perde. Cada dupla conta no ranking até 3 vezes por dia.' }));
+    if (!duelData) { box.append(h('p', { class: 'sub', text: 'Carregando…' })); void net.duels().then(d => { duelData = d || { top: [], me: null }; if (!modal.hidden && view === 'duelos') render(); }); return; }
+    const me = duelData.me;
+    if (me) box.append(h('div', { class: 'net-frow on' }, h('div', { class: 'nm' }, h('b', { text: `Você: ${me.rating}` }), h('small', { text: `${me.wins} vitórias · ${me.losses} derrotas` + (me.rank ? ` · ${me.rank}º lugar` : ' · ainda sem duelos') }))));
+    box.append(h('h3', { class: 'hsec', text: 'MELHORES DA TESSÁRIA' }));
+    if (!duelData.top.length) box.append(h('p', { class: 'sub', text: 'Ninguém duelou ainda. Seja o primeiro!' }));
+    duelData.top.forEach((r: any, i: number) => box.append(h('div', { class: 'net-frow' }, h('div', { class: 'nm' }, h('b', { text: `${i + 1}º ${r.name}` }), h('small', { text: `${r.rating} · ${r.wins}V ${r.losses}D` })))));
+    duelData = null;   // da próxima vez, recarrega
   }
   // ---------- guilda ----------
   let emb: Emblem = { shape: 0, color: 2, symbol: 0 };
@@ -430,6 +444,7 @@ export function mountOnlineUI(net: Net) {
     const inMine = !!net.party?.members.some(m => m.name === name), items: Array<[string, () => void]> = [];
     if (!inMine && (!net.party || (net.isLeader && net.party.members.length < PARTY_MAX))) items.push(['Convidar para o grupo', () => net.invite(name)]);
     if (net.inRoom) items.push(['Propor troca', () => net.tradePropose(name)]);
+    if (net.inRoom && game()?.region === 'hub' && !net.duel) items.push(['Desafiar para duelo', () => net.duelAsk(name)]);
     if (!net.isFriend(name)) items.push(['Adicionar amigo', () => void friendAct(() => net.addFriend(name), `Pedido enviado para ${name}.`)]);
     let armed = false;
     items.push(['Bloquear', () => {
@@ -455,6 +470,20 @@ export function mountOnlineUI(net: Net) {
           h('button', { class: 'px', text: 'Agora não', onclick: () => { net.declineReady(); renderInvites(); } })),
         bar));
     }
+    net.duelInvites = net.duelInvites.filter(i => i.exp > now);
+    for (const i of net.duelInvites) {
+      const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, i.exp - now) + 'ms';
+      invBox.append(h('div', { class: 'net-invite panel duel', role: 'alertdialog', 'aria-label': `Duelo de ${i.from}` },
+        h('b', { text: '⚔ Duelo' }), h('span', { text: `${i.from} desafiou você para um duelo (ninguém morre; quem cair primeiro perde)` }),
+        h('div', { class: 'act' },
+          h('button', { class: 'px gold', text: 'Aceitar', onclick: () => { game()?.sfx('ui'); net.duelAnswer(i.from, true); renderInvites(); } }),
+          h('button', { class: 'px', text: 'Recusar', onclick: () => { net.duelAnswer(i.from, false); renderInvites(); } })),
+        bar));
+    }
+    if (net.duel) {
+      const d = net.duel, left = Math.max(0, Math.ceil((d.end - now) / 1000)), pre = d.go > now;
+      invBox.append(h('div', { class: 'net-duelbar panel', role: 'status' }, h('b', { text: `⚔ Duelo contra ${d.name}` }), h('span', { text: pre ? `começa em ${Math.ceil((d.go - now) / 1000)}…` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` })));
+    }
     for (const i of net.invites) {
       const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, i.exp - now) + 'ms';
       invBox.append(h('div', { class: 'net-invite panel', role: 'alertdialog', 'aria-label': `Convite de ${i.from}` },
@@ -465,9 +494,12 @@ export function mountOnlineUI(net: Net) {
         bar));
     }
   }
+  setInterval(() => { if (net.duel || net.duelInvites.length) renderInvites(); }, 500);
   setInterval(() => { const now = Date.now(); if ((net.invites.length && net.invites.some(i => i.exp <= now)) || (net.ready && net.ready.until <= now)) { if (net.ready && net.ready.until <= now) net.ready = null; renderInvites(); } }, 1000);
   net.on((ev, data) => {
     if (ev === 'pinvite') { game()?.sfx('ui'); renderInvites(); }
+    if (ev === 'dinvite') { game()?.sfx('ui'); renderInvites(); }
+    if (ev === 'duel') renderInvites();
     if (ev === 'iready') { if (data) game()?.sfx('ui'); renderInvites(); }
     if (ev === 'iclosed') game()?.toast(net.instKind === 'wilds' ? 'Os Ermos do grupo fecharam' : 'A Fenda do grupo fechou', false, 'VOCÊ CONTINUA SOZINHO AQUI');
     if (ev === 'party') { if (!data) renderInvites(); updateChip(); }

@@ -65,7 +65,8 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
   - zona difícil: perde Centelhas e o equipamento desgasta;
   - nos Ermos (feito na 0.31.0 e 0.34.0): Centelhas e bolsa ficam no chão por 5 min e o primeiro que chegar leva;
   - sempre protegidos: equipamento vestido e baú.
-- [ ] Duelos na vila e arena com ranking
+- [x] Duelos na vila com ranking Elo (0.53)
+- [ ] Arena com espaço próprio e temporadas de ranking
 - [ ] Equilíbrio de PvP:
   - dano entre jogadores reduzido (feito: 30% do golpe, até 20% da vida);
   - limite de atordoamento e lentidão;

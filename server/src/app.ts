@@ -545,6 +545,9 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     return { ok: true };
   });
 
+  // ---------- ranking dos duelos ----------
+  app.get('/duels', { preHandler: auth }, async req => ({ top: await store.duelTop(20), me: await store.duelMine(req.account!.id) }));
+
   // ---------- torneio semanal de pesca ----------
   // Cada pesca vale pontos pelo peso (relativo à espécie) e pela raridade; a semana vira toda segunda 00:00 UTC.
   // Os 10 primeiros da semana passada resgatam o prêmio uma vez. Fase 1: o jogo diz o que pescou; o servidor confere a espécie, a faixa de peso e o ritmo.
