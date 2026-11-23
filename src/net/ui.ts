@@ -5,6 +5,7 @@ import type { Net, ChatLine } from './online';
 import { EMOTES, EMOTE_LABEL, CHAT_MAX } from '../../shared/protocol';
 import { nameProblem } from '../../shared/text';
 import { PARTY_MAX, WHERE_LABEL } from '../../shared/social';
+import { EMB_COLORS, EMB_SHAPES, EMB_SYMBOLS, GUILD_FOUND_COST, GUILD_FOUND_LVL, emblemSvg, guildNameProblem, guildTagProblem, type Emblem } from '../../shared/guild';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string, root: ParentNode = document) => root.querySelector(s) as T;
 const h = (tag: string, attrs: Record<string, any> = {}, ...kids: Array<Node | string | null | false>) => {
@@ -37,7 +38,7 @@ export function mountOnlineUI(net: Net) {
   const box = h('div', { class: 'net-box panel' });
   modal.append(box); document.body.append(modal);
   modal.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); e.stopPropagation(); });
-  const closeModal = () => { modal.hidden = true; };
+  const closeModal = () => { modal.hidden = true; (document.activeElement as HTMLElement | null)?.blur?.(); };   // sem foco num botão, o Enter volta a abrir o chat
   let view = 'entrar', tab = 'entrar', busy = false;
 
   function field(label: string, id: string, type = 'text', extra: Record<string, any> = {}) {
@@ -69,6 +70,7 @@ export function mountOnlineUI(net: Net) {
   function render() {
     box.innerHTML = '';
     if (view === 'amigos') return renderFriends();
+    if (view === 'guilda') return renderGuild();
     const close = h('button', { class: 'net-x', 'aria-label': 'Fechar', onclick: closeModal, text: '✕' });
     if (view === 'entrar') {
       box.append(close, h('h2', { id: 'netTitle', text: 'Jogar online' }),
@@ -89,7 +91,7 @@ export function mountOnlineUI(net: Net) {
       box.append(close, h('h2', { id: 'netTitle', text: a.name }),
         h('p', { class: 'sub', text: a.guest ? 'Conta de convidado: proteja com e-mail e senha para não perder o progresso se trocar de aparelho.' : (a.email ? `Conta ${a.email}${a.google ? ' · Google' : ''}` : 'Conta Google') }),
         h('button', { class: 'px gold', onclick: () => chooseProgress(), text: 'Continuar online' }),
-        h('button', { class: 'px', onclick: () => openModal('amigos'), text: 'Amigos' }));
+        h('button', { class: 'px', onclick: () => openModal('amigos'), text: 'Amigos' }), h('button', { class: 'px', onclick: () => { void net.guild(); openModal('guilda'); }, text: 'Guilda' }));
       if (a.guest) {
         const f = h('form', { class: 'net-form', onsubmit: (e: Event) => { e.preventDefault(); act(() => net.upgrade(($('#netEmail', box) as HTMLInputElement).value, ($('#netPass', box) as HTMLInputElement).value, ($('#netName', box) as HTMLInputElement).value || undefined), () => { game()?.toast('CONTA PROTEGIDA', true, 'agora você entra com e-mail e senha'); render(); }); } },
           h('h3', { class: 'hsec', text: 'PROTEGER CONTA' }), field('Novo nome (opcional)', 'netName', 'text', { maxlength: 16, placeholder: a.name }), field('E-mail', 'netEmail', 'email', { maxlength: 254 }), field('Senha', 'netPass', 'password', { maxlength: 200, autocomplete: 'new-password' }), h('button', { class: 'px', type: 'submit', text: 'Proteger conta' }));
@@ -166,6 +168,78 @@ export function mountOnlineUI(net: Net) {
       box.append(h('h3', { class: 'hsec', text: 'BLOQUEADOS' }));
       for (const f of L.blocked) box.append(row(f.name, 'não pode pedir amizade, convidar nem falar com você', null, b('Desbloquear', () => net.unblock(f.name))));
     }
+  }
+  // ---------- guilda ----------
+  let emb: Emblem = { shape: 0, color: 2, symbol: 0 };
+  /** Fundar e doar tiram Centelhas do save da nuvem: espelha no save local (o servidor já gravou). */
+  function spentGold(n: number) { const g = game(); if (!g?.save || !n) return; g.save.gold = Math.max(0, (g.save.gold || 0) - n); g.save.spent = (g.save.spent || 0) + n; g.writeLocalSave(g.save); }
+  function embPicker(onChange: () => void) {
+    const wrap = h('div', { class: 'net-emb' }), prev = h('span', { class: 'net-embprev' }); prev.innerHTML = emblemSvg(emb, 56);
+    const sel = (label: string, opts: string[], key: keyof Emblem) => {
+      const el = h('select', { 'aria-label': label }) as HTMLSelectElement; opts.forEach((o, i) => el.append(h('option', { value: String(i), text: o })));
+      el.value = String(emb[key]); el.onchange = () => { emb = { ...emb, [key]: Number(el.value) }; prev.innerHTML = emblemSvg(emb, 56); onChange(); };
+      return h('label', { class: 'net-field' }, label, el);
+    };
+    wrap.append(prev, h('div', { class: 'net-embsel' }, sel('Forma', EMB_SHAPES, 'shape'), sel('Cor', EMB_COLORS.map((_, i) => `Cor ${i + 1}`), 'color'), sel('Símbolo', EMB_SYMBOLS, 'symbol')));
+    return wrap;
+  }
+  function renderGuild() {
+    const close = h('button', { class: 'net-x', 'aria-label': 'Fechar', onclick: closeModal, text: '✕' });
+    const V = net.guildView;
+    if (!V) { box.append(close, h('h2', { id: 'netTitle', text: 'Guilda' }), h('p', { class: 'sub', text: 'Carregando…' })); void net.guild().then(() => { if (!modal.hidden && view === 'guilda') render(); }); return; }
+    const b = (text: string, fn: () => Promise<{ ok: boolean; error?: string }>, gold = false) => h('button', { class: 'px' + (gold ? ' gold' : ''), text, onclick: () => act(fn, renderSoon) });
+    if (!V.guild) {
+      box.append(close, h('h2', { id: 'netTitle', text: 'Guilda' }), h('p', { class: 'sub', text: 'Jogue junto com uma turma fixa: chat próprio (/gu), sigla e emblema ao lado do nome e Fios da Guilda, que vão erguer a Ilha da Guilda.' }));
+      if (V.invites.length) {
+        box.append(h('h3', { class: 'hsec', text: 'CONVITES' }));
+        for (const i of V.invites) { const ic = h('span', { class: 'net-embico' }); ic.innerHTML = emblemSvg(i.emblem, 28);
+          box.append(h('div', { class: 'net-frow' }, h('div', { class: 'nm' }, ic, h('b', { text: `${i.name} [${i.tag}]` }), h('small', { text: `convite de ${i.fromName}` })), h('div', { class: 'act' }, b('Entrar', () => net.guildAccept(i.guildId), true), b('Recusar', () => net.guildDecline(i.guildId))))); }
+      }
+      box.append(h('h3', { class: 'hsec', text: 'FUNDAR UMA GUILDA' }), h('p', { class: 'sub', text: `Custa ${GUILD_FOUND_COST.toLocaleString('pt-BR')} Centelhas e pede nível ${GUILD_FOUND_LVL}. Você vira o Líder.` }));
+      const f = h('form', { class: 'net-form', onsubmit: (e: Event) => { e.preventDefault();
+        const n = ($('#netGName', box) as HTMLInputElement).value, t = ($('#netGTag', box) as HTMLInputElement).value;
+        const p = guildNameProblem(n) || guildTagProblem(t); if (p) return msg(p);
+        act(async () => { const r = await net.guildFound(n, t, emb); if (r.ok) spentGold(Number(r.data?.gold) || GUILD_FOUND_COST); return r; }, () => { game()?.toast('Guilda fundada!', true, n.toUpperCase(), '#ffd27a'); game()?.sfx('legend'); render(); }); } },
+        field('Nome da guilda (3 a 20)', 'netGName', 'text', { maxlength: 20 }), field('Sigla (2 a 4 letras)', 'netGTag', 'text', { maxlength: 4 }), embPicker(() => {}),
+        h('button', { class: 'px gold', type: 'submit', text: `Fundar (${GUILD_FOUND_COST.toLocaleString('pt-BR')} ✦)` }));
+      box.append(f, h('p', { id: 'netMsg', class: 'net-msg', hidden: true }));
+      return;
+    }
+    const G = V.guild, role = V.me.role, mgr = role === 'lider' || role === 'oficial';
+    const head = h('div', { class: 'net-ghead' }), ic = h('span', { class: 'net-embico big' }); ic.innerHTML = emblemSvg(G.emblem, 56);
+    const pct = Math.round(Math.min(1, (G.fios - G.cur) / Math.max(1, G.next - G.cur)) * 100);
+    head.append(ic, h('div', {}, h('h2', { id: 'netTitle', text: `${G.name} [${G.tag}]` }), h('small', { text: `Nível ${G.level} · ${G.fios.toLocaleString('pt-BR')} Fios da Guilda · ${G.members.length}/${G.max} membros` }), h('div', { class: 'fbar' }, h('i', { style: `width:${pct}%` }))));
+    box.append(close, head);
+    box.append(h('p', { class: 'sub net-motd', text: G.motd ? '📜 ' + G.motd : (mgr ? 'Sem recado do dia. Escreva um abaixo.' : 'Sem recado do dia.') }));
+    if (mgr) box.append(h('form', { class: 'net-form net-inline', onsubmit: (e: Event) => { e.preventDefault(); act(() => net.guildMotd(($('#netMotd', box) as HTMLInputElement).value), renderSoon); } }, field('Recado do dia', 'netMotd', 'text', { maxlength: 140, value: G.motd }), h('button', { class: 'px', type: 'submit', text: 'Salvar' })));
+    box.append(h('p', { id: 'netMsg', class: 'net-msg', hidden: true }));
+    // membros
+    box.append(h('h3', { class: 'hsec', text: `MEMBROS · CONTRIBUIÇÃO DA SEMANA` }));
+    const sorted = [...G.members].sort((x: any, y: any) => ({ lider: 0, oficial: 1, membro: 2 } as any)[x.role] - ({ lider: 0, oficial: 1, membro: 2 } as any)[y.role] || y.weekFios - x.weekFios);
+    for (const m of sorted) {
+      const me = m.name === net.account?.name, btns: HTMLElement[] = [];
+      if (!me && role === 'lider') {
+        if (m.role === 'membro') btns.push(b('Promover', () => net.guildRole(m.name, 'oficial')));
+        if (m.role === 'oficial') btns.push(b('Rebaixar', () => net.guildRole(m.name, 'membro')), confirmBtn('Tornar Líder', `Passar a liderança para ${m.name}?`, () => net.guildRole(m.name, 'lider')));
+      }
+      if (!me && mgr && m.role === 'membro' || (!me && role === 'lider' && m.role === 'oficial')) btns.push(confirmBtn('Expulsar', `Expulsar ${m.name}?`, () => net.guildKick(m.name)));
+      box.append(h('div', { class: 'net-frow' + (m.online ? ' on' : '') }, h('div', { class: 'nm' }, h('b', { text: (m.online ? '● ' : '○ ') + m.name + (me ? ' (você)' : '') }), h('small', { text: `${m.roleN} · ${m.weekFios} Fios esta semana · ${m.totalFios} no total` })), h('div', { class: 'act' }, ...btns)));
+    }
+    if (mgr) box.append(h('form', { class: 'net-form net-inline', onsubmit: (e: Event) => { e.preventDefault(); const n = ($('#netGInv', box) as HTMLInputElement).value.trim(); if (!n) return; act(() => net.guildInvite(n), () => msg(`Convite enviado para ${n}.`, 'ok')); } },
+      field('Convidar pelo nome do Tecelão', 'netGInv', 'text', { maxlength: 16 }), h('button', { class: 'px', type: 'submit', text: 'Convidar' })));
+    // doar
+    box.append(h('h3', { class: 'hsec', text: 'CONTRIBUIR' }), h('p', { class: 'sub', text: `Missões do Passe contam sozinhas (10 por diária, 60 por semanal). Doar: 1 Fio a cada ${V.rules.donatePer} Centelhas, até ${V.rules.donateDayMax} Fios por dia.` }),
+      h('form', { class: 'net-form net-inline', onsubmit: (e: Event) => { e.preventDefault(); const v = Math.floor(Number(($('#netGDon', box) as HTMLInputElement).value)); if (!(v >= V.rules.donatePer)) return msg(`Doe pelo menos ${V.rules.donatePer} Centelhas.`);
+        act(async () => { const r = await net.guildDonate(v); if (r.ok) { spentGold(Number(r.data?.gold) || 0); game()?.toast(`+${r.data?.fios} Fios da Guilda`, false, 'OBRIGADO!', '#ffd27a'); } return r; }, render); } },
+        field('Centelhas para doar', 'netGDon', 'number', { min: V.rules.donatePer, step: V.rules.donatePer, value: '1000' }), h('button', { class: 'px gold', type: 'submit', text: 'Doar' })));
+    if (role === 'lider') { box.append(h('h3', { class: 'hsec', text: 'EMBLEMA' })); emb = { ...G.emblem }; box.append(embPicker(() => {}), b('Salvar emblema', () => net.guildEmblem(emb))); }
+    // registro
+    if (G.log?.length) {
+      box.append(h('h3', { class: 'hsec', text: 'REGISTRO' }));
+      const L: Record<string, (d: any) => string> = { fundada: d => `${d.nome} fundou a guilda`, entrou: d => `${d.nome} entrou`, saiu: d => `${d.nome} saiu` + (d.lider ? ` (${d.lider} virou Líder)` : ''), expulso: d => `${d.nome} foi removido por ${d.por}`, convite: d => `${d.por} convidou ${d.nome}`, cargo: d => `${d.nome} agora é ${({ lider: 'Líder', oficial: 'Oficial', membro: 'Membro' } as any)[d.cargo]}`, doacao: d => `${d.nome} doou ${d.centelhas} Centelhas (+${d.fios} Fios)` };
+      const ul = h('ul', { class: 'net-glog' }); for (const e of G.log.slice(0, 10)) ul.append(h('li', { text: `${(L[e.kind] ?? (() => e.kind))(e.detail)} · ${ago(e.at)}` })); box.append(ul);
+    }
+    box.append(confirmBtn('Sair da guilda', role === 'lider' ? 'Sair? A liderança passa para outro membro.' : 'Sair da guilda? Você espera 24 h para entrar em outra.', () => net.guildLeave()));
   }
   function confirmBtn(text: string, ask: string, fn: () => Promise<{ ok: boolean; error?: string }>) {
     let armed = false;
@@ -281,9 +355,9 @@ export function mountOnlineUI(net: Net) {
     }
     const ok = chatOk();
     chat.hidden = !ok; chatBtn.hidden = !ok || !input.hidden;
-    friendsBtn.hidden = !(on && playing() && net.connected);
+    friendsBtn.hidden = !(on && playing() && net.connected); guildBtn.hidden = friendsBtn.hidden;
     { const r = game()?.region, open = r === 'hub' || r === 'wilds' || (r === 'rift' && !!net.inst);
-      input.placeholder = `${chanName()}: ${open ? 'quem estiver perto ouve' : 'quem estiver aqui ouve'} · /g grupo · Enter envia`; }
+      input.placeholder = `${chanName()}: ${open ? 'quem estiver perto ouve' : 'quem estiver aqui ouve'} · /g grupo · /gu guilda`; }
     emotes.hidden = input.hidden || !(net.inRoom && playing());
     if (!ok && !input.hidden) closeChat();
     renderParty();
@@ -303,7 +377,8 @@ export function mountOnlineUI(net: Net) {
   const friendsBtn = h('button', { class: 'px net-friendsbtn', hidden: true, 'aria-label': 'Amigos', onclick: () => { game()?.sfx('ui'); openModal('amigos'); }, text: 'Amigos' });
   const partyBox = h('div', { class: 'net-party', hidden: true, 'aria-label': 'Grupo' });
   // o grupo entra no fluxo da coluna da esquerda, abaixo do objetivo e do status (antes cobria os dois)
-  btnRow.append(friendsBtn); (document.querySelector('.hud-l') || hud).append(partyBox);
+  const guildBtn = h('button', { class: 'px net-friendsbtn', hidden: true, 'aria-label': 'Guilda', onclick: () => { game()?.sfx('ui'); void net.guild(); openModal('guilda'); }, text: 'Guilda' });
+  btnRow.append(friendsBtn, guildBtn); (document.querySelector('.hud-l') || hud).append(partyBox);
   let partyKey = '';
   function renderParty() {
     const pt = net.party, show = !!pt && playing();
@@ -407,13 +482,15 @@ export function mountOnlineUI(net: Net) {
   });
 
   function addLine(l: ChatLine) {
-    const row = h('div', { class: 'net-line' + (l.kind === 'sys' ? ' sys' : l.kind === 'grupo' ? ' grp' : '') + (l.mine ? ' mine' : '') });
+    const row = h('div', { class: 'net-line' + (l.kind === 'sys' ? ' sys' : l.kind === 'grupo' ? ' grp' : l.kind === 'guilda' ? ' gld' : '') + (l.mine ? ' mine' : '') });
     if (l.kind === 'grupo') row.append(h('b', { text: '[Grupo] ' + l.name + ': ' }), document.createTextNode(l.text));
+    else if (l.kind === 'guilda') row.append(h('b', { text: `[${l.ch || 'Guilda'}] ` + l.name + ': ' }), document.createTextNode(l.text));
     else if (l.kind === 'chat') { if (l.ch) row.append(h('span', { class: 'net-ch', text: l.ch })); row.append(h('b', { text: l.name + ': ' }), document.createTextNode(l.text)); } else row.textContent = l.text;
     log.append(row); while (log.children.length > 30) log.firstChild!.remove();
     log.scrollTop = log.scrollHeight;
     setTimeout(() => row.classList.add('old'), 12000);
   }
+  net.on(ev => { if (ev === 'guild' && !modal.hidden && view === 'guilda') void net.guild().then(() => { if (!modal.hidden && view === 'guilda') render(); }); });
   net.on((ev, data) => { if (ev === 'chat') addLine(data); if (ev === 'hub' && data?.joined) addLine({ kind: 'sys', text: net.inst ? (net.instKind === 'wilds' ? `${data.joined} chegou aos Ermos.` : `${data.joined} entrou na Fenda.`) : `${data.joined} chegou à vila.`, ts: Date.now() }); });
   setInterval(updateChip, 500);
 

@@ -119,6 +119,6 @@ pelo servidor (depois, nessa ordem de tamanho).
 
 ## Fase 5 · Guildas (desenho em docs/GUILDS.md)
 
-- [ ] Guilda social: fundar, cargos, chat, emblema e contribuição (Fios da Guilda)
+- [x] Guilda social: fundar, cargos, chat, emblema e contribuição (Fios da Guilda) (0.51)
 - [ ] Ilha da Guilda no Arquipélago do Tear, com prédios e obras
 - [ ] Guerra de Guildas semanal em cerco (depende do combate com autoridade do servidor)

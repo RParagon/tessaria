@@ -1,12 +1,12 @@
 # Guildas, Ilha da Guilda e Guerra de Guildas (desenho)
 
-Proposta para a próxima fase depois da Temporada 1. Nada aqui está no jogo ainda; é o plano para discutir e
-implementar em etapas. A regra de ouro continua: **dinheiro compra estilo, nunca poder**. A força de uma
+Plano em etapas. **A etapa 1 (guilda social) está no jogo desde a 0.51**: fundar, convites, cargos, chat `/gu`, emblema,
+recado do dia, Fios da Guilda (missões do Passe e doações) e nível da guilda. A Ilha, os prédios e a guerra vêm depois. A regra de ouro continua: **dinheiro compra estilo, nunca poder**. A força de uma
 guilda vem de jogar junto, nunca do cartão de crédito.
 
 ## 1. A guilda
 
-- **Fundar:** na vila, com o Arauto da Guilda (novo morador na praça norte). Custa 25.000 Centelhas e exige nível 15.
+- **Fundar (0.51: pelo painel Guilda, ao lado de Amigos; o Arauto da Guilda na praça vem com a Ilha):** custa 25.000 Centelhas e exige nível 15.
   Nome (3 a 20 letras, mesmo filtro dos nomes de conta) e emblema (forma, cor e símbolo, montados no jogo).
 - **Membros:** até 30 no começo, 50 com o Salão ampliado. Cargos: **Líder**, **Oficiais** (convidam, expulsam
   e gastam o cofre até um limite por dia) e **Membros**.

@@ -480,3 +480,12 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 
 /* chat local: rótulo do canal (Vila, Ermos, Taverna…) */
 .net-ch{display:inline-block;font-size:.8em;color:var(--dim);border:1px solid var(--line);padding:0 4px;margin-right:4px;letter-spacing:.04em}
+
+/* guilda */
+.net-emb{display:flex;gap:10px;align-items:center}.net-embprev svg{display:block}.net-embsel{display:flex;flex-wrap:wrap;gap:6px;flex:1}.net-embsel .net-field{flex:1 1 90px}
+.net-embsel select{width:100%;background:#0d0a16;color:var(--bone);border:2px solid var(--line);font:inherit;padding:4px}
+.net-embico{display:inline-block;vertical-align:middle;margin-right:6px}.net-embico svg{display:block}
+.net-ghead{display:flex;gap:12px;align-items:center;margin-right:28px}.net-ghead h2{margin:0}.net-ghead small{color:var(--dim)}.net-ghead .fbar{margin-top:4px}
+.net-motd{font-style:italic}
+.net-glog{list-style:none;padding:0;margin:0;font-size:11px;color:var(--dim)}.net-glog li{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.net-line.gld b{color:#7fd3a0}

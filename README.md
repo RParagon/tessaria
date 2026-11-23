@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.50.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.51.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -170,6 +170,7 @@ Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Chat em todo lugar, por local:** cada ambiente tem o seu bate-papo. Na vila, nos Ermos e na Fenda do grupo, a mensagem chega a quem está perto (raio de 30 m); na taverna, em cada casa e nas regiões, a quem está no mesmo lugar. `/g` fala com o grupo de qualquer lugar.
 - **Amigos e grupo:** pedidos de amizade, lista com quem está online e onde, grupo de até 4 com chat próprio.
 - **Correio pelo nome**, sem duplicar itens.
+- **Guildas:** funde a sua (nível 15 e 25.000 Centelhas) com nome, sigla e emblema; convide, promova Oficiais, escreva o recado do dia e converse no `/gu`. A sigla aparece no nome para todos, e missões do Passe e doações viram **Fios da Guilda**, que sobem o nível da guilda (a base da futura Ilha da Guilda).
 - **Sua conta, seus dados:** baixe tudo o que o servidor guarda ou exclua a conta direto no jogo; **Reportar problema** no menu. Veja os [Termos de Uso](public/termos.html) e a [Política de Privacidade](public/privacidade.html).
 
 ### Jogando junto

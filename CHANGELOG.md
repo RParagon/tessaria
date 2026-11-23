@@ -1,5 +1,16 @@
 # Histórico de versões
 
+## 0.51.0 · Guildas (etapa social)
+- **Painel Guilda** (botão ao lado de Amigos e na conta online): funde a sua guilda com **nome, sigla e emblema** (forma, cor e símbolo, com prévia). Custa 25.000 Centelhas e pede nível 15
+- **Convites e cargos:** Líder e Oficiais convidam pelo nome (o convidado recebe o aviso e entra pelo painel); o Líder promove até 5 Oficiais, rebaixa e passa a liderança; Oficiais expulsam membros. Quem sai ou é expulso espera 24 h para entrar em outra guilda
+- **Sigla no nome:** os outros jogadores veem `[SIGLA]` antes do seu título, na hora em que você entra
+- **Chat da guilda:** `/gu mensagem` fala com toda a guilda, em qualquer lugar; avisos da guilda (entradas, saídas, cargos, recado do dia) também chegam no chat
+- **Recado do dia** (com o filtro de palavras) e **registro** das últimas ações
+- **Fios da Guilda:** cada missão do Passe vale 10 (diária) ou 60 (semanal) para a sua guilda, e dá para doar Centelhas (1 Fio a cada 100, até 300 por dia). O total sobe o **nível da guilda** (1 a 20), e o painel mostra a contribuição de cada membro na semana
+- Se o Líder sair (ou excluir a conta), a liderança passa para o Oficial mais antigo (ou o membro mais antigo); o último a sair desfaz a guilda
+- Fechar um painel do online não deixa mais o foco num botão (antes, o Enter reabria o painel em vez de abrir o chat)
+- Servidor: rotas `/guild` (ver, fundar, convidar, aceitar, recusar, sair, expulsar, cargo, recado, emblema, doar) e tabelas `guilds`, `guild_members`, `guild_invites`, `guild_leaves`, `guild_log` (migração 010)
+
 ## 0.50.0 · Chat em todo lugar, por local
 - **O chat não some mais:** ele fica disponível em qualquer lugar do jogo online (vila, taverna, casas, Pesqueiro, Ermos, Fendas e regiões da história)
 - **Cada ambiente com o seu bate-papo:** na vila, nos Ermos e na Fenda do grupo, a mensagem chega a quem está **perto** (até 30 m); na taverna, em cada casa e nas regiões, a quem está **no mesmo lugar**. Cada casa tem o seu chat

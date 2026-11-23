@@ -149,5 +149,7 @@ export type ServerMsg =
   | { t: 'party'; party: PartyView | null }
   | { t: 'pinvite'; from: string; size: number; ms: number }
   | { t: 'pchat'; name: string; text: string; ts: number }
+  | { t: 'gchat'; name: string; tag: string; text: string; ts: number }
+  | { t: 'guild' }
   /** Algo mudou na lista de amigos: o cliente recarrega. `ev` diz o quê, para o aviso. */
   | { t: 'social'; ev: 'pedido' | 'aceito' | 'online' | 'offline'; name: string };

@@ -35,6 +35,8 @@ interface Player {
   lastPos: number; synced: boolean; dirty: boolean; alive: boolean;
   actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number; timeReqs: number; relayTokens: number; relayRefill: number; pvpTokens: number; pvpRefill: number; lastWarp: number;
   /** Teto de dano PvP (pelo save) e suspeitas de trapaça na sessão (velocidade, dano), com a hora do último registro. */
+  /** Guilda: id, sigla e o título sem a sigla (o que aparece para os outros é "[SIGLA] título"). */
+  guildId: string | null; gtag: string; baseTitle: string;
   hitCap: number; sus: { speed: number; dmg: number; t0: number; logged: number };
 }
 
@@ -155,8 +157,10 @@ export class Hub {
       look: lookFromSave(save), title: titleFromSave(save),
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
       actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0, relayTokens: RELAY_PER_SEC, relayRefill: Date.now(), pvpTokens: PVP_RATE * 2, pvpRefill: Date.now(), lastWarp: 0,
+      guildId: null, gtag: '', baseTitle: titleFromSave(save),
       hitCap: pvpHitCap(save), sus: { speed: 0, dmg: 0, t0: Date.now(), logged: 0 },
     };
+    { const g = await this.store.guildOf(account.id).catch(() => null); if (g) { p.guildId = g.guild.id; p.gtag = g.guild.tag; p.title = this.titleOf(p); } }
     const old = this.byAccount.get(account.id);
     this.byAccount.set(account.id, p);
     if (old) { send(old, { t: 'kick', reason: 'Sua conta entrou em outro lugar.' }); old.ws.close(4000, 'duplicada'); this.leave(old); }
@@ -308,6 +312,7 @@ export class Hub {
     switch (cmd) {
       case '/quem': return p.room ? sys(`${p.room.label}: ${[...p.room.players.values()].map(o => o.account.name).join(', ')}`) : sys('Você não está na vila.');
       case '/sala': return p.room ? sys(`Você está em ${p.room.label} (${p.room.players.size}/${p.room.kind === 'ermos' ? WILDS_CAP : p.room.kind === 'inst' ? INST_CAP : HUB_CAP}).`) : sys('Você não está na vila.');
+      case '/gu': case '/guilda': return arg ? void this.guildChat(p, arg) : sys('Use /gu mensagem para falar com a guilda.');
       case '/g': case '/grupo': return arg ? void this.partyChat(p, arg) : sys('Use /g mensagem para falar com o grupo.');
       case '/convidar': return arg ? void this.invite(p, arg) : sys('Use /convidar Nome.');
       case '/sair': return void (this.leaveParty(p.account.id, 'saiu') || sys('Você não está em um grupo.'));
@@ -351,7 +356,7 @@ export class Hub {
     const lvl = lvlOf(save), party = this.partyOf.get(accountId), info = party?.info.get(accountId);
     Object.assign(p, ctxOf(save)); p.hitCap = pvpHitCap(save);
     if (lvl !== p.lvl) { p.lvl = lvl; if (party && info) { info.lvl = lvl; this.sendParty(party); } }
-    const t = titleFromSave(save); if (t === p.title) return;
+    p.baseTitle = titleFromSave(save); const t = this.titleOf(p); if (t === p.title) return;
     p.title = t; p.room?.broadcast({ t: 'title', id: p.id, title: t });
   }
 
@@ -368,6 +373,34 @@ export class Hub {
   blockChanged(accountId: string, otherId: string, on: boolean) {
     const p = this.byAccount.get(accountId); if (p) on ? p.blocks.add(otherId) : p.blocks.delete(otherId);
     if (on) this.friendsChanged(accountId, otherId, false);
+  }
+  // ---------- guilda ----------
+  private titleOf(p: Player) { return p.gtag ? `[${p.gtag}] ${p.baseTitle}` : p.baseTitle; }
+  private applyTitle(p: Player) { const t = this.titleOf(p); if (t === p.title) return; p.title = t; p.room?.broadcast({ t: 'title', id: p.id, title: t }); }
+  isOnline(accountId: string) { return this.byAccount.has(accountId); }
+  /** Entrou, saiu ou foi expulso: atualiza a sigla mostrada e avisa o painel. */
+  setGuild(accountId: string, g: { id: string; tag: string } | null) {
+    const p = this.byAccount.get(accountId); if (!p) return;
+    p.guildId = g?.id ?? null; p.gtag = g?.tag ?? ''; this.applyTitle(p); send(p, { t: 'guild' });
+  }
+  /** Algo mudou na guilda (membros, cargos, recado, emblema, Fios): relê do banco e avisa quem está online. */
+  async guildRefresh(guildId: string) {
+    const ms = await this.store.guildMembers(guildId).catch(() => []), g = ms.length ? await this.store.guildOf(ms[0].accountId).catch(() => null) : null;
+    for (const m of ms) { const p = this.byAccount.get(m.accountId); if (!p) continue; p.guildId = guildId; p.gtag = g?.guild.tag ?? ''; this.applyTitle(p); send(p, { t: 'guild' }); }
+  }
+  /** Contribuição nova (missão): só avisa o painel do próprio jogador. */
+  guildPing(accountId: string) { const p = this.byAccount.get(accountId); if (p) send(p, { t: 'guild' }); }
+  /** Aviso para uma conta (convite, expulsão). */
+  guildTell(accountId: string, text: string) { const p = this.byAccount.get(accountId); if (p) { send(p, { t: 'sys', text }); send(p, { t: 'guild' }); } }
+  /** Aviso para todos da guilda que estão online. */
+  guildSys(guildId: string, text: string) { for (const p of this.byAccount.values()) if (p.guildId === guildId) send(p, { t: 'sys', text: '[Guilda] ' + text }); }
+  private async guildChat(p: Player, text: string) {
+    if (!p.guildId) return send(p, { t: 'sys', text: 'Você não está numa guilda.' });
+    const clean = cleanChat(text, CHAT_MAX); if (!clean) return;
+    const masked = await this.filterChat(p, clean); if (masked === null) return;
+    const s = JSON.stringify({ t: 'gchat', name: p.account.name, tag: p.gtag, text: masked, ts: Date.now() } satisfies ServerMsg);
+    for (const o of this.byAccount.values()) if (o.guildId === p.guildId && o.ws.readyState === 1 && !o.blocks.has(p.account.id)) o.ws.send(s);
+    inc('hub_guild_chat'); this.store.logChat(p.account.id, 'guilda:' + p.guildId, clean).catch(() => {});
   }
   notify(accountId: string, msg: ServerMsg) { const p = this.byAccount.get(accountId); if (p) send(p, msg); }
   private notifyFriends(p: Player, ev: 'online' | 'offline') {

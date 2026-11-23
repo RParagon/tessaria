@@ -652,3 +652,34 @@ test('chat em todo lugar: na taverna o chat continua, com o rótulo do lugar, e 
   await expect(C.page.locator('.net-log')).not.toContainText('Uma rodada pra todos!');
   for (const P of [A, B, C]) { expect(P.errors).toEqual([]); await P.ctx.close(); }
 });
+
+test('guilda: fundar pelo painel, convidar, aceitar, sigla no nome e chat /gu', async ({ browser }) => {
+  const A = await onlinePlayer(browser), B = await onlinePlayer(browser);
+  // A precisa de nível 15 e 25.000 Centelhas; espera o bastante para o servidor aceitar o salto de nível
+  await A.page.waitForTimeout(26_000);
+  await A.page.evaluate(async () => { const T = (window as any).__T; T.G.save.lvl = 15; T.G.save.gold = 30_000; T.ev('writeSave()'); await (window as any).TessNet.flushNow(); });
+  await expect.poll(() => A.page.evaluate(() => (window as any).TessNet.sync)).toBe('salvo');
+  await A.page.click('.net-friendsbtn[aria-label="Guilda"]');
+  await A.page.fill('#netGName', 'Teia de Brasa');
+  await A.page.fill('#netGTag', 'tdb');
+  await A.page.click('.net-form button.gold');
+  await expect(A.page.locator('#netTitle')).toHaveText('Teia de Brasa [TDB]');
+  expect(await A.page.evaluate(() => (window as any).__T.G.save.gold)).toBe(5_000);
+  await A.page.fill('#netGInv', B.name);
+  await A.page.click('.net-form.net-inline:has(#netGInv) button');
+  await expect(A.page.locator('#netMsg')).toContainText('Convite enviado');
+  await A.page.click('.net-x');
+  // B recebe o aviso e entra pelo painel
+  await expect(B.page.locator('.net-log')).toContainText('convidou você para a guilda Teia de Brasa');
+  await B.page.click('.net-friendsbtn[aria-label="Guilda"]');
+  await B.page.click('.net-frow button.gold');
+  await expect(B.page.locator('#netTitle')).toHaveText('Teia de Brasa [TDB]');
+  await B.page.click('.net-x');
+  // A vê a sigla no título de B, e o chat da guilda funciona
+  await expect.poll(() => A.page.evaluate(n => { const r = (window as any).TessNet.players().find((p: any) => p.name === n); return r ? r.title : ''; }, B.name), { timeout: 15_000 }).toMatch(/^\[TDB\] /);
+  await B.page.keyboard.press('Enter');   // depois de fechar o painel, o Enter abre o chat (o foco não fica no botão)
+  await B.page.keyboard.type('/gu Bem-vindos à Teia!');
+  await B.page.keyboard.press('Enter');
+  await expect(A.page.locator('.net-log')).toContainText('[TDB] ' + B.name + ': Bem-vindos à Teia!');
+  for (const P of [A, B]) { expect(P.errors).toEqual([]); await P.ctx.close(); }
+});

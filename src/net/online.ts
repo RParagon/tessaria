@@ -8,7 +8,7 @@ import type { FriendsList, PartyView } from '../../shared/social';
 export interface PublicAccount { id: string; name: string; guest: boolean; email: string | null; google: boolean; password?: boolean }
 export interface Remote { id: number; name: string; title: string; look: Look; tx: number; tz: number; tyaw: number; m: number; a: string; x?: number; z?: number; yaw?: number; slot?: number; emote?: Emote | null; emoteT?: number; chat?: string; chatT?: number; act?: Act | null; actT?: number }
 export type SyncState = 'desligado' | 'salvo' | 'pendente' | 'enviando' | 'recusado' | 'conflito' | 'sem-rede';
-export interface ChatLine { kind: 'chat' | 'sys' | 'grupo'; name?: string; text: string; ts: number; mine?: boolean; ch?: string }
+export interface ChatLine { kind: 'chat' | 'sys' | 'grupo' | 'guilda'; name?: string; text: string; ts: number; mine?: boolean; ch?: string }
 
 type Listener = (ev: string, data?: any) => void;
 const VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
@@ -300,6 +300,21 @@ export class Net {
   get isLeader() { return !!this.party && this.party.leader === this.account?.name; }
 
   // ---------- amigos ----------
+  // ---------- guilda ----------
+  guildView: any = null;
+  async guild(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/guild', undefined, 8000); if (r.status === 200) { this.guildView = r.data; return r.data; } return null; }
+  private async gop(path: string, body: unknown) { const r = await call('POST', path, body); if (r.error) return { ok: false as const, error: r.error }; if (r.data?.view) this.guildView = r.data.view; return { ok: true as const, data: r.data }; }
+  /** Fundar e doar mexem nas Centelhas do save da nuvem: sincroniza antes e adota a revisão nova. */
+  guildFound(name: string, tag: string, emblem: { shape: number; color: number; symbol: number }) { return this.saveOp('POST', '/guild', { name, tag, emblem }).then(r => { if (r.ok && r.data?.view) this.guildView = r.data.view; return r; }); }
+  guildDonate(gold: number) { return this.saveOp('POST', '/guild/donate', { gold }).then(r => { if (r.ok && r.data?.view) this.guildView = r.data.view; return r; }); }
+  guildInvite(name: string) { return this.gop('/guild/invite', { name }); }
+  guildAccept(id: string) { return this.gop('/guild/accept', { id }); }
+  guildDecline(id: string) { return this.gop('/guild/decline', { id }); }
+  guildLeave() { return this.gop('/guild/leave', {}); }
+  guildKick(name: string) { return this.gop('/guild/kick', { name }); }
+  guildRole(name: string, role: 'lider' | 'oficial' | 'membro') { return this.gop('/guild/role', { name, role }); }
+  guildMotd(text: string) { return this.gop('/guild/motd', { text }); }
+  guildEmblem(emblem: { shape: number; color: number; symbol: number }) { return this.gop('/guild/emblem', { emblem }); }
   async friends(): Promise<FriendsList | null> {
     if (!this.account) return null;
     const r = await call('GET', '/friends');
@@ -402,6 +417,8 @@ export class Net {
         this.invites = this.invites.filter(i => i.from !== m.from && i.exp > Date.now());
         this.invites.push({ from: m.from, size: m.size, exp: Date.now() + m.ms }); this.emit('pinvite', m); break;
       case 'pchat': this.pushChat({ kind: 'grupo', name: m.name, text: m.text, ts: m.ts, mine: m.name === this.account?.name }); break;
+      case 'gchat': this.pushChat({ kind: 'guilda', name: m.name, text: m.text, ts: m.ts, mine: m.name === this.account?.name, ch: m.tag }); break;
+      case 'guild': this.emit('guild', null); break;
       case 'social': this.emit('social', m); void this.friends(); break;
       case 'kick': this.wantHub = false; this.pushChat({ kind: 'sys', text: m.reason, ts: Date.now() }); this.emit('kick', m.reason); break;
     }

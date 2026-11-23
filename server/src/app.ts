@@ -11,6 +11,7 @@ import { Hub, type HubOptions } from './hub';
 import { acceptFriend, removeFriend, requestFriend, setBlock } from './social';
 import { FRIEND_REQ_DAYS, type FriendsList } from '../../shared/social';
 import { inc, render as renderMetrics } from './metrics';
+import { GUILD_FIOS, GUILD_FOUND_COST, GUILD_FOUND_LVL, GUILD_INVITE_MS, GUILD_MAX, GUILD_OFFICERS_MAX, GUILD_REJOIN_MS, MOTD_MAX, ROLE_N, canManage, cleanEmblem, cleanGuildName, cleanTag, guildDay, guildLevel, guildNameProblem, guildTagProblem, guildWeek, guildXpFor, type GuildRole } from '../../shared/guild';
 import { mpCreatePreference, mpGetPayment, mpSignatureOk, notificationPaymentId, paymentMatches, parseRef } from './payments';
 import { nameProblem, maskText, cleanChat } from '../../shared/text';
 import { allItems, validateSave, MAX_SAVE_BYTES } from '../../shared/save';
@@ -162,6 +163,109 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
   app.post('/auth/logout', { preHandler: auth }, async req => { const t = bearer(req); if (t) await store.deleteSession(hashToken(t)); return { ok: true }; });
   app.get('/me', { preHandler: auth }, async req => ({ account: publicAccount(req.account!) }));
 
+
+  // ---------- guildas (etapa social; desenho em docs/GUILDS.md) ----------
+  const GFAIL: Record<string, [number, string]> = {
+    'em-guilda': [409, 'Você já está numa guilda.'], espera: [409, 'Você saiu de uma guilda há menos de 24 horas. Espere um pouco para entrar em outra.'],
+    nome: [409, 'Já existe uma guilda com esse nome.'], sigla: [409, 'Já existe uma guilda com essa sigla.'], 'sem-centelhas': [402, `Fundar custa ${GUILD_FOUND_COST.toLocaleString('pt-BR')} Centelhas.`],
+    nivel: [403, `Para fundar uma guilda, chegue ao nível ${GUILD_FOUND_LVL}.`], 'sem-save': [409, 'Seu progresso precisa estar na nuvem.'], 'sem-convite': [404, 'Esse convite não existe mais.'],
+    cheia: [409, `A guilda está cheia (${GUILD_MAX} membros).`], 'sem-guilda': [404, 'Você não está numa guilda.'], limite: [409, 'Você já doou o máximo de hoje.'],
+  };
+  const gfail = (rep: FastifyReply, r: string) => { const [c, m] = GFAIL[r] ?? [400, 'Não deu certo.']; return fail(rep, c, m); };
+  const myGuild = async (id: string) => store.guildOf(id);
+  const guildView = async (id: string) => {
+    const now = Date.now(), wk = guildWeek(now), mine = await myGuild(id), invites = await store.guildInvites(id, GUILD_INVITE_MS);
+    if (!mine) return { guild: null, invites, rules: { cost: GUILD_FOUND_COST, lvl: GUILD_FOUND_LVL, max: GUILD_MAX } };
+    const g = mine.guild, members = await store.guildMembers(g.id), lv = guildLevel(g.fios);
+    return {
+      guild: { id: g.id, name: g.name, tag: g.tag, emblem: g.emblem, motd: g.motd, fios: g.fios, level: lv, next: guildXpFor(lv + 1), cur: guildXpFor(lv), createdAt: g.createdAt, max: GUILD_MAX,
+        members: members.map(m => ({ name: m.name, role: m.role, roleN: ROLE_N[m.role], weekFios: m.week === wk ? m.weekFios : 0, totalFios: m.totalFios, online: hub.isOnline(m.accountId), lastSeen: m.lastSeen })),
+        log: await store.guildLogList(g.id, 15) },
+      me: { role: mine.role }, invites, rules: { donatePer: GUILD_FIOS.donatePer, donateDayMax: GUILD_FIOS.donateDayMax },
+    };
+  };
+  app.get('/guild', { preHandler: auth }, async req => guildView(req.account!.id));
+  const FoundBody = z.object({ name: z.string().max(40), tag: z.string().max(8), emblem: z.any() });
+  app.post('/guild', { preHandler: auth, config: perAccount(5) }, async (req, rep) => {
+    const b = parse(FoundBody, req.body, rep); if (!b) return;
+    const np = guildNameProblem(b.name); if (np) return fail(rep, 400, np);
+    const tp = guildTagProblem(b.tag); if (tp) return fail(rep, 400, tp);
+    const emblem = cleanEmblem(b.emblem); if (!emblem) return fail(rep, 400, 'Emblema inválido.');
+    const r = await store.guildFound(req.account!.id, { name: cleanGuildName(b.name), tag: cleanTag(b.tag), emblem }, { cost: GUILD_FOUND_COST, minLvl: GUILD_FOUND_LVL, rejoinMs: GUILD_REJOIN_MS });
+    if (!r.ok) return gfail(rep, r.reason);
+    await store.guildLog(r.guildId, 'fundada', { nome: req.account!.name }); await store.audit(req.account!.id, 'guilda_fundada', { id: r.guildId, nome: b.name });
+    inc('guilds_founded'); hub.guildRefresh(r.guildId);
+    return { rev: r.rev, gold: GUILD_FOUND_COST, view: await guildView(req.account!.id) };
+  });
+  const NameBody = z.object({ name: z.string().max(40) });
+  /** O jogador precisa ser Líder ou Oficial da própria guilda. */
+  const manager = async (req: FastifyRequest, rep: FastifyReply) => { const g = await myGuild(req.account!.id); if (!g) { gfail(rep, 'sem-guilda'); return null; } if (!canManage(g.role)) { fail(rep, 403, 'Só o Líder e os Oficiais podem fazer isso.'); return null; } return g; };
+  app.post('/guild/invite', { preHandler: auth, config: perAccount(30) }, async (req, rep) => {
+    const b = parse(NameBody, req.body, rep); if (!b) return; const g = await manager(req, rep); if (!g) return;
+    const to = await store.accountByName(b.name.trim()); if (!to || to.banned) return fail(rep, 404, 'Nenhum Tecelão com esse nome.');
+    if (to.id === req.account!.id) return fail(rep, 400, 'Você já está na guilda.');
+    const blocked = (await store.blockedBy(req.account!.id).catch(() => [])).some((x: any) => x.id === to.id); if (blocked) return fail(rep, 403, 'Não foi possível convidar.');
+    const r = await store.guildInvite(g.guild.id, to.id, req.account!.id, GUILD_MAX);
+    if (r === 'ja-membro') return fail(rep, 409, `${to.name} já está na guilda.`); if (r === 'cheia') return gfail(rep, 'cheia');
+    hub.guildTell(to.id, `${req.account!.name} convidou você para a guilda ${g.guild.name} [${g.guild.tag}]. Abra a Guilda para responder.`);
+    await store.guildLog(g.guild.id, 'convite', { nome: to.name, por: req.account!.name }); return { ok: true };
+  });
+  const IdBody = z.object({ id: z.string().uuid() });
+  app.post('/guild/accept', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
+    const b = parse(IdBody, req.body, rep); if (!b) return;
+    const r = await store.guildAccept(req.account!.id, b.id, { max: GUILD_MAX, rejoinMs: GUILD_REJOIN_MS, inviteMs: GUILD_INVITE_MS }); if (!r.ok) return gfail(rep, r.reason);
+    await store.guildLog(b.id, 'entrou', { nome: req.account!.name }); hub.guildRefresh(b.id); hub.guildSys(b.id, `${req.account!.name} entrou na guilda!`);
+    return { view: await guildView(req.account!.id) };
+  });
+  app.post('/guild/decline', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const b = parse(IdBody, req.body, rep); if (!b) return; await store.guildDecline(req.account!.id, b.id); return { view: await guildView(req.account!.id) };
+  });
+  app.post('/guild/leave', { preHandler: auth, config: perAccount(5) }, async (req, rep) => {
+    const r = await store.guildLeave(req.account!.id); if (!r) return gfail(rep, 'sem-guilda');
+    hub.setGuild(req.account!.id, null);
+    if (!r.disbanded) { await store.guildLog(r.guildId, 'saiu', { nome: req.account!.name, lider: r.newLeader }); hub.guildSys(r.guildId, `${req.account!.name} saiu da guilda.` + (r.newLeader ? ` ${r.newLeader} agora é o Líder.` : '')); hub.guildRefresh(r.guildId); }
+    return { disbanded: r.disbanded, view: await guildView(req.account!.id) };
+  });
+  app.post('/guild/kick', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const b = parse(NameBody, req.body, rep); if (!b) return; const g = await manager(req, rep); if (!g) return;
+    const t = (await store.guildMembers(g.guild.id)).find(m => m.name.toLowerCase() === b.name.trim().toLowerCase()); if (!t) return fail(rep, 404, 'Essa pessoa não está na guilda.');
+    if (t.role === 'lider' || (t.role === 'oficial' && g.role !== 'lider')) return fail(rep, 403, 'Você não pode expulsar essa pessoa.');
+    if (!(await store.guildKick(g.guild.id, t.accountId))) return fail(rep, 409, 'Não deu certo.');
+    hub.setGuild(t.accountId, null); hub.guildTell(t.accountId, `Você foi removido da guilda ${g.guild.name}.`);
+    await store.guildLog(g.guild.id, 'expulso', { nome: t.name, por: req.account!.name }); hub.guildSys(g.guild.id, `${t.name} foi removido da guilda.`); hub.guildRefresh(g.guild.id);
+    return { view: await guildView(req.account!.id) };
+  });
+  const RoleBody = z.object({ name: z.string().max(40), role: z.enum(['lider', 'oficial', 'membro']) });
+  app.post('/guild/role', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const b = parse(RoleBody, req.body, rep); if (!b) return;
+    const g = await myGuild(req.account!.id); if (!g) return gfail(rep, 'sem-guilda'); if (g.role !== 'lider') return fail(rep, 403, 'Só o Líder muda os cargos.');
+    const t = (await store.guildMembers(g.guild.id)).find(m => m.name.toLowerCase() === b.name.trim().toLowerCase()); if (!t) return fail(rep, 404, 'Essa pessoa não está na guilda.');
+    if (t.accountId === req.account!.id) return fail(rep, 400, 'Passe a liderança para outra pessoa.');
+    const r = await store.guildSetRole(g.guild.id, t.accountId, b.role as GuildRole, GUILD_OFFICERS_MAX);
+    if (r === 'muitos-oficiais') return fail(rep, 409, `A guilda pode ter até ${GUILD_OFFICERS_MAX} Oficiais.`); if (r !== 'ok') return fail(rep, 404, 'Essa pessoa não está na guilda.');
+    await store.guildLog(g.guild.id, 'cargo', { nome: t.name, cargo: b.role, por: req.account!.name });
+    hub.guildSys(g.guild.id, b.role === 'lider' ? `${t.name} agora é o Líder da guilda.` : `${t.name} agora é ${ROLE_N[b.role as GuildRole]}.`); hub.guildRefresh(g.guild.id);
+    return { view: await guildView(req.account!.id) };
+  });
+  app.post('/guild/motd', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
+    const b = parse(z.object({ text: z.string().max(400) }), req.body, rep); if (!b) return; const g = await manager(req, rep); if (!g) return;
+    const text = maskText(cleanChat(b.text, MOTD_MAX)); await store.guildUpdate(g.guild.id, { motd: text });
+    hub.guildSys(g.guild.id, `Recado do dia: ${text}`); hub.guildRefresh(g.guild.id); return { view: await guildView(req.account!.id) };
+  });
+  app.post('/guild/emblem', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
+    const b = parse(z.object({ emblem: z.any() }), req.body, rep); if (!b) return;
+    const g = await myGuild(req.account!.id); if (!g) return gfail(rep, 'sem-guilda'); if (g.role !== 'lider') return fail(rep, 403, 'Só o Líder muda o emblema.');
+    const e = cleanEmblem(b.emblem); if (!e) return fail(rep, 400, 'Emblema inválido.');
+    await store.guildUpdate(g.guild.id, { emblem: e }); hub.guildRefresh(g.guild.id); return { view: await guildView(req.account!.id) };
+  });
+  app.post('/guild/donate', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const b = parse(z.object({ gold: z.number().int().min(GUILD_FIOS.donatePer).max(10_000_000) }), req.body, rep); if (!b) return;
+    const now = Date.now(), r = await store.guildDonate(req.account!.id, b.gold, { per: GUILD_FIOS.donatePer, dayMax: GUILD_FIOS.donateDayMax, day: guildDay(now), week: guildWeek(now) });
+    if (!r.ok) return gfail(rep, r.reason);
+    const g = await myGuild(req.account!.id); if (g) { await store.guildLog(g.guild.id, 'doacao', { nome: req.account!.name, centelhas: r.gold, fios: r.fios }); hub.guildRefresh(g.guild.id); }
+    return { rev: r.rev, gold: r.gold, fios: r.fios, view: await guildView(req.account!.id) };
+  });
+
   // ---------- moderação (ADMIN_TOKEN) ----------
   // Reportes, contas com mais alertas de trapaça e suspender/reativar. Sem ADMIN_TOKEN, as rotas não existem.
   const admin = async (req: FastifyRequest, rep: FastifyReply) => {
@@ -205,6 +309,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     if (b.confirm.trim().toLowerCase() !== a.name.toLowerCase()) return fail(rep, 400, 'Digite o nome do seu Tecelão exatamente para confirmar.');
     if (a.passHash && !(b.password && await verifyPassword(b.password, a.passHash))) return fail(rep, 403, 'Senha incorreta.');
     hub.dropAccount(a.id, 'Conta excluída.');
+    { const l = await store.guildLeave(a.id); if (l && !l.disbanded) { await store.guildLog(l.guildId, 'saiu', { nome: a.name, lider: l.newLeader }); hub.guildRefresh(l.guildId); } }
     await store.deleteAccount(a.id);
     await store.audit(null, 'conta_excluida', { id: a.id, convidado: a.guest });   // só o id (sem nome nem e-mail), para registro
     inc('accounts_deleted'); return { ok: true };
@@ -352,7 +457,10 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const b = parse(MissionBody, req.body, rep); if (!b) return;
     const m = missionNow(b.id, Date.now()); if (!m) return fail(rep, 404, 'Essa missão já passou.');
     if (!(await store.seasonMission(req.account!.id, SEASON.id, m.id, m.xp))) return fail(rep, 409, 'Missão já resgatada.');
-    inc('season_missions'); return { xp: m.xp, view: await seasonView(req.account!.id) };
+    // Guilda: missão do Passe também conta como contribuição (Fios da Guilda).
+    const gf = await store.guildAddFios(req.account!.id, m.id.startsWith('w') ? GUILD_FIOS.weekly : GUILD_FIOS.daily, guildWeek(Date.now()));
+    if (gf) hub.guildPing(req.account!.id);
+    inc('season_missions'); return { xp: m.xp, guildFios: gf, view: await seasonView(req.account!.id) };
   });
   const ClaimBody = z.object({ level: z.number().int().min(1).max(200), track: z.enum(['free', 'prem']) });
   app.post('/season/claim', { preHandler: auth, config: perAccount(60) }, async (req, rep) => {
