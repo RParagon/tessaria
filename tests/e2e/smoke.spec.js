@@ -373,3 +373,43 @@ test('Morro do Mirante: o chão sobe no morro, o herói acompanha e a luneta mos
   expect(await ev('[G.lookT > 6, G.save.met.mirante, G.save.lvl * 1e7 + G.save.xp > ' + xp + ']')).toEqual([true, true, true]);
   expect(errors).toEqual([]);
 });
+
+test('notificações: marcos no centro um por vez, o resto no feed abaixo do minimapa; objetivo minimiza e dá lugar ao Passe', async ({ page }) => {
+  const errors = await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  // cinco iguais viram uma linha com ×5; o feed guarda no máximo 4
+  await ev("for (let i = 0; i < 5; i++) toast('+1 MINÉRIO', false, 'NA BOLSA'); for (const t of ['A','B','C','D','E']) toast('ITEM ' + t, false)");
+  expect(await ev("[...$('#feed').children].length")).toBe(4);
+  await ev("for (let i = 0; i < 3; i++) toast('+1 MINÉRIO', false, 'NA BOLSA')");
+  expect(await ev("[...$('#feed').children].find(e => e._k === '+1 MINÉRIO|NA BOLSA').querySelector('.n').textContent")).toBe('×3');
+  // marcos: só um no centro; os outros esperam na fila; repetido não entra; "now" fura a fila
+  await ev("TOASTQ.length = 0; bannerClear(); toast('NÍVEL 2', true); toast('NÍVEL 2', true); toast('CHEFE DERROTADO', true); toast('ITEM LENDÁRIO', true)");
+  expect(await ev("[$('#toast').children.length, $('#toast').textContent, TOASTQ.length]")).toEqual([1, 'NÍVEL 2', 2]);
+  await ev("toast('PEIXE MORDEU!', true, 'APERTE AGORA', null, { now: true })");
+  expect(await ev("[$('#toast').children.length, $('#toast').textContent.startsWith('PEIXE MORDEU!'), TOASTQ.length]")).toEqual([1, true, 0]);
+  // o feed fica abaixo do minimapa nos Ermos
+  await ev("G.save.map = true");
+  await travel(page, 'forest');
+  await page.waitForTimeout(400);
+  await ev("toast('+12 CENTELHAS', false)");
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'test-results/notificacoes.png' });
+  const pos = await ev("(() => { const m = $('#mmapZ'), f = $('#feed').lastChild; return m.hidden ? null : [m.getBoundingClientRect().bottom, f.getBoundingClientRect().top]; })()");
+  if (pos) expect(pos[1]).toBeGreaterThan(pos[0]);
+  // objetivo: clique minimiza (e lembra); com a história toda feita, some e o Passe ocupa o rastreador
+  await page.click('#hObj');
+  expect(await ev("[$('#hObj').classList.contains('min'), $('#hObj').textContent]")).toEqual([true, '▸ OBJETIVO']);
+  await page.click('#hObj');
+  expect(await ev("$('#hObj').classList.contains('min')")).toBe(false);
+  await ev("Object.assign(G.save.bosses, { forest: 1, crypt: 1, peaks: 1, swamp: 1, glass: 1 }); G.save.ended = 'A'; G.save.met.ysolde = true; G.save.met.act2y2 = true; updateObjective()");
+  const all = await ev("[...TessSeason.dailyMissions(Date.now()), ...TessSeason.weeklyMissions(Date.now())]");
+  const done = all[0], going = all.find(x => x !== done && x.n > 2);
+  const slot = x => x.id[0] === 'd' ? 'p' : 'wp';
+  await ev(`SEAS = { me: { missions: [], dourados: 0, owned: [] } }; missionStore().${slot(done)}['${done.id}'] = ${done.n}; missionStore().${slot(going)}['${going.id}'] = 1;`);
+  await page.waitForTimeout(300);
+  const trk = await ev("[$('#hObj').textContent, $('#hTrk').textContent]");
+  expect(trk[1]).toContain('pronta');
+  expect(await ev("objSet(''); $('#hObj').offsetHeight")).toBe(0);   // sem objetivo, o painel some
+  expect(trk[1]).toContain(going.t + ': 1/' + going.n);
+  expect(errors).toEqual([]);
+});

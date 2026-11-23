@@ -406,7 +406,7 @@ window.TessGame = {
   myEmote: e => { if (!P) return; P.emote = e; P.emoteT = 0; },
   pvpHurt,
   // torneio de pesca: pontos da pesca e a posição na semana
-  fishPts: d => { if (!d) return; const up = G.tourRank && d.rank && d.rank < G.tourRank; setTimeout(() => toast(up ? 'SUBIU PARA ' + d.rank + 'º NO TORNEIO' : '+' + d.points + ' PONTOS NO TORNEIO', !!up, 'TOTAL DA SEMANA: ' + d.total + (d.rank ? ' · ' + d.rank + 'º LUGAR' : ''), '#ffbf3d'), 2400); if (d.rank) G.tourRank = d.rank; },
+  fishPts: d => { if (!d) return; const up = G.tourRank && d.rank && d.rank < G.tourRank; G.tourInfo = d; if (up) setTimeout(() => toast('SUBIU PARA ' + d.rank + 'º NO TORNEIO', true, 'TOTAL DA SEMANA: ' + d.total + ' PONTOS', '#ffbf3d'), 2400); if (d.rank) G.tourRank = d.rank; },   // os pontos de cada pesca já aparecem no aviso do peixe
   // troca direta
   tradeInvite: from => { const n = NETON(); if (!n) return; if (G.mode !== 'play' || G.trade) { n.tradeAnswer(from, false); return; } sfx('ui'); say([{ who: 'Troca', text: from + ' quer trocar itens com você.', choices: [{ t: 'Aceitar', fn: () => n.tradeAnswer(from, true) }, { t: 'Recusar', fn: () => n.tradeAnswer(from, false) }] }]); },
   tradeState: m => { const first = !G.trade; G.trade = m; if (first) { trSel = new Set(); $('#trGold').value = '0'; if (G.mode === 'dialog') { $('#dialog').hidden = true; DLG.q = []; DLG.cur = null; G.mode = 'play'; } if (G.mode === 'play') openMenu('trade'); } if (G.menu === 'trade') renderTrade(); },

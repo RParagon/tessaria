@@ -94,6 +94,22 @@ h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.08em;margi
 .toast{font-family:var(--f-display);font-size:13px;letter-spacing:.08em;color:var(--bone);background:rgba(10,7,18,.85);border:2px solid var(--line);padding:8px 14px;text-align:center;animation:toast 2.6s steps(10) forwards}
 .toast.big{font-size:clamp(18px,5vw,30px);color:var(--gold);background:none;border:0;text-shadow:3px 3px 0 #000}
 .toast.big small{display:block;font-size:11px;color:var(--bone);letter-spacing:.24em;margin-top:6px}
+#feed{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:70px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none;width:min(260px,42vw)}
+#feed .toast{font-size:11px;letter-spacing:.05em;text-align:right;padding:5px 9px;border-width:0 3px 0 0;border-color:var(--gold);background:rgba(10,7,18,.78);max-width:100%;animation:feedIn .18s steps(4);transition:opacity .3s}
+#feed .toast b{font-weight:normal}
+#feed .toast .n{color:var(--gold);margin-left:6px}
+#feed .toast small{font-size:9px;letter-spacing:.08em;margin-top:2px}
+#feed .toast.out{opacity:0}
+#feed .toast.bump{animation:feedBump .25s steps(3)}
+@keyframes feedIn{0%{opacity:0;transform:translateX(14px)}100%{opacity:1;transform:none}}
+@keyframes feedBump{0%{transform:scale(1.08)}100%{transform:none}}
+body.tch #feed{width:min(200px,36vw)}body.tch #feed .toast{font-size:9px;padding:3px 7px}body.tch #feed .toast small{font-size:8px}
+.obj{pointer-events:auto;cursor:pointer;position:relative}
+.obj.min{width:max-content;padding:3px 8px;color:var(--gold);font-size:10px;letter-spacing:.08em}
+.obj .x{float:right;margin-left:6px;color:var(--dim);font-size:10px}
+.obj:empty{display:none}
+.trk div.pass{border-left-color:#c07bff}
+.trk div.pass.ok{border-left-color:var(--gold)}
 @keyframes toast{0%{opacity:0;transform:translateY(8px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
 #prompt{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 130px);transform:translateX(-50%);font-family:var(--f-display);font-size:12px;background:rgba(10,7,18,.85);border:2px solid var(--gold);padding:7px 12px;pointer-events:none;white-space:nowrap}
 #fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
@@ -305,7 +321,7 @@ body.tch .tb.use{width:auto;min-width:96px;height:48px;border-radius:26px;right:
 
 /* ---------- PC: interface em escala (o HUD nasceu no celular; no monitor ele cresce com a janela) ---------- */
 :root{--ui:1}
-body:not(.tch) #hud,body:not(.tch) #toast,body:not(.tch) #prompt,body:not(.tch) #dialog{zoom:var(--ui)}
+body:not(.tch) #hud,body:not(.tch) #toast,body:not(.tch) #feed .toast,body:not(.tch) #prompt,body:not(.tch) #dialog{zoom:var(--ui)}
 body.playing:not(.tch) #c{cursor:crosshair}
 /* mouse desenhado nas teclas: botão esquerdo ou direito em destaque */
 .ms{display:inline-block;width:8px;height:11px;border:1px solid currentColor;border-radius:4px;vertical-align:-2px;position:relative;margin-right:2px;box-sizing:border-box}

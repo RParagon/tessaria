@@ -23,6 +23,16 @@ function missionEvent(kind, n = 1) {
     if (prog[mi.id] >= mi.n) { toast('MISSÃO CONCLUÍDA', false, mi.t.toUpperCase() + ' · RESGATE NO PASSE DO TEAR (TECLA P)', '#ffd27a'); sfx('frag'); seasonDot(true); }
   }
 }
+/** Linhas do rastreador do HUD para o Passe: prontas para resgatar primeiro, depois as mais perto de acabar. */
+function passTrackLines(max) {
+  if (!SEAS || !G.save || max <= 0) return [];
+  const now = Date.now(), claimed = SEAS.me.missions || [], all = [...TS.dailyMissions(now), ...TS.weeklyMissions(now)].filter(mi => !claimed.includes(mi.id));
+  const ready = all.filter(mi => missionProg(mi) >= mi.n), out = [];
+  if (ready.length) out.push(`<div class="pass ok">${ready.length === 1 ? 'Passe: “' + ready[0].t + '” pronta' : 'Passe: ' + ready.length + ' missões prontas'} · resgate (P)</div>`);
+  const going = all.filter(mi => missionProg(mi) < mi.n).sort((a, b) => missionProg(b) / b.n - missionProg(a) / a.n || (a.id[0] === 'd' ? -1 : 1));
+  for (const mi of going) { if (out.length >= max) break; out.push(`<div class="pass">${mi.t}: ${missionProg(mi)}/${mi.n}</div>`); }
+  return out.slice(0, max);
+}
 const missionProg = mi => { const m = missionStore(); return (mi.id[0] === 'd' ? m.p : m.wp)[mi.id] || 0; };
 /** Ponto no botão do passe: há missão concluída para resgatar, nível do passe para pegar ou a entrada do dia. */
 function seasonDot(on) { const b = $('#hPass'); if (b) b.classList.toggle('dot', !!on); }

@@ -254,7 +254,9 @@ function trackerHTML() {
   const cs = s.contracts || [], done = cs.filter(c => c.p >= c.n).length;
   if (done) out.push(`<div class="ok">${done} contrato${done > 1 ? 's' : ''} pronto${done > 1 ? 's' : ''} no quadro</div>`);
   else { const c = cs.find(c2 => c2.p > 0); if (c) out.push(`<div>Contrato: ${Math.min(c.p, c.n)}/${c.n}</div>`); }
-  return out.slice(0, 3).join('');
+  // Passe do Tear: missões concluídas para resgatar e, com espaço, as que estão andando
+  const free = !(G.save.ended && G.save.bosses.glass) ? 0 : 1, pass = typeof passTrackLines === 'function' ? passTrackLines(out.length < 2 ? 2 + free : 1) : [];
+  return [...out.slice(0, 3), ...pass].slice(0, 3 + free).join('');
 }
 
 /* ---- grimório ---- */

@@ -2,11 +2,50 @@
 /* =========================================================
    UI: HUD, MENUS, TOASTS, NÚMEROS
    ========================================================= */
-function toast(text, big, sub, color) {
-  const el = document.createElement('div'); el.className = 'toast' + (big ? ' big' : ''); el.textContent = text; if (color) el.style.color = color;
-  if (sub) { const s = document.createElement('small'); s.textContent = sub; el.appendChild(s); }
-  const box = $('#toast'); box.appendChild(el); while (box.children.length > 3) box.firstChild.remove(); setTimeout(() => el.remove(), 2700);
+// Notificações em dois lugares, para não poluir o meio da tela:
+//  - big (marcos: nível, chefe, item lendário, peixe raro…): no centro, UMA por vez, em fila (no máximo 3 esperando).
+//    opts.now fura a fila (ex.: "PEIXE MORDEU!", que pede reação na hora).
+//  - o resto (itens coletados, Centelhas, pesca comum, avisos): no feed do canto direito, abaixo do minimapa.
+//    Repetidas se juntam (×2, ×3…) em vez de empilhar.
+const TOASTQ = []; let toastCur = null, toastTimer = 0;
+function toast(text, big, sub, color, opts) {
+  text = String(text); sub = sub ? String(sub) : '';
+  if (big) {
+    if (opts && opts.now) { TOASTQ.length = 0; showBanner({ text, sub, color }); return; }
+    if ((toastCur && toastCur.text === text) || TOASTQ.some(q => q.text === text)) return;   // já está na tela ou na fila
+    TOASTQ.push({ text, sub, color }); while (TOASTQ.length > 3) TOASTQ.shift();
+    if (!toastCur) nextBanner(); return;
+  }
+  feedPush(text, sub, color);
 }
+function showBanner(q) {
+  const box = $('#toast'); box.innerHTML = ''; clearTimeout(toastTimer); toastCur = q;
+  const el = document.createElement('div'); el.className = 'toast big'; el.textContent = q.text; if (q.color) el.style.color = q.color;
+  if (q.sub) { const sm = document.createElement('small'); sm.textContent = q.sub; el.appendChild(sm); }
+  box.appendChild(el); toastTimer = setTimeout(() => { el.remove(); toastCur = null; nextBanner(); }, TOASTQ.length ? 2000 : 2600);
+}
+function bannerClear() { clearTimeout(toastTimer); $('#toast').innerHTML = ''; toastCur = null; nextBanner(); }
+function nextBanner() { const q = TOASTQ.shift(); if (q) showBanner(q); }
+function feedPos() {   // logo abaixo do minimapa (ou dos botões do canto, quando não há minimapa)
+  const f = $('#feed'); if (!f) return;
+  const mm = $('#mmapZ'), hr = document.querySelector('.hud-r'), ref = mm && !mm.hidden ? mm : hr;
+  const b = ref ? ref.getBoundingClientRect().bottom : 60; f.style.top = Math.round(b + 8) + 'px';
+}
+function feedPush(text, sub, color) {
+  const f = $('#feed'); if (!f) return; feedPos();
+  const key = text + '|' + sub;
+  for (const el of f.children) if (el._k === key) {   // repetida: soma no contador e renova o tempo
+    el._n++; el.querySelector('.n').textContent = '×' + el._n; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+    clearTimeout(el._t); el._t = setTimeout(() => feedOut(el), 3400); f.appendChild(el); return;
+  }
+  const el = document.createElement('div'); el.className = 'toast'; el._k = key; el._n = 1;
+  const b = document.createElement('b'); b.textContent = text; if (color) b.style.color = color; el.appendChild(b);
+  const n = document.createElement('span'); n.className = 'n'; el.appendChild(n);
+  if (sub) { const sm = document.createElement('small'); sm.textContent = sub; el.appendChild(sm); }
+  f.appendChild(el); while (f.children.length > 4) f.firstChild.remove();
+  el._t = setTimeout(() => feedOut(el), 3400);
+}
+function feedOut(el) { el.classList.add('out'); setTimeout(() => el.remove(), 300); }
 function popNum(x, y, z, text, cls) {
   if (!VP) return;
   const c = [VP[0] * x + VP[4] * y + VP[8] * z + VP[12], VP[1] * x + VP[5] * y + VP[9] * z + VP[13], 0, VP[3] * x + VP[7] * y + VP[11] * z + VP[15]];
@@ -42,6 +81,7 @@ function updateHud() {
   }
   { const R2 = RUNES[G.char.cls][curRune()], tip = (R2 ? R2.n + '\n' + R2.d : 'Habilidade') + '\nBotão direito do mouse (ou K)'; if (hudCache.tip !== tip) { hudCache.tip = tip; $('#abSkill').dataset.tip = tip; } }   // dica com a runa ativa
   if (!G.touch && (G.keysT = (G.keysT ?? 60) - 1 / 60) <= 0 && G.keysT > -1) { $('#keys').classList.add('faded'); G.keysT = -2; }   // a linha de controles some depois de um tempo (H mostra de novo)
+  { const f = $('#feed'); if (f && f.children.length && (G.time - (hudCache.feedT || 0) > .2 || G.time < (hudCache.feedT || 0))) { hudCache.feedT = G.time; feedPos(); } }   // o minimapa pode aparecer/sumir depois do aviso
   const trk = trackerHTML(); if (hudCache.trk !== trk) { hudCache.trk = trk; $('#hTrk').innerHTML = trk; }
   const S = G.streak, se = $('#streak');
   if (S.n >= 3) { se.hidden = false; setTxt('#stN', 'x' + S.n); setTxt('#stL', S.n >= 50 ? 'CARNIFICINA' : S.n >= 25 ? 'MASSACRE' : S.n >= 10 ? 'MATANÇA' : 'SEQUÊNCIA'); $('#stBar').style.width = clamp(S.t / 3.2, 0, 1) * 100 + '%'; } else se.hidden = true;

@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.47.0 · Notificações organizadas e missões do Passe no HUD
+- **Menos poluição no meio da tela:** só os marcos (nível, chefe, item lendário, peixe raro, anoitecer…) aparecem no centro, **um por vez**, em fila. O resto (itens coletados, Centelhas, pesca comum, avisos) vai para um **feed no canto direito, logo abaixo do minimapa**
+- **Repetidas se juntam:** pegar o mesmo item várias vezes mostra uma linha só, com contador (×2, ×3…), em vez de empilhar avisos
+- **Pesca mais limpa:** "Peixe mordeu!", "Ele está brigando!" e o resultado aparecem na hora e o aviso da mordida some quando você puxa; os pontos de torneio não aparecem mais duas vezes (só quando você sobe no ranking)
+- **Missões do Passe no rastreador do HUD:** as concluídas aparecem para resgatar ("pronta · resgate (P)") e, com espaço, as que estão andando com o progresso (ex.: "Pesque 6 peixes: 4/6")
+- **Painel de objetivo minimizável:** clique para recolher (fica só "▸ OBJETIVO"; o jogo lembra a escolha). Depois de terminar a história, o painel some e o espaço vai para as missões do Passe e os contratos
+
 ## 0.46.0 · Fios Dourados pelo Mercado Pago e as decisões das guildas
 - **Compra de Fios Dourados com Pix ou cartão** pelo Mercado Pago (Checkout Pro). Na loja do Passe, o botão **Comprar** abre a página de pagamento numa aba nova; quando o pagamento é aprovado, os Fios Dourados chegam sozinhos (o jogo confere o saldo e avisa). Pix pendente é creditado assim que o Mercado Pago confirmar
 - **Seguro do lado do servidor:** o crédito só acontece no webhook, depois de o servidor consultar o pagamento direto na API do Mercado Pago (aprovado, em reais e com o valor exato do pacote), e uma única vez por pagamento. Webhook com assinatura conferida (`x-signature`), estorno e chargeback tiram os Fios Dourados de volta, e tudo fica no registro de auditoria

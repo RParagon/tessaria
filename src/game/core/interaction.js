@@ -572,9 +572,19 @@ function updateMinimap(dt) {
   if (zl.textContent !== txt) zl.textContent = txt; zl.style.color = z ? z.c : 'var(--bone)';
   zl.style.top = (cv.offsetTop + cv.offsetHeight + 6) + 'px';
 }
+// Painel de objetivo: clique para minimizar (fica só "▸ OBJETIVO"); lembra a escolha no aparelho.
+// Depois da história toda, ele some e o rastreador mostra as missões do Passe no lugar.
+let objMin = false; try { objMin = localStorage.getItem('tess.objMin') === '1'; } catch (e) { }
+function objSet(t) {
+  const el = $('#hObj'); el._t = t || '';
+  if (!t) { el.textContent = ''; el.classList.remove('min'); return; }
+  el.classList.toggle('min', objMin); el.title = objMin ? 'Mostrar o objetivo' : 'Clique para minimizar';
+  if (objMin) el.textContent = '▸ OBJETIVO'; else { el.textContent = t; const x = document.createElement('span'); x.className = 'x'; x.textContent = '▾'; el.prepend(x); }
+  if (!el._wired) { el._wired = true; el.addEventListener('click', e => { e.stopPropagation(); objMin = !objMin; try { localStorage.setItem('tess.objMin', objMin ? '1' : '0'); } catch (er) { } objSet(el._t); }); }
+}
 function updateObjective() {
   const s = G.save, k = RG ? RG.key : 'hub';
-  if (G.rift) { const R = G.rift; $('#hObj').textContent = R.done ? 'Fenda concluída! Pegue as recompensas e volte pelo portal.' : R.bossUp ? 'Derrote o Guardião da Fenda no coração do mapa, ao norte.' : 'Derrote inimigos para encher a barra da Fenda.'; return; }
+  if (G.rift) { const R = G.rift; objSet(R.done ? 'Fenda concluída! Pegue as recompensas e volte pelo portal.' : R.bossUp ? 'Derrote o Guardião da Fenda no coração do mapa, ao norte.' : 'Derrote inimigos para encher a barra da Fenda.'); return; }
   let t; const rq = requiredTalk();
   if (rq === 'ysolde' && s.met.ysolde) t = k !== 'hub' ? 'Volte à Vila Brasa e fale com a Anciã Ysolde.' : s.bosses.swamp ? 'Leve o Fio de Água até a Anciã Ysolde, a oeste da fonte.' : s.ended ? 'O Tear treme. A Anciã Ysolde quer falar com você.' : 'Leve o Fio Verde até a Anciã Ysolde, a oeste da fonte.';
   else if (rq === 'desf') t = k === 'hub' ? 'Fale com o encapuzado no lado leste da vila.' : 'Volte à Vila Brasa. Alguém quer falar com você.';
@@ -584,10 +594,10 @@ function updateObjective() {
   else if (!s.bosses.peaks) t = k === 'peaks' ? 'Suba até o ninho de Varkhaz, ao norte.' : 'Entre no portal dos Picos de Cinza, ao nordeste.';
   else if (s.ended && !s.bosses.swamp) t = k === 'swamp' ? 'Atravesse o pântano até o covil da Hidra do Lodo, ao norte.' : 'Entre no portal do Pântano Afogado, no fim da estrada a oeste.';
   else if (s.ended && !s.bosses.glass) t = k === 'glass' ? 'Suba a Cidadela até a Sala dos Espelhos, ao norte.' : 'Entre no portal da Cidadela de Vidro, no fim da estrada a leste.';
-  else if (s.ended) t = `Tessária está costurada. Suba a dificuldade (agora: ${curDiff().n}), desafie os guardiões de novo e domine as Fendas.`;
+  else if (s.ended) t = '';   // história completa: o espaço vai para as missões do Passe e contratos (rastreador)
   else if (s.dragonCalm) t = s.frags.length >= 9 ? 'Você lembra de tudo. Volte ao ninho nos Picos e fale com Varkhaz.' : `Ache as memórias que faltam e volte a Varkhaz. ${missingText()}`;
   else t = 'Fale com Varkhaz no ninho dos Picos de Cinza.';
-  $('#hObj').textContent = t; updateDiffHud();
+  objSet(t); updateDiffHud();
 }
 function ending(kind) {
   const s = G.save; s.endings.push(kind); s.ended = kind; s.dragonCalm = false; inter = inter.filter(i => i.kind !== 'dragon');
@@ -697,16 +707,16 @@ function fishAction(spot = 0) {
     return;
   }
   if (F.t < .7) return;   // ainda lançando
-  if (!F.bite) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast('Puxou cedo demais', false, 'O PEIXE FUGIU'); return; }
+  if (!F.bite) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; bannerClear(); toast('Puxou cedo demais', false, 'O PEIXE FUGIU'); return; }
   const f = F.f, rodLv = s.rodLv || 0;
-  if (f.rod > rodLv) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast('A LINHA ARREBENTOU!', true, f.n.toUpperCase() + ' É PESADO DEMAIS · PRECISA DA ' + TF.RODS[f.rod].n.toUpperCase(), '#ff8a6a'); sfx('hurt'); return; }
+  if (f.rod > rodLv) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast('A LINHA ARREBENTOU!', true, f.n.toUpperCase() + ' É PESADO DEMAIS · PRECISA DA ' + TF.RODS[f.rod].n.toUpperCase(), '#ff8a6a', { now: true }); sfx('hurt'); return; }
   F.pulls++;
   if (F.pulls < f.w) {   // peixe grande: briga; puxe de novo na próxima janela
     F.biteT = 0; F.fight = (F.fight || 0) + 1; G.shake = Math.max(G.shake, .15); sfx('hit');
     const b = fishBob(G.time); burst(b[0], .15, b[2], 16, 15, 3, .4, .12);
-    toast('ELE ESTÁ BRIGANDO!', true, 'PUXE DE NOVO · ' + F.pulls + '/' + f.w, f.c); return;
+    toast('ELE ESTÁ BRIGANDO!', true, 'PUXE DE NOVO · ' + F.pulls + '/' + f.w, f.c, { now: true }); return;
   }
-  G.fishing = null;
+  G.fishing = null; bannerClear();   // tira o "PEIXE MORDEU!" do meio da tela
   const st = s.st = s.st || {}; st.fish = (st.fish || 0) + 1;
   s.fish = s.fish || {}; s.fish[f.id] = Math.min(9999, (s.fish[f.id] || 0) + 1);
   s.fcount = s.fcount || {}; const first = !s.fcount[f.id]; s.fcount[f.id] = (s.fcount[f.id] || 0) + 1;
@@ -718,7 +728,7 @@ function fishAction(spot = 0) {
   G.fishCatch = { t: 0, f, from: fishBob(G.time) };   // o peixe salta da água até a mão do herói
   const rare = (f.rare || 0) >= 2;
   setTimeout(() => {
-    toast(f.n.toUpperCase() + ' · ' + kg.toFixed(2).replace('.', ',') + ' KG', rare || first || rec, (first ? 'NOVO NA COLEÇÃO · ' : rec ? 'RECORDE! · ' : '') + 'NO CESTO (' + s.fish[f.id] + ') · ' + TF.fishPoints(f.id, kg) + ' PONTOS DE TORNEIO', f.c); sfx(rare ? 'legend' : 'lvl');
+    toast(f.n.toUpperCase() + ' · ' + kg.toFixed(2).replace('.', ',') + ' KG', rare || first || rec, (first ? 'NOVO NA COLEÇÃO · ' : rec ? 'RECORDE! · ' : '') + 'NO CESTO (' + s.fish[f.id] + ') · ' + TF.fishPoints(f.id, kg) + ' PONTOS DE TORNEIO', f.c, { now: true }); sfx(rare ? 'legend' : 'lvl');
     if (lv1 > lv0) setTimeout(() => { toast('PESCADOR NÍVEL ' + lv1, true, 'MAIS PEIXE RARO E MAIS TEMPO PARA PUXAR', '#9cf6ff'); sfx('lvl'); }, 1600);
   }, 650);
   const b = fishBob(G.time); burst(b[0], .15, b[2], 22, 15, 3, .5, .12); writeSave();
@@ -767,8 +777,8 @@ function updateHubLife(dt) {
   const F = G.fishing;
   if (F) {
     F.t += dt;
-    if (!F.bite && F.t >= Math.max(F.biteAt, .8)) { /* nunca morde antes de a linha cair na água */ F.bite = true; F.biteT = 0; toast('PEIXE MORDEU!', true, 'APERTE AGORA'); sfx('hit'); const b = fishBob(G.time); burst(b[0], .15, b[2], 14, 15, 2, .4, .1); }
-    else if (F.bite && (F.biteT += dt) > fishWindow()) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; toast(F.pulls ? 'Ele se soltou' : 'O peixe escapou', false, 'TENTE DE NOVO'); }
+    if (!F.bite && F.t >= Math.max(F.biteAt, .8)) { /* nunca morde antes de a linha cair na água */ F.bite = true; F.biteT = 0; toast('PEIXE MORDEU!', true, 'APERTE AGORA', null, { now: true }); sfx('hit'); const b = fishBob(G.time); burst(b[0], .15, b[2], 14, 15, 2, .4, .1); }
+    else if (F.bite && (F.biteT += dt) > fishWindow()) { G.fishing = null; G.fishCatch = { t: 0, miss: true }; bannerClear(); toast(F.pulls ? 'Ele se soltou' : 'O peixe escapou', false, 'TENTE DE NOVO'); }
     const sp = curSpot(); if (Math.hypot(P.x - sp.x - 1.4, P.z - sp.z) > 3) G.fishing = null;
   }
   if (G.fishCatch && (G.fishCatch.t += dt) > (G.fishCatch.miss ? .6 : 1.3)) { if (!G.fishCatch.miss) { P.emote = 'comemorar'; P.emoteT = 4.6; } G.fishCatch = null; }
