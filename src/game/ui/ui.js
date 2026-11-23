@@ -458,6 +458,34 @@ function renderForge() {
     b.onclick = () => { spend(cost); reforge(it); afterEquip(); renderForge(); sfx('lvl'); }; row.appendChild(b); list.appendChild(row);
   }
 }
+/* Decoração da casa: peças compradas com Fios Dourados (só estilo, a posse fica no servidor) em 6 lugares fixos. */
+function renderDeco(L) {
+  const TS = window.TessSeason, s = G.save, n = NETON(), own = new Set(G.cosOwned || []); s.deco = s.deco || {};
+  const info = document.createElement('p'); info.className = 'sub';
+  info.textContent = n ? (typeof SEAS !== 'undefined' && SEAS ? `Você tem ${SEAS.me.dourados} Fios Dourados. Decoração é só estilo: não dá bônus.` : 'Carregando a sua conta…') : 'A decoração é comprada com Fios Dourados: entre com a sua conta online.';
+  L.appendChild(info); if (n && (typeof SEAS === 'undefined' || !SEAS)) seasonRefresh().then(() => { if (G.menu === 'home') renderHome(); });
+  for (const k of TS.DECO_SLOTS) {
+    const spot = TS.slotSpot(k), cur = s.deco[k], box = document.createElement('div'); box.className = 'up deco';
+    box.innerHTML = `<b>${TS.DECO_SLOT_N[k]}</b><p>${cur ? TS.decoById(cur).n : 'vazio'}</p>`;
+    const opts = document.createElement('div'); opts.className = 'deco-opts';
+    for (const d of TS.DECOR.filter(x => x.spot === spot)) {
+      const b = document.createElement('button'), mine = own.has(d.id), here = cur === d.id, used = !here && Object.values(s.deco).includes(d.id);
+      b.className = 'px' + (here ? ' on' : ''); b.title = d.d;
+      b.textContent = here ? '✓ ' + d.n : mine ? d.n + (used ? ' (em uso)' : '') : d.n + ' · ' + d.price + ' ✧';
+      b.disabled = !n && !mine;
+      b.onclick = async () => {
+        if (here) { delete s.deco[k]; }
+        else if (mine) { for (const kk of Object.keys(s.deco)) if (s.deco[kk] === d.id) delete s.deco[kk]; s.deco[k] = d.id; }
+        else { if (!SEAS || SEAS.me.dourados < d.price) { toast('Fios Dourados insuficientes', false, 'VEJA A LOJA DO PASSE (TECLA P)'); sfx('ui'); return; }
+          const r = await n.shopDeco(d.id); if (!r.ok) { toast('Não deu certo', false, String(r.error).toUpperCase()); sfx('ui'); return; }
+          if (r.data && r.data.view) { SEAS = r.data.view; G.cosOwned = SEAS.me.owned; } s.deco[k] = d.id; toast(d.n.toUpperCase(), true, 'NOVA DECORAÇÃO NA SUA CASA', '#ffd27a'); sfx('legend'); }
+        writeSave(); homeRebuild(); renderHome(); sfx('pick');
+      };
+      opts.appendChild(b);
+    }
+    box.appendChild(opts); L.appendChild(box);
+  }
+}
 function renderHome() {
   const s = G.save, h = H(); $('#hmGold').textContent = s.gold; const L = $('#hmList'); L.innerHTML = '';
   const sec = t => { const e = document.createElement('h3'); e.className = 'hsec'; e.textContent = t; L.appendChild(e); };
@@ -471,6 +499,7 @@ function renderHome() {
   const bz = document.createElement('div'); bz.className = 'bonus'; bz.innerHTML = on.length ? on.map(f => `<b>${f.n}</b> · ${f.d}`).join('<br>') : 'Nenhuma mobília ainda. Cada peça aparece na casa e dá um bônus permanente.'; L.appendChild(bz);
   sec('MOBÍLIA');
   for (const F of HOUSE_F) row(F.n, F.d, h.f[F.id] ? 'Na casa' : F.c + ' ✦', s.gold >= F.c, () => { spend(F.c); h.f[F.id] = true; if (F.id === 'jardim') s.potions++; writeSave(); sfx('lvl'); toast(F.n.toUpperCase(), true, 'colocada na sua casa', '#ffbf3d'); homeRebuild(); }, !!h.f[F.id]);
+  sec('DECORAÇÃO (FIOS DOURADOS)'); renderDeco(L);
   sec('BAÚ');
   const c = STASH_UP[(h.cap - 20) / 10];
   row('Ampliar o baú', `Hoje: ${h.cap} espaços.${c ? ` Próximo: ${h.cap + 10}.` : ' Tamanho máximo.'}`, c ? c + ' ✦' : 'Máximo', c && s.gold >= c, () => { spend(c); h.cap += 10; writeSave(); sfx('lvl'); toast('BAÚ AMPLIADO', false, h.cap + ' ESPAÇOS'); }, !c);

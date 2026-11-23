@@ -51,6 +51,46 @@ export const COS_SLOT_N: Record<CosSlot, string> = { trail: 'Rastro de esquiva',
 export const COS_FIELD: Record<CosSlot, string> = { trail: 'trail', namecolor: 'namecolor', title: 'ctitle', tele: 'tele', death: 'death', frame: 'frame' };
 export const cosById = (id: string) => COSMETICS.find(c => c.id === id);
 
+// ---------- decoração da casa (Fios Dourados, sempre à venda; só estilo) ----------
+/** Lugares da casa: um tapete, um quadro na parede, uma peça no teto e três no chão. */
+export type DecoSpot = 'tapete' | 'parede' | 'teto' | 'chao';
+export const DECO_SLOTS = ['tapete', 'parede', 'teto', 'chao1', 'chao2', 'chao3'] as const;
+export type DecoSlot = typeof DECO_SLOTS[number];
+export const DECO_SLOT_N: Record<DecoSlot, string> = { tapete: 'Tapete da sala', parede: 'Parede', teto: 'Teto', chao1: 'Canto da janela', chao2: 'Perto da lareira', chao3: 'Perto do altar' };
+export const slotSpot = (k: DecoSlot): DecoSpot => k.startsWith('chao') ? 'chao' : k as DecoSpot;
+export interface Deco { id: string; n: string; spot: DecoSpot; price: number; d: string }
+export const DECOR: Deco[] = [
+  { id: 'dec_tap_real', n: 'Tapete Real', spot: 'tapete', price: 220, d: 'Vermelho com borda dourada' },
+  { id: 'dec_tap_mar', n: 'Tapete do Mar', spot: 'tapete', price: 220, d: 'Ondas azuis e creme' },
+  { id: 'dec_tap_fios', n: 'Tapete de Fios Vivos', spot: 'tapete', price: 420, d: 'Fios que brilham no escuro' },
+  { id: 'dec_qua_fenda', n: 'Quadro da Fenda de Vidro', spot: 'parede', price: 180, d: 'A Cidadela vista de longe' },
+  { id: 'dec_tap_tear', n: 'Tapeçaria do Tear', spot: 'parede', price: 300, d: 'Tecida com os fios da Temporada 1' },
+  { id: 'dec_est_brasa', n: 'Estandarte da Vila Brasa', spot: 'parede', price: 150, d: 'Brasa e ouro' },
+  { id: 'dec_lus_vidro', n: 'Lustre de Vidro', spot: 'teto', price: 380, d: 'Ilumina a sala inteira' },
+  { id: 'dec_lan_flut', n: 'Lanternas Flutuantes', spot: 'teto', price: 320, d: 'Pequenas chamas que balançam' },
+  { id: 'dec_aquario', n: 'Aquário com Peixe-Lua', spot: 'chao', price: 450, d: 'Um peixe-lua só seu' },
+  { id: 'dec_fonte', n: 'Fonte de Pedra', spot: 'chao', price: 400, d: 'Água que nunca para' },
+  { id: 'dec_arvore', n: 'Árvore de Lanternas', spot: 'chao', price: 350, d: 'Galhos com luzinhas' },
+  { id: 'dec_vaso', n: 'Vaso de Cristais', spot: 'chao', price: 180, d: 'Cristais roxos da Fenda' },
+  { id: 'dec_dragao', n: 'Estátua do Dragão Dourado', spot: 'chao', price: 600, d: 'Varkhaz, em ouro, enrolado no pedestal' },
+];
+export const decoById = (id: string) => DECOR.find(d => d.id === id);
+/** Confere o objeto de decoração do save: cada lugar com uma peça do tipo certo, sem repetir. Devolve os ids usados ou um erro. */
+export function checkDeco(deco: unknown): { ids: string[]; error?: string } {
+  if (deco === undefined || deco === null) return { ids: [] };
+  if (typeof deco !== 'object' || Array.isArray(deco)) return { ids: [], error: 'decoração inválida' };
+  const ids: string[] = [];
+  for (const [k, v] of Object.entries(deco as Record<string, unknown>)) {
+    if (!(DECO_SLOTS as readonly string[]).includes(k)) return { ids, error: `lugar de decoração inválido: ${k}` };
+    if (v === null || v === '') continue;
+    const d = typeof v === 'string' ? decoById(v) : undefined;
+    if (!d || d.spot !== slotSpot(k as DecoSlot)) return { ids, error: `decoração inválida em ${k}` };
+    if (ids.includes(d.id)) return { ids, error: 'a mesma decoração em dois lugares' };
+    ids.push(d.id);
+  }
+  return { ids };
+}
+
 // ---------- temporada ----------
 export const SEASON = { id: 1, n: 'Temporada 1 · A Fenda de Vidro', start: Date.UTC(2026, 10, 1), weeks: 8, levels: 40, xpPerLevel: 1000, premiumPrice: 950 };
 export const seasonEnds = () => SEASON.start + SEASON.weeks * 7 * 864e5;

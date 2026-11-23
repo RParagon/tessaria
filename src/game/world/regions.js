@@ -772,6 +772,30 @@ function buildWorld(key, G) {
       for (const dz of [-.39, .39]) { S.box([gx - .39, 1.2, gz + dz], [.02, .95, .35], p => Math.abs(p[1] - 1.2) > .8 || Math.abs(p[2] - gz - dz) > .3 ? 19 : 23, 0, { faces: 'w' }); S.ell([gx - .43, 1.2, gz + dz * .15], .04, 14, 0, { min: 8 }); }
       S.box([gx, 2.5, gz], [.12, .07, .12], 14, 0, { faces: 'tnsew' });
     }
+    // Decoração (Fios Dourados): 6 lugares fixos. Só estilo.
+    const dc = (gsave() && gsave().deco) || {};
+    const DSPOT = { chao1: [12.8, 15.2], chao2: [19.6, 9.4], chao3: [19.8, 14.8] };
+    const floorDeco = (id, x, z) => {
+      if (id === 'dec_aquario') { S.box([x, .4, z], [.6, .4, .35], 24, 0, { faces: 'tnsew' }); S.box([x, 1.05, z], [.55, .28, .3], 27, 0, { faces: 'tnsew', noSolid: true }); S.ell([x - .15, 1.05, z], [.14, .1, .06], 151, 0, { noSolid: true, min: 10 }); S.ell([x + .2, .95, z + .05], [.08, .06, .04], 17, 0, { noSolid: true, min: 8 }); emitters.push({ t: 'glow', x, y: 1.1, z }); }
+      else if (id === 'dec_fonte') { S.tube([[x, 0, z, .7, 0], [x, .35, z, .75, 0]], 28, { sub: 1 }); S.ell([x, .36, z], [.62, .05, .62], 27, 0, { noSolid: true }); S.tube([[x, .3, z, .12, 0], [x, 1.0, z, .1, 0]], 28, { sub: 1 }); S.ell([x, 1.05, z], [.3, .08, .3], 28, 0); emitters.push({ t: 'crystal', x, y: 1.2, z }); }
+      else if (id === 'dec_arvore') { S.tube([[x, 0, z, .12, 0], [x, 1.4, z, .08, 0]], 24, { sub: 1 }); S.ell([x, 1.8, z], [.6, .55, .6], 13, 0); for (let k = 0; k < 5; k++) { const a = k * 1.26; S.ell([x + Math.cos(a) * .5, 1.6 + (k % 2) * .35, z + Math.sin(a) * .5], .07, 21, 0, { noSolid: true, min: 6 }); } emitters.push({ t: 'glow', x, y: 1.8, z }); }
+      else if (id === 'dec_vaso') { S.cone([x, 0, z], [x, .6, z], .28, 22, 0); S.ell([x, .62, z], [.22, .05, .22], 22, 0); for (let k = 0; k < 4; k++) S.cone([x + (k - 1.5) * .1, .6, z + (k % 2 - .5) * .1], [x + (k - 1.5) * .22, 1.2 + (k % 2) * .25, z], .07, 151, 0); emitters.push({ t: 'crystal', x, y: 1.2, z }); }
+      else if (id === 'dec_dragao') { S.box([x, .3, z], [.55, .3, .55], 28, 0, { faces: 'tnsew' }); S.ell([x, .85, z], [.42, .28, .32], 26, 0); S.ell([x + .25, 1.2, z], [.16, .2, .14], 26, 0); S.ell([x + .38, 1.35, z], [.14, .1, .1], 26, 0); S.cone([x - .1, 1.0, z + .2], [x - .45, 1.5, z + .45], .12, 26, 0); S.cone([x - .1, 1.0, z - .2], [x - .45, 1.5, z - .45], .12, 26, 0); S.cone([x - .35, .8, z], [x - .75, .6, z], .1, 26, 0); emitters.push({ t: 'shine', x, y: 1.3, z }); }
+    };
+    for (const k of ['chao1', 'chao2', 'chao3']) if (dc[k]) floorDeco(dc[k], DSPOT[k][0], DSPOT[k][1]);
+    if (dc.tapete) {   // por cima do tapete da sala
+      const T2 = dc.tapete === 'dec_tap_real' ? (p => Math.abs(p[0] - 16) > 1.75 || Math.abs(p[2] - 13.4) > 1.15 ? 26 : 16) : dc.tapete === 'dec_tap_mar' ? (p => frac((p[0] + Math.sin(p[2] * 3) * .2) * 1.4) < .5 ? 15 : 23) : (p => frac((p[0] + p[2]) * 1.6) < .18 ? 27 : 29);
+      S.box([16, .045, 13.4], [2.0, .015, 1.35], T2, 0, { faces: 't', noSolid: true });
+      if (dc.tapete === 'dec_tap_fios') emitters.push({ t: 'crystal', x: 16, y: .3, z: 13.4 });
+    }
+    if (dc.parede) {   // entre a janela da esquerda e a lareira
+      const wx = 12.6;
+      if (dc.parede === 'dec_qua_fenda') { S.box([wx, 2.25, 6.07], [.75, .5, .03], p => Math.abs(p[0] - wx) > .66 || Math.abs(p[1] - 2.25) > .41 ? 26 : (p[1] > 2.25 + (p[0] - wx) * .4 ? 18 : 27), 0, { faces: 's' }); }
+      else if (dc.parede === 'dec_tap_tear') { S.box([wx, 2.0, 6.07], [.6, .85, .03], p => frac(p[1] * 3) < .15 ? 26 : frac(p[0] * 2.5) < .5 ? 151 : 16, 0, { faces: 's' }); S.box([wx, 2.88, 6.1], [.7, .04, .05], 24, 0, { faces: 'tnsew' }); }
+      else if (dc.parede === 'dec_est_brasa') { S.box([wx, 2.0, 6.07], [.45, .8, .03], p => Math.hypot(p[0] - wx, p[1] - 2.2) < .22 ? 26 : 21, 0, { faces: 's' }); S.tube([[wx - .55, 2.85, 6.12, .03, 0], [wx + .55, 2.85, 6.12, .03, 0]], 26, { sub: 1 }); }
+    }
+    if (dc.teto === 'dec_lus_vidro') { S.tube([[16, 3.4, 12.5, .02, 0], [16, 2.95, 12.5, .02, 0]], 12, { sub: 1, noSolid: true }); for (let k = 0; k < 6; k++) { const a = k * 1.047; S.ell([16 + Math.cos(a) * .45, 2.85, 12.5 + Math.sin(a) * .45], .1, 27, 0, { noSolid: true, min: 6 }); } S.ell([16, 2.85, 12.5], [.2, .1, .2], 26, 0, { noSolid: true }); emitters.push({ t: 'glow', x: 16, y: 2.7, z: 12.5 }); emitters.push({ t: 'glow', x: 14, y: 2.5, z: 14.5 }); }
+    if (dc.teto === 'dec_lan_flut') for (const [lx, lz, ly] of [[13.5, 11, 2.6], [18.5, 12, 2.8], [15.5, 15, 2.5], [20.5, 15.5, 2.7]]) { S.ell([lx, ly, lz], [.12, .16, .12], 21, 0, { noSolid: true, min: 8 }); emitters.push({ t: 'glow', x: lx, y: ly, z: lz }); }
     if (f.estatua) { S.box([9.6, .25, 11.6], [.75, .25, .75], 28, 0, { faces: 'tnsew' }); S.box([9.6, .52, 11.6], [.65, .03, .65], 25, 0, { faces: 'tnsew' }); }
   }
   if (key === 'hub') {

@@ -55,5 +55,21 @@ for (const kind of STORES) {
       assert.equal((await api(S.url, 'GET', '/save', undefined, a.token)).body.data.gold, 350);
       assert.equal((await api(S.url, 'POST', '/login/claim', {}, a.token)).status, 409);
     });
+
+    test('decoração da casa: compra com Fios Dourados (sempre à venda) e o save só usa o que a conta tem, no lugar certo', async () => {
+      const a = await register(S.url);
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: 0, data: baseSave() }, a.token)).status, 200);
+      assert.equal((await api(S.url, 'POST', '/shop/deco', { id: 'dec_dragao' }, a.token)).status, 402);
+      assert.equal((await api(S.url, 'POST', '/shop/dourados', { pack: 'p1100' }, a.token)).status, 200);
+      const b = await api(S.url, 'POST', '/shop/deco', { id: 'dec_dragao' }, a.token);
+      assert.equal(b.status, 200); assert.equal(b.body.view.me.dourados, 500); assert.ok(b.body.view.me.owned.includes('dec_dragao'));
+      assert.equal((await api(S.url, 'POST', '/shop/deco', { id: 'dec_dragao' }, a.token)).status, 409);
+      assert.equal((await api(S.url, 'POST', '/shop/deco', { id: 'nada' }, a.token)).status, 404);
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: 1, data: baseSave({ deco: { chao2: 'dec_dragao' } }) }, a.token)).status, 200);
+      const bad = await api(S.url, 'PUT', '/save', { rev: 2, data: baseSave({ deco: { chao2: 'dec_dragao', chao1: 'dec_fonte' } }) }, a.token);
+      assert.equal(bad.status, 422); assert.ok(bad.body.erros.some((e: string) => /dec_fonte/.test(e)));
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: 2, data: baseSave({ deco: { tapete: 'dec_dragao' } }) }, a.token)).status, 422);   // lugar errado
+      assert.equal((await api(S.url, 'PUT', '/save', { rev: 2, data: baseSave({ deco: { chao1: 'dec_dragao', chao3: 'dec_dragao' } }) }, a.token)).status, 422);   // repetida
+    });
   });
 }

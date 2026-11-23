@@ -16,7 +16,7 @@ import { mpCreatePreference, mpGetPayment, mpSignatureOk, notificationPaymentId,
 import { nameProblem, maskText, cleanChat } from '../../shared/text';
 import { allItems, validateSave, MAX_SAVE_BYTES } from '../../shared/save';
 import { PROTOCOL_VERSION, HUB_CAP } from '../../shared/protocol';
-import { COSMETICS, cosById, DOURADOS_PACKS, LOGIN_REWARDS, PASS_FREE, PASS_PREM, SEASON, dailyMissions, dayIndex, missionNow, passLevel, seasonEnds, shopRotation, weeklyMissions, type Reward } from '../../shared/season';
+import { checkDeco, decoById, DECOR, COSMETICS, cosById, DOURADOS_PACKS, LOGIN_REWARDS, PASS_FREE, PASS_PREM, SEASON, dailyMissions, dayIndex, missionNow, passLevel, seasonEnds, shopRotation, weeklyMissions, type Reward } from '../../shared/season';
 import { FISH, FISH_KG, fishById, fishPoints, fishPrice, fishTrendDelta, sellFish, tourneyEnds, tourneyWeek, TOURNEY_PRIZES, type MarketState } from '../../shared/fish';
 
 declare module 'fastify' { interface FastifyRequest { account?: Account } }
@@ -349,7 +349,9 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const ids = allItems(b.data).map(x => x.it?.id).filter((x): x is string => typeof x === 'string');
     const dead = await store.tombstoned(a.id, ids);
     if (dead.length) check.errors.push(`itens que já saíram pelo correio: ${dead.slice(0, 3).join(', ')}`);
-    { const c = (b.data as any).char || {}, want = [c.trail, c.namecolor, c.ctitle, c.tele, c.death, c.frame].filter((x: unknown) => typeof x === 'string' && x); if (want.length) { const own = new Set((await store.seasonGet(a.id, SEASON.id)).owned); for (const w of want) if (!own.has(w)) check.errors.push(`cosmético que a conta não tem: ${w}`); } }   // Fios Dourados e cosméticos: a posse é do servidor
+    // Decoração da casa: lugar e tipo certos, e cada peça precisa ser da conta (comprada com Fios Dourados).
+    const dk = checkDeco((b.data as any).deco); if (dk.error) check.errors.push(dk.error);
+    { const c = (b.data as any).char || {}, want = [c.trail, c.namecolor, c.ctitle, c.tele, c.death, c.frame, ...dk.ids].filter((x: unknown) => typeof x === 'string' && x); if (want.length) { const own = new Set((await store.seasonGet(a.id, SEASON.id)).owned); for (const w of want) if (!own.has(w)) check.errors.push(`cosmético que a conta não tem: ${w}`); } }   // Fios Dourados e cosméticos: a posse é do servidor
     // Itens marcados como sorteados pelo servidor (g=1) precisam estar no registro.
     const claimed = allItems(b.data).filter(x => x.it && (x.it as any).g === 1).map(x => x.it.id).filter((x): x is string => typeof x === 'string');
     if (claimed.length) { const ok = new Set(await store.granted(claimed)); const fake = claimed.filter(id => !ok.has(id)); if (fake.length) check.errors.push(`itens do servidor desconhecidos: ${fake.slice(0, 3).join(', ')}`); }
@@ -444,7 +446,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
   // Fios Dourados e cosméticos ficam no servidor. Centelhas e Fios do Tear das recompensas vão para o save da nuvem.
   const seasonView = async (id: string) => {
     const now = Date.now(), me = await store.seasonGet(id, SEASON.id);
-    return { season: SEASON, endsAt: seasonEnds(), me: { ...me, level: passLevel(me.xp), loginToday: me.lastDay === dayIndex(now) }, daily: dailyMissions(now), weekly: weeklyMissions(now), shop: shopRotation(now), packs: DOURADOS_PACKS, payments: config.mpAccessToken ? 'mp' : config.devPayments ? 'dev' : 'em-breve' };
+    return { season: SEASON, endsAt: seasonEnds(), me: { ...me, level: passLevel(me.xp), loginToday: me.lastDay === dayIndex(now) }, daily: dailyMissions(now), weekly: weeklyMissions(now), shop: shopRotation(now), deco: DECOR.map(d => d.id), packs: DOURADOS_PACKS, payments: config.mpAccessToken ? 'mp' : config.devPayments ? 'dev' : 'em-breve' };
   };
   const giveReward = async (id: string, r: Reward, source: string) => {
     if ('dourados' in r) { await store.walletAdd(id, r.dourados); return {}; }
@@ -492,6 +494,14 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     const r = await store.buyCosmetic(req.account!.id, c.id, c.price);
     if (r === 'ja') return fail(rep, 409, 'Você já tem esse cosmético.'); if (r === 'sem-dourados') return fail(rep, 402, 'Fios Dourados insuficientes.');
     inc('shop_bought'); await store.audit(req.account!.id, 'loja_cosmetico', { id: c.id, preco: c.price }); return { view: await seasonView(req.account!.id) };
+  });
+  // Decoração da casa: sempre à venda (não entra na vitrine semanal).
+  app.post('/shop/deco', { preHandler: auth, config: perAccount(20) }, async (req, rep) => {
+    const b = parse(BuyCos, req.body, rep); if (!b) return;
+    const d = decoById(b.id); if (!d) return fail(rep, 404, 'Essa decoração não existe.');
+    const r = await store.buyCosmetic(req.account!.id, d.id, d.price);
+    if (r === 'ja') return fail(rep, 409, 'Você já tem essa decoração.'); if (r === 'sem-dourados') return fail(rep, 402, 'Fios Dourados insuficientes.');
+    inc('shop_deco'); await store.audit(req.account!.id, 'loja_decoracao', { id: d.id, preco: d.price }); return { view: await seasonView(req.account!.id) };
   });
   // Compra de Fios Dourados com dinheiro real: Mercado Pago (Checkout Pro, Pix e cartão) na web.
   // O crédito só acontece no webhook, depois de o servidor conferir o pagamento na API do Mercado Pago.

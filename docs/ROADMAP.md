@@ -109,7 +109,8 @@ Online:
 - [ ] Google Play Billing no app Android
 - [x] Prévia dos cosméticos da loja no próprio personagem (0.45.0)
 - [x] Efeito de teleporte, efeito de morte e molduras do nome (0.45.0)
-- [ ] Decoração da casa e da Ilha da Guilda com Fios Dourados
+- [x] Decoração da casa com Fios Dourados (0.52)
+- [ ] Decoração da Ilha da Guilda (vem com a Ilha)
 
 ## Plano atual (0.48 em diante)
 

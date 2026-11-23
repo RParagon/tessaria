@@ -129,6 +129,7 @@ function renderSeason() {
     const own = new Set(me.owned);
     $('#seSub').innerHTML = 'Vitrine da semana (troca toda segunda). Cosméticos só mudam o visual. Os de conquista (como o título de Campeão do Torneio) nunca são vendidos.';
     for (const id of SEAS.shop) { const c = TS.cosById(id); if (!c) continue; row(`<div class="nm"><b style="color:${RARC[c.rar]}">${c.n}</b><small>${TS.COS_SLOT_N[c.slot]} · ${['comum', 'raro', 'épico', 'lendário'][c.rar]}</small></div>`, [btn('Prévia', true, () => cosPreview(id)), own.has(id) ? btn('Seu', false) : btn(c.price + ' ✧', me.dourados >= c.price, () => seasonOp(() => n.shopBuy(id), () => toast(c.n.toUpperCase(), true, 'VISTA NO GUARDA-ROUPA DA SUA CASA', RARC[c.rar])), true)]); }
+    row('<div class="nm"><b>Decoração da casa</b><small>' + TS.DECOR.length + ' peças sempre à venda (tapetes, quadros, lustres, aquário, estátua do dragão…). Compre e posicione no catálogo da sua casa.</small></div>');
     if (NATIVE_APP) row('<div class="nm"><b>Fios Dourados</b><small>No aplicativo, as compras chegam com o Google Play. Por enquanto, compre pelo site do jogo (a conta é a mesma) ou ganhe Fios Dourados no Passe e na entrada diária.</small></div>');
     else {
       const info = SEAS.payments === 'mp' ? 'Pagamento seguro pelo Mercado Pago: Pix ou cartão. Os Fios Dourados chegam na sua conta assim que o pagamento for aprovado. Só compram estilo, nunca poder.'

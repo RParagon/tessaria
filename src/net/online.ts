@@ -239,6 +239,7 @@ export class Net {
   seasonPremium() { return this.saveOp('POST', '/season/premium'); }
   loginClaim() { return this.saveOp('POST', '/login/claim'); }
   shopBuy(id: string) { return this.saveOp('POST', '/shop/buy', { id }); }
+  shopDeco(id: string) { return this.saveOp('POST', '/shop/deco', { id }); }
   buyDourados(pack: string) { return this.saveOp('POST', '/shop/dourados', { pack }); }
   // ---------- mercado da vila ----------
   async market(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/market', undefined, 8000); return r.status === 200 ? r.data : null; }

@@ -683,3 +683,33 @@ test('guilda: fundar pelo painel, convidar, aceitar, sigla no nome e chat /gu', 
   await expect(A.page.locator('.net-log')).toContainText('[TDB] ' + B.name + ': Bem-vindos à Teia!');
   for (const P of [A, B]) { expect(P.errors).toEqual([]); await P.ctx.close(); }
 });
+
+test('decoração da casa: compra com Fios Dourados, coloca nos lugares e a nuvem aceita só o que a conta tem', async ({ browser }) => {
+  const A = await onlinePlayer(browser), { page } = A;
+  const ev = (src: string) => page.evaluate(s => (window as any).__T.ev(s), src);
+  await ev("G.save.house = Object.assign({ f: {}, stash: [], cap: 20 }, G.save.house || {}, { owned: true }); writeSave()");
+  await page.evaluate(() => (window as any).__T.travel('home'));
+  await page.waitForFunction(() => (window as any).__T.RG.key === 'home' && (window as any).TessGame.mode === 'play', null, { timeout: 20_000 });
+  await page.evaluate(async () => { await (window as any).TessNet.buyDourados('p2400'); });
+  await ev('seasonRefresh()');
+  await page.waitForFunction(() => (window as any).__T.ev('!!SEAS && SEAS.me.dourados === 2400'), null, { timeout: 10_000 });
+  await ev("openMenu('home')");
+  const picks: Array<[number, string]> = [[0, 'Tapete Real'], [1, 'Quadro da Fenda de Vidro'], [2, 'Lustre de Vidro'], [3, 'Estátua do Dragão Dourado'], [4, 'Aquário com Peixe-Lua'], [5, 'Árvore de Lanternas']];
+  for (const [i, n] of picks) {
+    await page.locator('#hmList .up.deco').nth(i).locator('button', { hasText: n }).click();
+    await page.waitForFunction(x => (window as any).__T.ev(`Object.values(G.save.deco || {}).some(id => TessSeason.decoById(id).n === ${JSON.stringify(x)})`), n, { timeout: 10_000 });
+  }
+  expect(await ev('SEAS.me.dourados')).toBe(2400 - 220 - 180 - 380 - 600 - 450 - 350);
+  expect(Object.keys(await ev('G.save.deco')).sort()).toEqual(['chao1', 'chao2', 'chao3', 'parede', 'tapete', 'teto']);
+  await ev('closeMenus()');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: 'test-results/decoracao.png' });
+  await page.evaluate(async () => { (window as any).__T.ev('writeSave()'); await (window as any).TessNet.flushNow(); });
+  await expect.poll(() => page.evaluate(() => (window as any).TessNet.sync)).toBe('salvo');
+  // uma peça que a conta não tem: o servidor recusa o save
+  await ev("G.save.deco.chao1 = 'dec_fonte'; writeSave()");
+  await page.evaluate(async () => { await (window as any).TessNet.flushNow(); });
+  await expect.poll(() => page.evaluate(() => (window as any).TessNet.sync)).toBe('recusado');
+  expect(A.errors.filter(e => !/status of 422/.test(e))).toEqual([]);
+  await A.ctx.close();
+});

@@ -10,6 +10,7 @@
 - **Cosméticos visíveis para os outros:** rastro de esquiva, cor do nome (inclusive a "Aurora", animada) e título, no Guarda-Roupa da casa.
 - **Os estilos raros de antes** (acessórios, cabelos, armaduras e auras) continuam com Centelhas, de graça para quem joga.
 - **Pagamentos (0.46.0): Mercado Pago, Checkout Pro (Pix e cartão) na web.** `POST /shop/dourados` cria a preferência e devolve o link do checkout; o crédito só acontece em `POST /payments/mp/webhook`, depois de o servidor consultar o pagamento na API do Mercado Pago (aprovado, BRL, valor exato do pacote), uma vez por pagamento (tabela `payments`). Estorno e chargeback descontam os Fios Dourados. Pacotes: 500 (R$ 9,90), 1100 (R$ 19,90) e 2400 (R$ 39,90). No app Android a compra fica escondida até ligarmos o Google Play Billing. Configuração em `docs/DEPLOY.md`.
+- **Decoração da casa (0.52):** 13 peças sempre à venda com Fios Dourados (150 a 600), em 6 lugares fixos da casa (tapete, parede, teto e três pontos no chão). Só estilo, sem bônus; a posse fica no servidor, que recusa o save com peça que a conta não tem.
 - **Economia de quem não paga:** com a trilha grátis e as entradas diárias, dá para ganhar cerca de 440 Fios Dourados por temporada, o bastante para 1 ou 2 cosméticos da vitrine, mas não o premium.
 
 

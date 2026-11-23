@@ -489,3 +489,6 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 .net-motd{font-style:italic}
 .net-glog{list-style:none;padding:0;margin:0;font-size:11px;color:var(--dim)}.net-glog li{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .net-line.gld b{color:#7fd3a0}
+
+/* decoração da casa */
+.up.deco .deco-opts{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.up.deco .deco-opts .px{font-size:10px;padding:5px 7px}.up.deco .deco-opts .px.on{border-color:var(--gold);color:var(--gold)}

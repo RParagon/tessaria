@@ -1,5 +1,16 @@
 # Histórico de versões
 
+## 0.52.0 · Decoração da casa
+- **Decoração com Fios Dourados**, sempre à venda (não depende da vitrine da semana), no catálogo da sua casa: 13 peças em 6 lugares fixos
+  - **Tapete da sala:** Tapete Real, Tapete do Mar e Tapete de Fios Vivos (que brilha)
+  - **Parede:** Quadro da Fenda de Vidro, Tapeçaria do Tear e Estandarte da Vila Brasa
+  - **Teto:** Lustre de Vidro (ilumina a sala) e Lanternas Flutuantes
+  - **Chão (3 lugares):** Aquário com Peixe-Lua, Fonte de Pedra, Árvore de Lanternas, Vaso de Cristais e Estátua do Dragão Dourado
+- Trocar de lugar, tirar e recolocar é de graça; cada peça comprada é da conta para sempre
+- **Só estilo:** decoração não dá bônus. A posse fica no servidor, que recusa o save com peça que a conta não tem, no lugar errado ou repetida
+- A loja do Passe lembra que a decoração fica no catálogo da casa
+- Servidor: `POST /shop/deco` e a conferência de `deco` no `PUT /save`
+
 ## 0.51.0 · Guildas (etapa social)
 - **Painel Guilda** (botão ao lado de Amigos e na conta online): funde a sua guilda com **nome, sigla e emblema** (forma, cor e símbolo, com prévia). Custa 25.000 Centelhas e pede nível 15
 - **Convites e cargos:** Líder e Oficiais convidam pelo nome (o convidado recebe o aviso e entra pelo painel); o Líder promove até 5 Oficiais, rebaixa e passa a liderança; Oficiais expulsam membros. Quem sai ou é expulso espera 24 h para entrar em outra guilda
