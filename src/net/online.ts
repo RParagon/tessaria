@@ -5,7 +5,7 @@ import { API_BASE, WS_BASE, call, tokens } from './api';
 import { type RiftParams, ACTS, EMOTES, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import type { FriendsList, PartyView } from '../../shared/social';
 
-export interface PublicAccount { id: string; name: string; guest: boolean; email: string | null; google: boolean }
+export interface PublicAccount { id: string; name: string; guest: boolean; email: string | null; google: boolean; password?: boolean }
 export interface Remote { id: number; name: string; title: string; look: Look; tx: number; tz: number; tyaw: number; m: number; a: string; x?: number; z?: number; yaw?: number; slot?: number; emote?: Emote | null; emoteT?: number; chat?: string; chatT?: number; act?: Act | null; actT?: number }
 export type SyncState = 'desligado' | 'salvo' | 'pendente' | 'enviando' | 'recusado' | 'conflito' | 'sem-rede';
 export interface ChatLine { kind: 'chat' | 'sys' | 'grupo'; name?: string; text: string; ts: number; mine?: boolean }
@@ -97,6 +97,21 @@ export class Net {
     const r = await call('PATCH', '/me', { name });
     if (r.error) return { ok: false as const, error: r.error };
     this.account = r.data.account; this.emit('account', this.account); return { ok: true as const };
+  }
+  // ---------- LGPD e reportes ----------
+  /** Todos os dados da conta (JSON), para baixar. */
+  async exportData() { const r = await call('GET', '/account/export', undefined, 20000); return r.error ? { ok: false as const, error: r.error } : { ok: true as const, data: r.data }; }
+  /** Exclui a conta de vez (pede o nome do Tecelão e a senha, se houver). Sai da conta em seguida. */
+  async deleteAccount(confirm: string, password?: string) {
+    const r = await call('POST', '/account/delete', { confirm, password });
+    if (r.error) return { ok: false as const, error: r.error };
+    this.leaveHub(); tokens.clear(); this.account = null; this.rev = 0; this.setSync('desligado'); this.emit('account', null);
+    return { ok: true as const };
+  }
+  /** Reporta um problema ou um jogador (funciona sem conta também). */
+  async report(kind: 'bug' | 'jogador' | 'pagamento' | 'outro', text: string, target?: string, ctx?: Record<string, string | number | boolean>) {
+    const r = await call('POST', '/report', { kind, text, target, ctx });
+    return r.error ? { ok: false as const, error: r.error } : { ok: true as const };
   }
   async logout() {
     this.leaveHub(); await call('POST', '/auth/logout', {});

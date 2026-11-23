@@ -52,8 +52,20 @@ export function mountOnlineUI(net: Net) {
     if (!r.ok) { msg(r.error || 'Algo deu errado.'); return; }
     msg(''); after();
   }
+  (window as any).TessNetUI = { report: () => { game()?.sfx('ui'); openModal('reportar'); } };
   function openModal(v: string) { view = v; render(); modal.hidden = false; setTimeout(() => (box.querySelector('input,button.gold') as HTMLElement | null)?.focus(), 30); }
 
+  function download(name: string, text: string) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' })), el = h('a', { href: url, download: name }) as HTMLAnchorElement;
+    document.body.append(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+  function legalLinks() {
+    return h('p', { class: 'sub net-legal' }, h('a', { href: 'privacidade.html', target: '_blank', rel: 'noopener', text: 'Política de Privacidade' }), ' · ', h('a', { href: 'termos.html', target: '_blank', rel: 'noopener', text: 'Termos de Uso' }));
+  }
+  function reportCtx() {
+    const g = game() as any, s = g?.save;
+    return { versao: String(document.querySelector('.ver')?.textContent ?? ''), modo: String(g?.mode ?? ''), regiao: String(g?.region ?? ''), nivel: Number(s?.lvl ?? 0), tela: `${innerWidth}x${innerHeight}`, toque: matchMedia('(pointer: coarse)').matches };
+  }
   function render() {
     box.innerHTML = '';
     if (view === 'amigos') return renderFriends();
@@ -70,7 +82,7 @@ export function mountOnlineUI(net: Net) {
       if (tab === 'convidado') form.append(h('p', { class: 'sub', text: 'Entre sem cadastro. Seu progresso fica salvo neste aparelho e na nuvem; depois você protege a conta com e-mail e senha, sem perder nada.' }), h('button', { class: 'px gold', type: 'submit', text: 'Entrar como convidado' }));
       box.append(form, h('p', { id: 'netMsg', class: 'net-msg', hidden: true }));
       if (net.googleClientId) { const g = h('div', { id: 'netGoogle', class: 'net-google' }); box.append(h('div', { class: 'net-or', text: 'ou' }), g); mountGoogle(g); }
-      box.append(h('button', { class: 'px net-alt', onclick: () => { closeModal(); }, text: 'Jogar offline' }));
+      box.append(h('button', { class: 'px net-alt', onclick: () => { closeModal(); }, text: 'Jogar offline' }), h('p', { class: 'sub net-legal' }, 'Ao criar uma conta, você aceita os ', h('a', { href: 'termos.html', target: '_blank', rel: 'noopener', text: 'Termos de Uso' }), ' e a ', h('a', { href: 'privacidade.html', target: '_blank', rel: 'noopener', text: 'Política de Privacidade' }), '.'));
     }
     if (view === 'conta' && net.account) {
       const a = net.account;
@@ -88,6 +100,37 @@ export function mountOnlineUI(net: Net) {
         box.append(f);
       }
       box.append(h('p', { id: 'netMsg', class: 'net-msg', hidden: true }), h('button', { class: 'px net-alt', onclick: async () => { await net.logout(); refreshTitle(); closeModal(); game()?.toast('Você saiu da conta.'); }, text: 'Sair da conta' }));
+      box.append(h('h3', { class: 'hsec', text: 'PRIVACIDADE' }),
+        h('div', { class: 'net-row2' },
+          h('button', { class: 'px', text: 'Baixar meus dados', onclick: () => act(async () => { const r = await net.exportData(); if (r.ok) download(`fios-de-tessaria-${a.name}.json`, JSON.stringify(r.data, null, 2)); return r; }, () => msg('Arquivo com os seus dados baixado.', 'ok')) }),
+          h('button', { class: 'px', text: 'Reportar problema', onclick: () => openModal('reportar') }),
+          h('button', { class: 'px danger', text: 'Excluir conta', onclick: () => openModal('excluir') })),
+        legalLinks());
+    }
+    if (view === 'excluir' && net.account) {
+      const a = net.account;
+      box.append(close, h('h2', { id: 'netTitle', text: 'Excluir conta' }),
+        h('p', { class: 'sub', text: `Isto apaga de vez a conta ${a.name}: o progresso na nuvem, os itens, os Fios Dourados e os cosméticos, os amigos, o correio e os anúncios no mercado. Não dá para desfazer. O progresso salvo neste aparelho (offline) continua aqui.` }),
+        h('p', { class: 'sub', text: 'Os registros de pagamento ficam guardados pelo prazo exigido por lei, sem a ligação com a conta.' }));
+      const f = h('form', { class: 'net-form', onsubmit: (e: Event) => { e.preventDefault(); const c = ($('#netDel', box) as HTMLInputElement).value, pw = ($('#netPass', box) as HTMLInputElement | null)?.value;
+        act(() => net.deleteAccount(c, pw || undefined), () => { refreshTitle(); closeModal(); game()?.toast('Conta excluída', true, 'OBRIGADO POR TER JOGADO'); if (game()?.mode !== 'title') game()?.toTitle(); }); } },
+        field(`Digite o nome do Tecelão (${a.name}) para confirmar`, 'netDel', 'text', { maxlength: 40 }),
+        a.password ? field('Senha da conta', 'netPass', 'password', { maxlength: 200 }) : null,
+        h('button', { class: 'px danger', type: 'submit', text: 'Excluir minha conta para sempre' }));
+      box.append(f, h('p', { id: 'netMsg', class: 'net-msg', hidden: true }), h('button', { class: 'px net-alt', onclick: () => openModal('conta'), text: 'Voltar' }));
+    }
+    if (view === 'reportar') {
+      box.append(close, h('h2', { id: 'netTitle', text: 'Reportar problema' }),
+        h('p', { class: 'sub', text: 'Conte o que aconteceu. Vamos ler tudo. Para reportar um jogador, escreva o nome do Tecelão.' }));
+      const sel = h('select', { id: 'netRepKind' }) as HTMLSelectElement;
+      for (const [k, l] of [['bug', 'Erro no jogo'], ['jogador', 'Comportamento de um jogador'], ['pagamento', 'Pagamento ou Fios Dourados'], ['outro', 'Outro assunto']]) sel.append(h('option', { value: k, text: l }));
+      const ta = h('textarea', { id: 'netRepText', maxlength: 1500, rows: 5, placeholder: 'O que aconteceu? Onde você estava? Dá para repetir?' }) as HTMLTextAreaElement;
+      const f = h('form', { class: 'net-form', onsubmit: (e: Event) => { e.preventDefault(); const t = ($('#netRepWho', box) as HTMLInputElement).value.trim();
+        if (ta.value.trim().length < 5) return msg('Escreva um pouco mais (5 letras ou mais).');
+        act(() => net.report(sel.value as any, ta.value, t || undefined, reportCtx()), () => { closeModal(); game()?.toast('Reporte enviado', false, 'OBRIGADO! VAMOS ANALISAR'); }); } },
+        h('label', { class: 'net-field', for: 'netRepKind' }, 'Assunto', sel), field('Tecelão (opcional)', 'netRepWho', 'text', { maxlength: 16 }),
+        h('label', { class: 'net-field', for: 'netRepText' }, 'Descrição', ta), h('button', { class: 'px gold', type: 'submit', text: 'Enviar' }));
+      box.append(f, h('p', { id: 'netMsg', class: 'net-msg', hidden: true }));
     }
   }
 

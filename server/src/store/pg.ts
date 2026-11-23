@@ -164,6 +164,25 @@ export class PgStore implements Store {
       return { accountId: r.account_id as string, dourados: r.dourados as number };
     }) as Promise<{ accountId: string; dourados: number } | null>;
   }
+  async addReport(r: { accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown> }) {
+    const [x] = await this.sql`INSERT INTO reports (account_id, kind, target, text, ctx) VALUES (${r.accountId}, ${r.kind}, ${r.target}, ${r.text}, ${this.sql.json(r.ctx as any)}) RETURNING id`; return Number(x.id);
+  }
+  async deleteAccount(a: string) { await this.sql`DELETE FROM accounts WHERE id = ${a}`; }   // o resto vai junto (ON DELETE CASCADE / SET NULL)
+  async exportAccount(a: string) {
+    const [acc] = await this.sql`SELECT id, name, email, google_sub IS NOT NULL AS google, guest, created_at, last_seen FROM accounts WHERE id = ${a}`; if (!acc) return {};
+    const q = async (p: Promise<any[]>) => (await p).map(r => ({ ...r }));
+    return {
+      conta: { id: acc.id, nome: acc.name, email: acc.email, google: acc.google, convidado: acc.guest, criadaEm: acc.created_at, vistoEm: acc.last_seen },
+      save: (await this.sql`SELECT data FROM saves WHERE account_id = ${a}`)[0]?.data ?? null,
+      fiosDourados: (await this.sql`SELECT dourados FROM wallet WHERE account_id = ${a}`)[0]?.dourados ?? 0,
+      cosmeticos: await q(this.sql`SELECT cosmetic_id, source, created_at FROM cosmetics_owned WHERE account_id = ${a}`),
+      temporadas: await q(this.sql`SELECT season, xp, premium, claimed FROM season_progress WHERE account_id = ${a}`),
+      correio: await q(this.sql`SELECT id, from_name, item, note, created_at, claimed_at FROM mail WHERE to_id = ${a} OR from_id = ${a} ORDER BY id DESC LIMIT 1000`),
+      pagamentos: await q(this.sql`SELECT id, pack, dourados, amount, status, created_at FROM payments WHERE account_id = ${a}`),
+      reportes: await q(this.sql`SELECT kind, target, text, status, created_at FROM reports WHERE account_id = ${a}`),
+      historico: await this.history(a, 500),
+    };
+  }
   async walletAdd(a: string, n: number) {
     await this.sql`INSERT INTO wallet (account_id) VALUES (${a}) ON CONFLICT DO NOTHING`;
     const u = await this.sql`UPDATE wallet SET dourados = dourados + ${n} WHERE account_id = ${a} AND dourados + ${n} >= 0 RETURNING dourados`; return u.length > 0;

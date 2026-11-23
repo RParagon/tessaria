@@ -20,7 +20,7 @@ import { FISH, FISH_KG, fishById, fishPoints, fishPrice, fishTrendDelta, sellFis
 
 declare module 'fastify' { interface FastifyRequest { account?: Account } }
 
-const publicAccount = (a: Account) => ({ id: a.id, name: a.name, guest: a.guest, email: a.email ? a.email.replace(/^(.).*(@.*)$/, '$1•••$2') : null, google: !!a.googleSub });
+const publicAccount = (a: Account) => ({ id: a.id, name: a.name, guest: a.guest, email: a.email ? a.email.replace(/^(.).*(@.*)$/, '$1•••$2') : null, google: !!a.googleSub, password: !!a.passHash });
 const isUnique = (e: any) => e && (e.code === '23505');
 
 export interface AppOptions { config: Config; store: Store; hub?: HubOptions }
@@ -159,6 +159,37 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
 
   app.post('/auth/logout', { preHandler: auth }, async req => { const t = bearer(req); if (t) await store.deleteSession(hashToken(t)); return { ok: true }; });
   app.get('/me', { preHandler: auth }, async req => ({ account: publicAccount(req.account!) }));
+
+  // ---------- LGPD: baixar os dados e excluir a conta ----------
+  app.get('/account/export', { preHandler: auth, config: perAccount(3) }, async (req, rep) => {
+    const data = await store.exportAccount(req.account!.id);
+    await store.audit(req.account!.id, 'conta_exportada', {});
+    rep.header('content-disposition', `attachment; filename="fios-de-tessaria-${req.account!.name}.json"`);
+    return { geradoEm: new Date().toISOString(), ...data };
+  });
+  // Exige digitar o nome do Tecelão (e a senha, se a conta tem senha). Os pagamentos ficam guardados (obrigação fiscal), sem a ligação com a conta.
+  const DeleteBody = z.object({ confirm: z.string().max(40), password: z.string().max(200).optional() });
+  app.post('/account/delete', { preHandler: auth, config: perAccount(5) }, async (req, rep) => {
+    const b = parse(DeleteBody, req.body, rep); if (!b) return;
+    const a = req.account!;
+    if (b.confirm.trim().toLowerCase() !== a.name.toLowerCase()) return fail(rep, 400, 'Digite o nome do seu Tecelão exatamente para confirmar.');
+    if (a.passHash && !(b.password && await verifyPassword(b.password, a.passHash))) return fail(rep, 403, 'Senha incorreta.');
+    hub.dropAccount(a.id, 'Conta excluída.');
+    await store.deleteAccount(a.id);
+    await store.audit(null, 'conta_excluida', { id: a.id, convidado: a.guest });   // só o id (sem nome nem e-mail), para registro
+    inc('accounts_deleted'); return { ok: true };
+  });
+
+  // ---------- reportar problema ou jogador ----------
+  const ReportBody = z.object({ kind: z.enum(['bug', 'jogador', 'pagamento', 'outro']), text: z.string().trim().min(5).max(1500), target: z.string().max(40).optional(), ctx: z.record(z.string(), z.union([z.string().max(200), z.number(), z.boolean()])).optional() });
+  app.post('/report', { config: { rateLimit: { max: 6, timeWindow: '10 minutes' } } }, async (req, rep) => {
+    const b = parse(ReportBody, req.body, rep); if (!b) return;
+    const a = await accountFromToken(bearer(req)).catch(() => null);
+    const ctx = Object.fromEntries(Object.entries(b.ctx ?? {}).slice(0, 20));
+    const id = await store.addReport({ accountId: a?.id ?? null, kind: b.kind, target: b.target?.trim() || null, text: b.text, ctx });
+    inc('reports'); req.log.info({ report: id, kind: b.kind }, 'reporte recebido');
+    return { ok: true, id };
+  });
 
   const Rename = z.object({ name: z.string() });
   app.patch('/me', { preHandler: auth, ...authLimit }, async (req, rep) => {

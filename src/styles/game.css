@@ -471,3 +471,9 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 .tag.rp.fr-lua .rn,.prevtag.fr-lua .rn{border:2px solid #bfe3ff;padding:0 6px;background:#0b1424cc;border-radius:8px}
 .tag.rp.fr-espinhos .rn,.prevtag.fr-espinhos .rn{border:2px dashed #ff5a7a;padding:0 6px;background:#2a0610cc}
 .tag.rp.fr-fios .rn,.prevtag.fr-fios .rn{border:2px solid transparent;padding:0 6px;background:linear-gradient(#140f20,#140f20) padding-box,linear-gradient(90deg,#9cf6ff,#c79bff,#ffd27a,#9cf6ff) border-box;background-size:auto,300% 100%;animation:aurora 3s linear infinite}
+
+/* conta: privacidade, excluir, reportar */
+.net-row2{display:flex;flex-wrap:wrap;gap:6px}.net-row2 .px{flex:1 1 140px}
+.px.danger{border-color:#a8323a;color:#ff9a9a}.px.danger:hover:not(:disabled){background:#3a1418}
+.net-legal,.mbox .legal{font-size:11px;color:var(--dim);text-align:center;margin:.6em 0 0}.net-legal a,.mbox .legal a{color:var(--gold)}
+#netRepKind,#netRepText{width:100%;box-sizing:border-box;background:#0d0a16;color:var(--bone);border:2px solid var(--line);font:inherit;padding:6px}

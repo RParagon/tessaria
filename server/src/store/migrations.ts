@@ -207,4 +207,22 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 CREATE INDEX IF NOT EXISTS payments_account ON payments (account_id, created_at DESC);
 ` },
+  { id: '009_conta_e_reportes', sql: `
+-- Excluir conta (LGPD): os pagamentos ficam guardados (obrigação fiscal), sem a ligação com a conta apagada.
+ALTER TABLE payments ALTER COLUMN account_id DROP NOT NULL;
+ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_account_id_fkey;
+ALTER TABLE payments ADD CONSTRAINT payments_account_id_fkey FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL;
+-- Reportes de problemas e de jogadores, para a moderação.
+CREATE TABLE IF NOT EXISTS reports (
+  id          bigserial PRIMARY KEY,
+  account_id  uuid REFERENCES accounts(id) ON DELETE SET NULL,
+  kind        text NOT NULL,
+  target      text,
+  text        text NOT NULL,
+  ctx         jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status      text NOT NULL DEFAULT 'novo',
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS reports_new ON reports (status, created_at DESC);
+` },
 ];

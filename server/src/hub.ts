@@ -111,6 +111,11 @@ export class Hub {
     for (const p of this.byAccount.values()) { try { p.ws.close(1001, 'servidor reiniciando'); } catch { /* já fechado */ } p.ws.terminate(); }
   }
   get online() { return this.byAccount.size; }
+  /** Fecha a conexão de uma conta (conta excluída ou banida). */
+  dropAccount(accountId: string, reason: string) {
+    const p = this.byAccount.get(accountId); if (!p) return;
+    send(p, { t: 'kick', reason }); try { p.ws.close(4001, 'conta'); } catch { /* já fechado */ } this.leave(p);
+  }
 
   /** Sala com vaga (vila ou Ermos abertos); cria a próxima se todas estiverem cheias. */
   private pickRoom(kind: 'vila' | 'ermos' = 'vila', p?: Player): Room {

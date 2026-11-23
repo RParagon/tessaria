@@ -74,6 +74,11 @@ export interface Store {
   seasonPremium(accountId: string, season: number, price: number): Promise<'ok' | 'ja' | 'sem-dourados'>;
   /** Soma (ou tira, se n < 0) Fios Dourados; false se o saldo ficaria negativo. */
   walletAdd(accountId: string, n: number): Promise<boolean>;
+  /** Apaga a conta e tudo ligado a ela (pagamentos ficam, sem a ligação). */
+  deleteAccount(accountId: string): Promise<void>;
+  /** Todos os dados da conta, para o jogador baixar (LGPD). */
+  exportAccount(accountId: string): Promise<Record<string, unknown>>;
+  addReport(r: { accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown> }): Promise<number>;
   /** Credita um pagamento aprovado uma vez só (false se esse pagamento já foi creditado). */
   paymentCredit(p: { id: string; provider: string; accountId: string; pack: string; dourados: number; amount: number }): Promise<boolean>;
   /** Estorno/chargeback de um pagamento creditado: tira os Fios Dourados (até zerar). null se não havia o que estornar. */

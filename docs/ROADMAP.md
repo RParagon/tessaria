@@ -35,21 +35,21 @@ Ficou para a Fase 2, porque só é necessário quando o combate for online:
 - Simulação determinística em passos fixos, rodando também em Node
 - Baú, casa e economia calculados pelo servidor (hoje ele valida limites; na Fase 2 ele passa a decidir)
 
-## Fase 2 · Co-op e social (10 a 14 semanas)
+## Fase 2 · Co-op e social (quase toda feita)
 
 As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo começa pelo caminho A (o jogo do líder simula, o servidor sorteia o loot), que serve para jogar com amigos por convite. O caminho B (o servidor simula) vem no fim da fase, para o conteúdo com desconhecidos.
 
-- [ ] **2.1 Amigos e grupo:** pedidos de amizade, lista com presença (online e onde), bloqueio, convite de grupo na vila (até 4), líder, chat do grupo (`/g`), painel do grupo
+- [x] **2.1 Amigos e grupo (0.12 a 0.14):** pedidos de amizade, lista com presença (online e onde), bloqueio, convite de grupo na vila (até 4), líder, chat do grupo (`/g`), painel do grupo
 - [ ] **2.2 Nível de item (NI):** NI visível nos itens, teto de NI de quem recebe no correio, correio com Centelhas (taxa de 5%) e bloqueio
-- [ ] **2.3 Casa:** Armário do Tecelão (3.000 Centelhas, troca de aparência grátis, 3 visuais salvos) e Espelho da vila (250 Centelhas por troca)
-- [ ] **2.4 Instâncias (caminho A):** "Pronto?" ao entrar no portal, entrar junto e depois, inimigos sincronizados pelo líder, vida e dano dos inimigos por tamanho do grupo (175/250/325% e 110/115/120%), loot individual sorteado pelo servidor, morte em grupo com costura
-- [ ] **2.5 Dificuldade do grupo e Fio de Elo:** a dificuldade do líder entre as que todos liberaram, o mais fraco sobe até 3 níveis abaixo, o mais forte fica limitado a 5 acima, bônus de mentor
+- [x] **2.3 Casa (Guarda-Roupa na casa, 0.26 em diante):** Armário do Tecelão (3.000 Centelhas, troca de aparência grátis, 3 visuais salvos) e Espelho da vila (250 Centelhas por troca)
+- [x] **2.4 Instâncias (caminho A, 0.14 e 0.15):** "Pronto?" ao entrar no portal, entrar junto e depois, inimigos sincronizados pelo líder, vida e dano dos inimigos por tamanho do grupo (175/250/325% e 110/115/120%), loot individual sorteado pelo servidor, morte em grupo com costura
+- [x] **2.5 Dificuldade do grupo e Fio de Elo (0.16):** a dificuldade do líder entre as que todos liberaram, o mais fraco sobe até 3 níveis abaixo, o mais forte fica limitado a 5 acima, bônus de mentor
 - [ ] **2.6 História em grupo:** na etapa, Eco e Antes (com aviso de spoiler), escolhas e finais pessoais, Reflexo com uma cópia por jogador, Hidra com cabeças extras, Marca do Tear
-- [ ] **2.7 Fendas em grupo:** semente do servidor, nível escolhido entre os que todos liberaram, entrar no meio, ranking entre amigos
+- [x] **2.7 Fendas em grupo (0.14 a 0.16; falta o ranking entre amigos):** semente do servidor, nível escolhido entre os que todos liberaram, entrar no meio, ranking entre amigos
 - [ ] **2.8 Social no celular:** chat rápido em botões e marcador no minimapa
-- [ ] **2.9 Troca direta** na vila, com duas confirmações e teto de NI
-- [ ] **2.10 Guilda:** sigla, cargos, chat (`/gu`), recado do dia, pontos e nível da guilda (só estilo)
-- [ ] **2.11 Mercado da vila:** anúncios de 48 h, filtros, taxa de 2% ao anunciar e 8% na venda
+- [x] **2.9 Troca direta (0.41)** na vila, com duas confirmações e teto de NI
+- [ ] **2.10 Guilda (agora na Fase 5, desenho em GUILDS.md):** sigla, cargos, chat (`/gu`), recado do dia, pontos e nível da guilda (só estilo)
+- [x] **2.11 Mercado da vila (0.41 e 0.43):** anúncios de 48 h, filtros, taxa de 2% ao anunciar e 8% na venda
 - [ ] **2.12 Caminho B:** módulos ES, `src/sim` separado do render e simulação determinística (vindo da Fase 1), combate decidido pelo servidor com previsão e correção no cliente, Procurar grupo nas Fendas e ranking público
 
 ## Fase 3 · Mundo compartilhado e PvP (3 a 4 semanas)
@@ -72,14 +72,14 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
   - simulador estendido para duelos.
 - [ ] Personagem hardcore, com morte permanente (opcional)
 
-## Fase 4 · Lançamento (4 semanas ou mais)
+## Fase 4 · Lançamento (em andamento)
 
 - [ ] Beta fechado
 - [ ] Proteção contra trapaça: velocidade e cooldowns validados no servidor durante o combate
 - [ ] Login com Apple (exigido pela App Store, se houver versão iOS)
-- [ ] Passe do Tear e loja de cosméticos (ver [MONETIZATION.md](MONETIZATION.md))
+- [x] Passe do Tear e loja de cosméticos (0.44 e 0.45; ver [MONETIZATION.md](MONETIZATION.md))
 - [ ] Google Play: conta de desenvolvedor, APK assinado, ficha da loja, classificação etária
-- [ ] Política de privacidade (LGPD), termos de uso e exclusão de conta
+- [x] Política de privacidade (LGPD), termos de uso, baixar os dados e excluir a conta no jogo, reportar problema (0.48)
 - [ ] Idiomas: português, inglês e espanhol
 
 ## Próximas melhorias (planejamento, 0.36.0)
@@ -104,10 +104,17 @@ Online:
 ## Fase 4 · Temporada e monetização
 
 - [x] Passe do Tear com trilhas grátis e premium, missões diárias e semanais, entrada diária e loja de cosméticos (0.44.0)
-- [ ] Ligar os pagamentos (Mercado Pago/Stripe na web, Google Play Billing no Android) com webhook
+- [x] Pagamentos na web pelo Mercado Pago (Pix e cartão) com webhook (0.46)
+- [ ] Google Play Billing no app Android
 - [x] Prévia dos cosméticos da loja no próprio personagem (0.45.0)
 - [x] Efeito de teleporte, efeito de morte e molduras do nome (0.45.0)
 - [ ] Decoração da casa e da Ilha da Guilda com Fios Dourados
+
+## Plano atual (0.48 em diante)
+
+Em ordem: parte legal e conta (0.48) · proteção contra trapaça na vila e no progresso (0.49) · guilda social (0.50) ·
+decoração da casa com Fios Dourados (0.51) · duelos e arena (0.52) · idiomas, Google Play Billing e combate decidido
+pelo servidor (depois, nessa ordem de tamanho).
 
 ## Fase 5 · Guildas (desenho em docs/GUILDS.md)
 

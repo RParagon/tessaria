@@ -604,3 +604,33 @@ test('Passe do Tear: entrada do dia, missão cumprida jogando vira XP do passe, 
   expect(A.errors).toEqual([]); expect(B.errors).toEqual([]);
   await A.ctx.close(); await B.ctx.close();
 });
+
+test('conta: reportar problema pelo menu, baixar os dados e excluir a conta (convidado)', async ({ browser }) => {
+  const A = await onlinePlayer(browser);
+  const { page } = A;
+  // reportar pelo menu (Esc)
+  await page.keyboard.press('Escape');
+  await page.click('#pReport');
+  await page.selectOption('#netRepKind', 'bug');
+  await page.fill('#netRepText', 'Teste automático do reporte');
+  await page.click('.net-form button.gold');
+  await expect(page.locator('.net-modal')).toBeHidden();
+  // baixar os dados
+  await page.evaluate(() => (window as any).__T.ev('closeMenus()'));
+  const data = await page.evaluate(async () => (await (window as any).TessNet.exportData()).data);
+  expect(data.conta.nome).toBe(A.name);
+  // excluir: abre o painel de conta pelo título
+  await page.evaluate(() => (window as any).__T.ev('toTitle()'));
+  await page.click('#mOnline');
+  await page.click('.net-box button.danger');
+  await page.fill('#netDel', 'nome errado');
+  await page.click('.net-form button.danger');
+  await expect(page.locator('#netMsg')).toContainText('Digite o nome');
+  await page.fill('#netDel', A.name);
+  await page.click('.net-form button.danger');
+  await expect(page.locator('.net-modal')).toBeHidden();
+  expect(await page.evaluate(() => (window as any).TessNet.account)).toBeNull();
+  await expect(page.locator('#mOnline')).toHaveText('Jogar online');
+  expect(A.errors.filter(e => !/status of 400/.test(e))).toEqual([]);   // o 400 é o nome errado, de propósito
+  await A.ctx.close();
+});

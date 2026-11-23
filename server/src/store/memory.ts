@@ -104,6 +104,27 @@ export class MemoryStore implements Store {
   async seasonClaim(a: string, s: number, level: number, track: 'free' | 'prem') { const e = this.seasonOf(a, s), arr = track === 'free' ? e.free : e.prem; if (arr.includes(level)) return false; arr.push(level); return true; }
   async seasonPremium(a: string, s: number, price: number) { const e = this.seasonOf(a, s); if (e.premium) return 'ja' as const; if ((this.wallet.get(a) ?? 0) < price) return 'sem-dourados' as const; this.wallet.set(a, (this.wallet.get(a) ?? 0) - price); e.premium = true; return 'ok' as const; }
   private payments = new Map<string, { accountId: string; dourados: number; status: string }>();
+  private reports: Array<{ id: number; accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown>; at: Date }> = [];
+  async addReport(r: { accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown> }) { const id = this.reports.length + 1; this.reports.push({ id, ...r, at: new Date() }); return id; }
+  async deleteAccount(a: string) {
+    this.accounts.delete(a); this.saves.delete(a); this.tombs.delete(a); this.wallet.delete(a); this.owned.delete(a); this.logins.delete(a);
+    for (const [k, v] of this.sessions) if (v.accountId === a) this.sessions.delete(k);
+    for (const [k, v] of this.friends) if (v.from === a || v.to === a) this.friends.delete(k);
+    for (const [k, v] of this.blocks) if (v.a === a || v.b === a) this.blocks.delete(k);
+    for (const k of [...this.seasons.keys()]) if (k.endsWith(':' + a)) this.seasons.delete(k);
+    for (const [k, v] of this.fish) if (v.accountId === a) this.fish.delete(k);
+    this.mail = this.mail.filter(m => m.toId !== a).map(m => m.fromId === a ? { ...m, fromId: null } : m);
+    this.market = this.market.filter(l => l.sellerId !== a).map(l => l.buyerId === a ? { ...l, buyerId: null } : l);
+    for (const p of this.payments.values()) if (p.accountId === a) p.accountId = '';
+    for (const r of this.reports) if (r.accountId === a) r.accountId = null;
+  }
+  async exportAccount(a: string) {
+    const acc = this.accounts.get(a); if (!acc) return {};
+    return { conta: { id: acc.id, nome: acc.name, email: acc.email, google: !!acc.googleSub, convidado: acc.guest, criadaEm: acc.createdAt, vistoEm: acc.lastSeen },
+      save: this.saves.get(a)?.data ?? null, fiosDourados: this.wallet.get(a) ?? 0, cosmeticos: [...(this.owned.get(a) ?? [])],
+      correio: this.mail.filter(m => m.toId === a || m.fromId === a), pagamentos: [...this.payments].filter(([, p]) => p.accountId === a).map(([id, p]) => ({ id, ...p })),
+      historico: await this.history(a, 500) };
+  }
   async paymentCredit(p: { id: string; provider: string; accountId: string; pack: string; dourados: number; amount: number }) {
     if (this.payments.has(p.id) || !this.accounts.has(p.accountId)) return false;
     this.payments.set(p.id, { accountId: p.accountId, dourados: p.dourados, status: 'aprovado' }); this.wallet.set(p.accountId, (this.wallet.get(p.accountId) ?? 0) + p.dourados); return true;

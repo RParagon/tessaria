@@ -618,6 +618,8 @@ function toTitle() {
 }
 $('#mNew').onclick = () => { sfx('ui'); const n = NET(); if (n) { n.offline = true; n.leaveHub(); } if (G.touch) goLandscape(); openCreator(); };
 $('#pFull').onclick = () => { goLandscape(); };
+// Reportar problema: pelo painel online (funciona sem conta); sem servidor, abre a página de privacidade, que tem o contato.
+$('#pReport').onclick = () => { const u = window.TessNetUI; if (u) u.report(); else window.open('privacidade.html#direitos', '_blank', 'noopener'); };
 $('#sVib').onchange = e => { G.settings.vib = e.target.checked; saveSettings(); };
 $('#mContinue').onclick = () => { sfx('ui'); const n = NET(); if (n) n.offline = true; const sv = readSave(); if (sv) startFromSave(sv); };
 function startFromSave(sv) {

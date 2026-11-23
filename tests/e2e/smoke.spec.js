@@ -391,11 +391,11 @@ test('notificações: marcos no centro um por vez, o resto no feed abaixo do min
   await ev("G.save.map = true");
   await travel(page, 'forest');
   await page.waitForTimeout(400);
-  await ev("toast('+12 CENTELHAS', false)");
   await page.waitForTimeout(500);
-  await page.screenshot({ path: 'test-results/notificacoes.png' });
+  await ev("toast('+12 CENTELHAS', false)");
   const pos = await ev("(() => { const m = $('#mmapZ'), f = $('#feed').lastChild; return m.hidden ? null : [m.getBoundingClientRect().bottom, f.getBoundingClientRect().top]; })()");
   if (pos) expect(pos[1]).toBeGreaterThan(pos[0]);
+  await page.screenshot({ path: 'test-results/notificacoes.png' });
   // objetivo: clique minimiza (e lembra); com a história toda feita, some e o Passe ocupa o rastreador
   await page.click('#hObj');
   expect(await ev("[$('#hObj').classList.contains('min'), $('#hObj').textContent]")).toEqual([true, '▸ OBJETIVO']);
@@ -411,5 +411,18 @@ test('notificações: marcos no centro um por vez, o resto no feed abaixo do min
   expect(trk[1]).toContain('pronta');
   expect(await ev("objSet(''); $('#hObj').offsetHeight")).toBe(0);   // sem objetivo, o painel some
   expect(trk[1]).toContain(going.t + ': 1/' + going.n);
+  expect(errors).toEqual([]);
+});
+
+test('menu: reportar problema e links dos Termos e da Privacidade (as páginas existem)', async ({ page }) => {
+  const errors = await newGame(page);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pReport')).toBeVisible();
+  await expect(page.locator('#pause a[href="termos.html"]')).toBeVisible();
+  for (const p of ['termos.html', 'privacidade.html']) {
+    const r = await page.request.get('/' + p);
+    expect(r.status()).toBe(200);
+    expect(await r.text()).toContain(p === 'termos.html' ? 'Arrependimento' : 'Mercado Pago');
+  }
   expect(errors).toEqual([]);
 });

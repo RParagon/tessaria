@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 0.48.0 · Privacidade, termos, excluir conta e reportar problema
+- **Termos de Uso** (`termos.html`): regras de convivência, o que são os itens e as moedas do jogo, compras pelo Mercado Pago e **reembolso em até 7 dias** se os Fios Dourados do pacote não foram usados (Código de Defesa do Consumidor)
+- **Política de Privacidade atualizada:** compras (os dados do pagamento ficam no Mercado Pago, nunca no nosso servidor), reportes e por quanto tempo guardamos cada coisa
+- **Baixar meus dados:** na conta online, um arquivo com tudo o que o servidor guarda (conta, save, Fios Dourados, cosméticos, correio, pagamentos e histórico), sem senha
+- **Excluir conta:** na conta online, apaga a conta e tudo ligado a ela na hora (pede o nome do Tecelão e a senha, se houver). Os registros de pagamento ficam guardados pelo prazo da lei, sem a ligação com a conta
+- **Reportar problema:** no menu (Esc) e na conta: erro no jogo, jogador, pagamento ou outro assunto, com a versão, a região e a tela anexadas para ajudar a corrigir. Funciona até sem conta
+- Links para os Termos e a Privacidade no menu e na tela de entrar
+- Servidor: `GET /account/export`, `POST /account/delete`, `POST /report`, tabela `reports` e pagamentos que sobrevivem à exclusão da conta (migração 009)
+- `docs/ROADMAP.md` posto em dia com o que já foi feito e o plano das próximas versões
+
 ## 0.47.0 · Notificações organizadas e missões do Passe no HUD
 - **Menos poluição no meio da tela:** só os marcos (nível, chefe, item lendário, peixe raro, anoitecer…) aparecem no centro, **um por vez**, em fila. O resto (itens coletados, Centelhas, pesca comum, avisos) vai para um **feed no canto direito, logo abaixo do minimapa**
 - **Repetidas se juntam:** pegar o mesmo item várias vezes mostra uma linha só, com contador (×2, ×3…), em vez de empilhar avisos
