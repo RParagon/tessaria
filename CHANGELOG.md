@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.49.0 · Proteção contra trapaça e moderação
+- **Velocidade impossível** na vila e nos Ermos: o servidor já segurava o personagem; agora também conta. Muitos saltos seguidos ficam registrados e, se continuarem, a conexão é encerrada
+- **Teto de dano no PvP** do Ermo Profundo, calculado pelo nível, pelos pontos de Poder e pelo equipamento de quem bate (com folga para crítico e para o meteoro do Arcano). Acerto acima do teto não chega à vítima e conta como suspeita
+- **Save:** peixes demais (mais de ~12 por minuto) ou Fios do Tear demais para o tempo jogado são recusados; ritmos altos, mas possíveis, ficam só como alerta
+- **Alertas por conta:** com 6 alertas em 8 dias, o prêmio do Torneio de Pesca fica retido para análise
+- **Moderação** com `ADMIN_TOKEN`: ver e marcar reportes, ver as contas com mais alertas, suspender e reativar contas (quem é suspenso cai na hora). Exemplos em `docs/DEPLOY.md`
+
 ## 0.48.0 · Privacidade, termos, excluir conta e reportar problema
 - **Termos de Uso** (`termos.html`): regras de convivência, o que são os itens e as moedas do jogo, compras pelo Mercado Pago e **reembolso em até 7 dias** se os Fios Dourados do pacote não foram usados (Código de Defesa do Consumidor)
 - **Política de Privacidade atualizada:** compras (os dados do pagamento ficam no Mercado Pago, nunca no nosso servidor), reportes e por quanto tempo guardamos cada coisa

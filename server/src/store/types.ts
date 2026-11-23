@@ -6,6 +6,10 @@ export interface Account {
   id: string; name: string; email: string | null; passHash: string | null; googleSub: string | null;
   guest: boolean; banned: boolean; createdAt: Date; lastSeen: Date | null; mutedUntil: Date | null;
 }
+export interface GuildRow { id: string; name: string; tag: string; emblem: any; motd: string; fios: number; createdAt: Date }
+export interface GuildMember { accountId: string; name: string; role: 'lider' | 'oficial' | 'membro'; weekFios: number; week: number; totalFios: number; joinedAt: Date; lastSeen: Date | null }
+export interface GuildInvite { guildId: string; name: string; tag: string; emblem: any; fromName: string; createdAt: Date }
+export type GuildFail = 'em-guilda' | 'espera' | 'nome' | 'sigla' | 'sem-centelhas' | 'nivel' | 'sem-save' | 'sem-convite' | 'cheia' | 'sem-guilda';
 export interface NewAccount { name: string; email?: string | null; passHash?: string | null; googleSub?: string | null; guest: boolean }
 export interface SaveRow { rev: number; data: any; updatedAt: Date }
 export interface MailRow { id: number; toId: string; fromId: string | null; fromName: string; item: any; note: string; createdAt: Date; claimedAt: Date | null }
@@ -78,6 +82,33 @@ export interface Store {
   deleteAccount(accountId: string): Promise<void>;
   /** Todos os dados da conta, para o jogador baixar (LGPD). */
   exportAccount(accountId: string): Promise<Record<string, unknown>>;
+  // ---------- guildas ----------
+  guildOf(accountId: string): Promise<{ guild: GuildRow; role: GuildMember['role'] } | null>;
+  guildMembers(guildId: string): Promise<GuildMember[]>;
+  /** Funda (tira as Centelhas do save da nuvem, confere nível e espera de 24 h). */
+  guildFound(accountId: string, g: { name: string; tag: string; emblem: any }, o: { cost: number; minLvl: number; rejoinMs: number }): Promise<{ ok: true; rev: number; guildId: string } | { ok: false; reason: GuildFail }>;
+  guildInvite(guildId: string, accountId: string, fromId: string, max: number): Promise<'ok' | 'ja-membro' | 'cheia'>;
+  guildInvites(accountId: string, maxAgeMs: number): Promise<GuildInvite[]>;
+  guildAccept(accountId: string, guildId: string, o: { max: number; rejoinMs: number; inviteMs: number }): Promise<{ ok: true } | { ok: false; reason: GuildFail }>;
+  guildDecline(accountId: string, guildId: string): Promise<void>;
+  /** Sai da guilda; se era líder, passa a liderança (ou desfaz a guilda, se ficou vazia). */
+  guildLeave(accountId: string): Promise<{ guildId: string; disbanded: boolean; newLeader: string | null } | null>;
+  guildKick(guildId: string, accountId: string): Promise<boolean>;
+  /** Muda o cargo; 'lider' transfere a liderança (o líder atual vira oficial). */
+  guildSetRole(guildId: string, accountId: string, role: GuildMember['role'], officersMax: number): Promise<'ok' | 'nao-membro' | 'muitos-oficiais'>;
+  guildUpdate(guildId: string, patch: { motd?: string; emblem?: any }): Promise<void>;
+  /** Soma Fios da Guilda (missões): na guilda e na contribuição da semana do membro. 0 se não tem guilda. */
+  guildAddFios(accountId: string, n: number, week: number): Promise<number>;
+  /** Doa Centelhas do save: 1 Fio a cada `per` Centelhas, até `dayMax` Fios por dia. */
+  guildDonate(accountId: string, gold: number, o: { per: number; dayMax: number; day: number; week: number }): Promise<{ ok: true; rev: number; fios: number; gold: number } | { ok: false; reason: GuildFail | 'limite' }>;
+  guildLog(guildId: string, kind: string, detail: any): Promise<void>;
+  guildLogList(guildId: string, limit: number): Promise<Array<{ kind: string; detail: any; at: Date }>>;
+  /** Quantos alertas de trapaça a conta teve nas últimas `hours` horas (save_alerta, suspeita_velocidade, suspeita_dano). */
+  suspicion(accountId: string, hours: number): Promise<number>;
+  /** Contas com mais alertas no período (moderação). */
+  suspects(hours: number, limit: number): Promise<Array<{ id: string; name: string; n: number; banned: boolean; kinds: string[] }>>;
+  listReports(status: string | null, limit: number): Promise<Array<{ id: number; accountId: string | null; name: string | null; kind: string; target: string | null; text: string; ctx: any; status: string; createdAt: Date }>>;
+  setReportStatus(id: number, status: string): Promise<boolean>;
   addReport(r: { accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown> }): Promise<number>;
   /** Credita um pagamento aprovado uma vez só (false se esse pagamento já foi creditado). */
   paymentCredit(p: { id: string; provider: string; accountId: string; pack: string; dourados: number; amount: number }): Promise<boolean>;

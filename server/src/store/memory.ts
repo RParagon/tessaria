@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Account, ClaimResult, FishScore, HistoryEntry, Listing, SeasonRow, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult } from './types';
+import type { Account, ClaimResult, FishScore, HistoryEntry, Listing, SeasonRow, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult, GuildRow, GuildMember, GuildInvite } from './types';
 import { invMax } from '../../../shared/save';
 
 /**
@@ -7,6 +7,7 @@ import { invMax } from '../../../shared/save';
  * Mesmo comportamento do PgStore (os testes rodam contra os dois).
  * Tudo se perde ao reiniciar o servidor.
  */
+const SUS_KINDS = ['save_alerta', 'suspeita_velocidade', 'suspeita_dano'];
 export class MemoryStore implements Store {
   private accounts = new Map<string, Account>();
   private sessions = new Map<string, { accountId: string; expiresAt: Date }>();
@@ -16,7 +17,7 @@ export class MemoryStore implements Store {
   private mailSeq = 0;
   private friends = new Map<string, { from: string; to: string; accepted: boolean; at: Date }>();
   private blocks = new Map<string, { a: string; b: string; at: Date }>();
-  public auditLog: Array<{ accountId: string | null; kind: string; detail: any }> = [];
+  public auditLog: Array<{ accountId: string | null; kind: string; detail: any; at?: number }> = [];
   public errors: any[] = [];
   public chat: Array<{ accountId: string; room: string; text: string }> = [];
 
@@ -105,8 +106,96 @@ export class MemoryStore implements Store {
   async seasonPremium(a: string, s: number, price: number) { const e = this.seasonOf(a, s); if (e.premium) return 'ja' as const; if ((this.wallet.get(a) ?? 0) < price) return 'sem-dourados' as const; this.wallet.set(a, (this.wallet.get(a) ?? 0) - price); e.premium = true; return 'ok' as const; }
   private payments = new Map<string, { accountId: string; dourados: number; status: string }>();
   private reports: Array<{ id: number; accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown>; at: Date }> = [];
+  // ---------- guildas ----------
+  private guilds = new Map<string, GuildRow>();
+  private gmem = new Map<string, { guildId: string; role: GuildMember['role']; week: number; weekFios: number; totalFios: number; donateDay: number; donateFios: number; joinedAt: Date }>();
+  private ginv = new Map<string, { guildId: string; accountId: string; fromId: string; createdAt: Date }>();
+  private gleft = new Map<string, number>();
+  private glog: Array<{ guildId: string; kind: string; detail: any; at: Date }> = [];
+  private gWaiting(a: string, ms: number) { const t = this.gleft.get(a); return t !== undefined && Date.now() - t < ms; }
+  async guildOf(a: string) { const m = this.gmem.get(a); if (!m) return null; const g = this.guilds.get(m.guildId); return g ? { guild: { ...g }, role: m.role } : null; }
+  async guildMembers(g: string) {
+    return [...this.gmem].filter(([, m]) => m.guildId === g).sort((x, y) => x[1].joinedAt.getTime() - y[1].joinedAt.getTime())
+      .map(([id, m]) => ({ accountId: id, name: this.accounts.get(id)?.name ?? '?', role: m.role, weekFios: m.weekFios, week: m.week, totalFios: m.totalFios, joinedAt: m.joinedAt, lastSeen: this.accounts.get(id)?.lastSeen ?? null }));
+  }
+  private gCount(g: string) { let n = 0; for (const m of this.gmem.values()) if (m.guildId === g) n++; return n; }
+  async guildFound(a: string, g: { name: string; tag: string; emblem: any }, o: { cost: number; minLvl: number; rejoinMs: number }) {
+    if (this.gmem.has(a)) return { ok: false as const, reason: 'em-guilda' as const };
+    if (this.gWaiting(a, o.rejoinMs)) return { ok: false as const, reason: 'espera' as const };
+    const s = this.saves.get(a); if (!s) return { ok: false as const, reason: 'sem-save' as const };
+    if ((Number(s.data.lvl) || 1) < o.minLvl) return { ok: false as const, reason: 'nivel' as const };
+    if ((Number(s.data.gold) || 0) < o.cost) return { ok: false as const, reason: 'sem-centelhas' as const };
+    for (const x of this.guilds.values()) { if (x.name.toLowerCase() === g.name.toLowerCase()) return { ok: false as const, reason: 'nome' as const }; if (x.tag === g.tag) return { ok: false as const, reason: 'sigla' as const }; }
+    s.data.gold -= o.cost; s.data.spent = (Number(s.data.spent) || 0) + o.cost; const rev = this.bump(s);
+    const id = randomUUID(); this.guilds.set(id, { id, name: g.name, tag: g.tag, emblem: g.emblem, motd: '', fios: 0, createdAt: new Date() });
+    this.gmem.set(a, { guildId: id, role: 'lider', week: 0, weekFios: 0, totalFios: 0, donateDay: 0, donateFios: 0, joinedAt: new Date() });
+    for (const [k, v] of this.ginv) if (v.accountId === a) this.ginv.delete(k);
+    return { ok: true as const, rev, guildId: id };
+  }
+  async guildInvite(g: string, a: string, from: string, max: number) {
+    if (this.gmem.get(a)?.guildId === g) return 'ja-membro' as const;
+    if (this.gCount(g) >= max) return 'cheia' as const;
+    this.ginv.set(g + ':' + a, { guildId: g, accountId: a, fromId: from, createdAt: new Date() }); return 'ok' as const;
+  }
+  async guildInvites(a: string, maxAgeMs: number): Promise<GuildInvite[]> {
+    return [...this.ginv.values()].filter(i => i.accountId === a && Date.now() - i.createdAt.getTime() < maxAgeMs && this.guilds.has(i.guildId))
+      .map(i => { const g = this.guilds.get(i.guildId)!; return { guildId: g.id, name: g.name, tag: g.tag, emblem: g.emblem, fromName: this.accounts.get(i.fromId)?.name ?? '?', createdAt: i.createdAt }; });
+  }
+  async guildAccept(a: string, g: string, o: { max: number; rejoinMs: number; inviteMs: number }) {
+    const i = this.ginv.get(g + ':' + a); if (!i || Date.now() - i.createdAt.getTime() > o.inviteMs || !this.guilds.has(g)) return { ok: false as const, reason: 'sem-convite' as const };
+    if (this.gmem.has(a)) return { ok: false as const, reason: 'em-guilda' as const };
+    if (this.gWaiting(a, o.rejoinMs)) return { ok: false as const, reason: 'espera' as const };
+    if (this.gCount(g) >= o.max) return { ok: false as const, reason: 'cheia' as const };
+    this.gmem.set(a, { guildId: g, role: 'membro', week: 0, weekFios: 0, totalFios: 0, donateDay: 0, donateFios: 0, joinedAt: new Date() });
+    for (const [k, v] of this.ginv) if (v.accountId === a) this.ginv.delete(k);
+    return { ok: true as const };
+  }
+  async guildDecline(a: string, g: string) { this.ginv.delete(g + ':' + a); }
+  async guildLeave(a: string) {
+    const m = this.gmem.get(a); if (!m) return null;
+    this.gmem.delete(a); this.gleft.set(a, Date.now());
+    const rest = [...this.gmem].filter(([, x]) => x.guildId === m.guildId).sort((x, y) => (Number(y[1].role === 'oficial') - Number(x[1].role === 'oficial')) || x[1].joinedAt.getTime() - y[1].joinedAt.getTime());
+    if (!rest.length) { this.guilds.delete(m.guildId); for (const [k, v] of this.ginv) if (v.guildId === m.guildId) this.ginv.delete(k); return { guildId: m.guildId, disbanded: true, newLeader: null }; }
+    if (m.role === 'lider') { rest[0][1].role = 'lider'; return { guildId: m.guildId, disbanded: false, newLeader: this.accounts.get(rest[0][0])?.name ?? null }; }
+    return { guildId: m.guildId, disbanded: false, newLeader: null };
+  }
+  async guildKick(g: string, a: string) { const m = this.gmem.get(a); if (!m || m.guildId !== g || m.role === 'lider') return false; this.gmem.delete(a); this.gleft.set(a, Date.now()); return true; }
+  async guildSetRole(g: string, a: string, role: GuildMember['role'], officersMax: number) {
+    const m = this.gmem.get(a); if (!m || m.guildId !== g) return 'nao-membro' as const;
+    if (role === 'oficial' && m.role !== 'oficial' && [...this.gmem.values()].filter(x => x.guildId === g && x.role === 'oficial').length >= officersMax) return 'muitos-oficiais' as const;
+    if (role === 'lider') for (const x of this.gmem.values()) if (x.guildId === g && x.role === 'lider') x.role = 'oficial';
+    m.role = role; return 'ok' as const;
+  }
+  async guildUpdate(g: string, p: { motd?: string; emblem?: any }) { const x = this.guilds.get(g); if (!x) return; if (p.motd !== undefined) x.motd = p.motd; if (p.emblem !== undefined) x.emblem = p.emblem; }
+  async guildAddFios(a: string, n: number, week: number) {
+    const m = this.gmem.get(a); if (!m) return 0; const g = this.guilds.get(m.guildId); if (!g) return 0;
+    m.weekFios = m.week === week ? m.weekFios + n : n; m.week = week; m.totalFios += n; g.fios += n; return n;
+  }
+  async guildDonate(a: string, gold: number, o: { per: number; dayMax: number; day: number; week: number }) {
+    const m = this.gmem.get(a); if (!m) return { ok: false as const, reason: 'sem-guilda' as const };
+    const used = m.donateDay === o.day ? m.donateFios : 0, fios = Math.min(Math.floor(gold / o.per), o.dayMax - used);
+    if (fios <= 0) return { ok: false as const, reason: 'limite' as const };
+    const cost = fios * o.per, s = this.saves.get(a); if (!s) return { ok: false as const, reason: 'sem-save' as const };
+    if ((Number(s.data.gold) || 0) < cost) return { ok: false as const, reason: 'sem-centelhas' as const };
+    s.data.gold -= cost; s.data.spent = (Number(s.data.spent) || 0) + cost; const rev = this.bump(s);
+    m.donateDay = o.day; m.donateFios = used + fios; await this.guildAddFios(a, fios, o.week);
+    return { ok: true as const, rev, fios, gold: cost };
+  }
+  async guildLog(g: string, kind: string, detail: any) { this.glog.push({ guildId: g, kind, detail, at: new Date() }); }
+  async guildLogList(g: string, limit: number) { return this.glog.filter(x => x.guildId === g).slice(-limit).reverse().map(x => ({ kind: x.kind, detail: x.detail, at: x.at })); }
+  async suspicion(a: string, hours: number) { const t = Date.now() - hours * 3_600_000; return this.auditLog.filter(e => e.accountId === a && SUS_KINDS.includes(e.kind) && (e.at ?? 0) >= t).length; }
+  async suspects(hours: number, limit: number) {
+    const t = Date.now() - hours * 3_600_000, m = new Map<string, { n: number; kinds: Set<string> }>();
+    for (const e of this.auditLog) if (e.accountId && SUS_KINDS.includes(e.kind) && (e.at ?? 0) >= t) { const x = m.get(e.accountId) ?? { n: 0, kinds: new Set() }; x.n++; x.kinds.add(e.kind); m.set(e.accountId, x); }
+    return [...m].map(([id, x]) => { const acc = this.accounts.get(id); return { id, name: acc?.name ?? '?', n: x.n, banned: !!acc?.banned, kinds: [...x.kinds] }; }).sort((a, b) => b.n - a.n).slice(0, limit);
+  }
+  async listReports(status: string | null, limit: number) {
+    return this.reports.filter(r => !status || ((r as any).status ?? 'novo') === status).slice(-limit).reverse().map(r => ({ id: r.id, accountId: r.accountId, name: r.accountId ? this.accounts.get(r.accountId)?.name ?? null : null, kind: r.kind, target: r.target, text: r.text, ctx: r.ctx, status: (r as any).status ?? 'novo', createdAt: r.at }));
+  }
+  async setReportStatus(id: number, status: string) { const r = this.reports.find(x => x.id === id); if (!r) return false; (r as any).status = status; return true; }
   async addReport(r: { accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown> }) { const id = this.reports.length + 1; this.reports.push({ id, ...r, at: new Date() }); return id; }
   async deleteAccount(a: string) {
+    this.gmem.delete(a); for (const [k, v] of this.ginv) if (v.accountId === a) this.ginv.delete(k);
     this.accounts.delete(a); this.saves.delete(a); this.tombs.delete(a); this.wallet.delete(a); this.owned.delete(a); this.logins.delete(a);
     for (const [k, v] of this.sessions) if (v.accountId === a) this.sessions.delete(k);
     for (const [k, v] of this.friends) if (v.from === a || v.to === a) this.friends.delete(k);
@@ -243,7 +332,7 @@ export class MemoryStore implements Store {
     if (on) { if (!this.blocks.has(k)) this.blocks.set(k, { a: accountId, b: otherId, at: new Date() }); } else this.blocks.delete(k);
   }
 
-  async audit(accountId: string | null, kind: string, detail: any) { this.auditLog.push({ accountId, kind, detail }); }
+  async audit(accountId: string | null, kind: string, detail: any) { this.auditLog.push({ accountId, kind, detail, at: Date.now() }); }
   async logClientError(e: any) { this.errors.push(e); }
   async logChat(accountId: string, room: string, text: string) { this.chat.push({ accountId, room, text }); if (this.chat.length > 5000) this.chat.shift(); }
   async counts() { return { accounts: this.accounts.size, saves: this.saves.size, mail: this.mail.length }; }

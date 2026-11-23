@@ -115,6 +115,14 @@ export function validateSave(s: unknown, opts: { prev?: AnySave | null; elapsedM
     const prevChests = new Set(prev.chests ?? []);
     const newChests = (v.chests ?? []).filter((c: string) => !prevChests.has(c)).length;
     if (newChests > 6 + mins * 4) flags.push(`${newChests} baús abertos em ${mins.toFixed(1)} min`);
+    // Pesca: cada peixe leva vários segundos (lançar, esperar, puxar). Mais que ~12 por minuto é impossível.
+    const df = (Number(v.st?.fish) || 0) - (Number(prev.st?.fish) || 0);
+    if (df > 30 + mins * 12) errors.push(`${df} peixes em ${mins.toFixed(1)} min`);
+    else if (df > 10 + mins * 6) flags.push(`${df} peixes em ${mins.toFixed(1)} min`);
+    // Fios do Tear vêm das Fendas e dos chefes (as recompensas do Passe entram pelo servidor, fora desta conta).
+    const dfi = (Number(v.fios) || 0) - (Number(prev.fios) || 0);
+    if (dfi > 2_000 + mins * 400) errors.push(`ganhou ${dfi} Fios do Tear em ${mins.toFixed(1)} min`);
+    else if (dfi > 300 + mins * 60) flags.push(`ganhou ${dfi} Fios do Tear em ${mins.toFixed(1)} min`);
   }
   return { errors, flags };
 }

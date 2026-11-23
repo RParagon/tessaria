@@ -36,6 +36,7 @@ No projeto do Easypanel (por exemplo `tessaria`), crie um serviço **Postgres**.
    | `CORS_ORIGINS` | sim | Endereços que podem abrir o jogo, separados por vírgula. Ex.: `https://jogo.seu-dominio.com,https://seu-site.netlify.app,https://localhost`. O `https://localhost` é o app Android. |
    | `TRUST_PROXY` | recomendada | `1` atrás do proxy do Easypanel, para os limites por IP usarem o IP real. Já é o padrão em produção. |
    | `GOOGLE_CLIENT_ID` | não | Liga o botão "Entrar com Google" (ID de cliente OAuth do tipo *Web* no Google Cloud). |
+   | `ADMIN_TOKEN` | recomendada | Liga as rotas de moderação (`/admin/...`): reportes, contas suspeitas e suspender. Use um valor longo e aleatório. **Segredo.** |
    | `METRICS_TOKEN` | não | Libera `GET /metrics` (Prometheus) com `Authorization: Bearer <token>`. Sem ele, a rota não existe. |
    | `MP_ACCESS_TOKEN` | para vender | **Access Token de produção** do Mercado Pago (Suas integrações → sua aplicação → Credenciais de produção). Liga a compra de Fios Dourados por Pix e cartão. **Segredo:** só no painel, nunca no repositório nem em conversa. |
    | `MP_WEBHOOK_SECRET` | recomendada | Assinatura secreta dos webhooks (Suas integrações → Webhooks). Com ela, o servidor recusa notificações sem `x-signature` válida. |
@@ -50,6 +51,21 @@ No projeto do Easypanel (por exemplo `tessaria`), crie um serviço **Postgres**.
 6. Teste: `https://api.seu-dominio.com/health` deve responder `{"ok":true,...,"db":"ok"}`.
 
 > Segredos (senha do banco, tokens) ficam só no painel do Easypanel. Nunca no repositório.
+
+#### Moderação (com `ADMIN_TOKEN`)
+
+Todas as rotas pedem `Authorization: Bearer <ADMIN_TOKEN>`:
+
+```bash
+API=https://SUA-API; T="Authorization: Bearer $ADMIN_TOKEN"
+curl -H "$T" "$API/admin/reports?status=novo"                     # reportes novos
+curl -H "$T" -H 'content-type: application/json' -d '{"status":"resolvido"}' "$API/admin/reports/12"
+curl -H "$T" "$API/admin/suspects?horas=168"                       # contas com mais alertas de trapaça (7 dias)
+curl -H "$T" -H 'content-type: application/json' -d '{"banned":true,"motivo":"trapaça"}' "$API/admin/accounts/NomeDoTecelao/ban"
+```
+
+Alertas vêm de: saves com ganho fora do normal (`save_alerta`), velocidade impossível na vila e nos Ermos (`suspeita_velocidade`)
+e dano PvP acima do teto do personagem (`suspeita_dano`). Com 6 alertas em 8 dias, o prêmio do Torneio de Pesca fica retido para análise.
 
 #### Mercado Pago (venda de Fios Dourados)
 

@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, WILDS_CAP, deepWilds, PVP_RANGE, PVP_RATE, LOOT_MS, LOOT_TAKE_R, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, WILDS_CAP, deepWilds, PVP_RANGE, PVP_RATE, LOOT_MS, LOOT_TAKE_R, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, pvpHitCap, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
 import type { Account, Store } from './store/types';
@@ -34,6 +34,8 @@ interface Player {
   x: number; z: number; yaw: number; m: number; a: string;
   lastPos: number; synced: boolean; dirty: boolean; alive: boolean;
   actTokens: number; actRefill: number; chatTokens: number; chatRefill: number; blockedHits: number[]; lastEmote: number; lastLook: number; timeReqs: number; relayTokens: number; relayRefill: number; pvpTokens: number; pvpRefill: number; lastWarp: number;
+  /** Teto de dano PvP (pelo save) e suspeitas de trapaça na sessão (velocidade, dano), com a hora do último registro. */
+  hitCap: number; sus: { speed: number; dmg: number; t0: number; logged: number };
 }
 
 /** Espólio de quem caiu nos Ermos: fica no chão da sala e qualquer um pega (o dono também). */
@@ -59,6 +61,8 @@ interface Party { id: number; leader: string; members: string[]; info: Map<strin
 /** Instância do grupo (Fenda): uma sala própria, com os dados que geram o mesmo mapa para todos. */
 interface Instance { diff: number; lvl: number; kills: Set<number>; killTokens: number; killRefill: number; host: number; id: number; party: Party; kind: 'rift' | 'wilds'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
 export interface HubOptions { inviteMs?: number; graceMs?: number; instEmptyMs?: number }
+/** Suspeitas em 60 s para registrar (e 3× isso para derrubar a conexão). */
+const SUS_SPEED = 25, SUS_DMG = 6;
 const lvlOf = (save: any) => (Number.isInteger(save?.lvl) ? save.lvl : 1);
 
 const pub = (p: Player): PublicPlayer => ({ id: p.id, name: p.account.name, title: p.title, look: p.look, x: p.x, z: p.z, yaw: p.yaw });
@@ -151,6 +155,7 @@ export class Hub {
       look: lookFromSave(save), title: titleFromSave(save),
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
       actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0, relayTokens: RELAY_PER_SEC, relayRefill: Date.now(), pvpTokens: PVP_RATE * 2, pvpRefill: Date.now(), lastWarp: 0,
+      hitCap: pvpHitCap(save), sus: { speed: 0, dmg: 0, t0: Date.now(), logged: 0 },
     };
     const old = this.byAccount.get(account.id);
     this.byAccount.set(account.id, p);
@@ -249,7 +254,7 @@ export class Hub {
     // A primeira posição depois de entrar vale direto (o jogador pode estar voltando de um portal).
     // Teleporte dentro da mesma região (obelisco dos Ermos, renascer): também vale direto, no máximo a cada 3 s.
     if (m.w === 1 && now - p.lastWarp > 3000) { p.lastWarp = now; p.synced = false; inc('hub_warps'); }
-    if (p.synced && d > lim) { x = p.x + dx / d * lim; z = p.z + dz / d * lim; inc('hub_speed_clamps'); }
+    if (p.synced && d > lim) { x = p.x + dx / d * lim; z = p.z + dz / d * lim; inc('hub_speed_clamps'); if (d > lim * 2) this.suspect(p, 'speed', { d: Math.round(d), lim: Math.round(lim) }); }
     p.synced = true;
     p.x = x; p.z = z; p.yaw = yaw % 6.2832; p.m = Math.min(1, Math.max(0, mv)); p.a = typeof m.a === 'string' ? m.a.slice(0, 8) : ''; p.lastPos = now; p.dirty = true;
   }
@@ -339,7 +344,7 @@ export class Hub {
   refreshTitle(accountId: string, save: any) {
     const p = this.byAccount.get(accountId); if (!p) return;
     const lvl = lvlOf(save), party = this.partyOf.get(accountId), info = party?.info.get(accountId);
-    Object.assign(p, ctxOf(save));
+    Object.assign(p, ctxOf(save)); p.hitCap = pvpHitCap(save);
     if (lvl !== p.lvl) { p.lvl = lvl; if (party && info) { info.lvl = lvl; this.sendParty(party); } }
     const t = titleFromSave(save); if (t === p.title) return;
     p.title = t; p.room?.broadcast({ t: 'title', id: p.id, title: t });
@@ -376,6 +381,17 @@ export class Hub {
   private lootGone = new Map<string, { id: string; by: string; at: number; when: number }>();   // dono fora da sala quando o espólio foi pego
   private lootMsg(L: Loot): ServerMsg { return { t: 'ldrop', id: L.id, x: L.x, z: L.z, by: L.ownerPid, name: L.ownerName, gold: L.gold, n: L.items.length, ms: Math.max(0, L.exp - Date.now()) }; }
   private expireLoot(room: Room) { const now = Date.now(); for (const L of [...room.loots.values()]) if (L.exp <= now) { room.loots.delete(L.id); room.broadcast({ t: 'lgone', id: L.id }); } }
+  /**
+   * Suspeita de trapaça: conta na janela de 60 s. Passou do limite, registra na auditoria (no máximo a cada 10 min);
+   * muito acima, derruba a conexão. Lag e portais geram poucos casos, por isso os limites são folgados.
+   */
+  private suspect(p: Player, kind: 'speed' | 'dmg', detail: Record<string, number>) {
+    const now = Date.now(), S = p.sus; if (now - S.t0 > 60_000) { S.speed = 0; S.dmg = 0; S.t0 = now; }
+    S[kind]++; inc('hub_suspect_' + kind);
+    const n = S[kind], lim = kind === 'speed' ? SUS_SPEED : SUS_DMG;
+    if (n >= lim && now - S.logged > 600_000) { S.logged = now; void this.store.audit(p.account.id, 'suspeita_' + (kind === 'speed' ? 'velocidade' : 'dano'), { ...detail, n, onde: p.where }).catch(() => {}); }
+    if (n >= lim * 3) { inc('hub_suspect_kicks'); send(p, { t: 'kick', reason: 'Conexão encerrada: movimento ou dano fora do normal.' }); try { p.ws.close(4002, 'suspeita'); } catch { /* já fechado */ } this.leave(p); }
+  }
   /** Grupo ou amizade: sem fogo amigo. */
   private allies(a: Player, b: Player) { if (a.friends.has(b.account.id) || b.friends.has(a.account.id)) return true; const pa = this.partyOf.get(a.account.id); return !!pa && pa === this.partyOf.get(b.account.id); }
 
@@ -386,6 +402,7 @@ export class Hub {
     const now = Date.now(); p.pvpTokens = Math.min(PVP_RATE * 2, p.pvpTokens + (now - p.pvpRefill) / 1000 * PVP_RATE); p.pvpRefill = now;
     if (p.pvpTokens < 1) { inc('hub_pvp_limited'); return; }
     if (this.allies(p, v) || !deepWilds(p.x, p.z) || !deepWilds(v.x, v.z) || Math.hypot(p.x - v.x, p.z - v.z) > PVP_RANGE) { inc('hub_pvp_refused'); return; }
+    if (dmg > p.hitCap) { inc('hub_pvp_dmg_refused'); this.suspect(p, 'dmg', { dmg: Math.round(dmg), teto: p.hitCap }); return; }
     p.pvpTokens -= 1; inc('hub_pvp_hits');
     send(v, { t: 'pvp', from: p.id, name: p.account.name, dmg: Math.min(1e6, Math.round(dmg)) });
   }

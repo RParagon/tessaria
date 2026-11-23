@@ -27,6 +27,12 @@ export const WILDS_CAP = 30;          // jogadores por sala pública dos Ermos
 /** Ermo Profundo (o anel de fora), em unidades do mundo (ladrilho = 2). Aproximação sem o ruído da borda: o jogo confere o bioma exato. */
 export const deepWilds = (x: number, z: number) => Math.hypot(x / 2 - 200, (z / 2 - 175) * 1.15) > 132;
 export const PVP_RANGE = 30;          // distância máxima de um acerto entre jogadores
+/** Teto de um acerto PvP pelo save de quem bate: o dano mais alto possível da classe mais forte, com crítico e o maior golpe especial, e folga. */
+export function pvpHitCap(save: any) {
+  const lv = Number.isInteger(save?.lvl) ? Math.max(1, save.lvl) : 1, pow = Number(save?.up?.pow) || 0;
+  let eqd = 0; const eq = save?.eq || {}; for (const k in eq) { const d = Number(eq[k]?.st?.dmg); if (Number.isFinite(d) && d > 0) eqd += d; }
+  return Math.round(14 * (1 + .15 * Math.min(10, pow)) * (1 + .07 * (lv - 1)) * (1 + Math.min(600, eqd) / 100) * 1.3 * 2.5 * 12);   // 12×: o meteoro do Arcano
+}
 export const PVP_RATE = 8;            // acertos por segundo (rajada até o dobro)
 export const LOOT_MS = 5 * 60_000;    // espólio de quem caiu nos Ermos: 5 min no chão
 export const LOOT_TAKE_R = 6;         // distância para pegar o espólio

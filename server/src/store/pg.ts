@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { MIGRATIONS } from './migrations';
-import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult , Listing, HistoryEntry, SeasonRow } from './types';
+import type { Account, ClaimResult, FriendLink, MailRow, NewAccount, PutSaveResult, SaveRow, Store, TransferResult , Listing, HistoryEntry, SeasonRow, GuildRow, GuildMember } from './types';
 import { invMax } from '../../../shared/save';
 
 type Row = Record<string, any>;
@@ -164,6 +164,128 @@ export class PgStore implements Store {
       return { accountId: r.account_id as string, dourados: r.dourados as number };
     }) as Promise<{ accountId: string; dourados: number } | null>;
   }
+  // ---------- guildas ----------
+  private toGuild(r: any): GuildRow { return { id: r.id, name: r.name, tag: r.tag, emblem: r.emblem, motd: r.motd, fios: Number(r.fios), createdAt: r.created_at }; }
+  async guildOf(a: string) {
+    const [r] = await this.sql`SELECT g.*, m.role FROM guild_members m JOIN guilds g ON g.id = m.guild_id WHERE m.account_id = ${a}`;
+    return r ? { guild: this.toGuild(r), role: r.role as GuildMember['role'] } : null;
+  }
+  async guildMembers(g: string) {
+    const rows = await this.sql`SELECT m.*, a.name, a.last_seen FROM guild_members m JOIN accounts a ON a.id = m.account_id WHERE m.guild_id = ${g} ORDER BY m.joined_at`;
+    return rows.map(r => ({ accountId: r.account_id, name: r.name, role: r.role, weekFios: r.week_fios, week: r.week, totalFios: r.total_fios, joinedAt: r.joined_at, lastSeen: r.last_seen }) as GuildMember);
+  }
+  private async waiting(tx: any, a: string, ms: number) { const [l] = await tx`SELECT left_at FROM guild_leaves WHERE account_id = ${a}`; return !!l && Date.now() - new Date(l.left_at).getTime() < ms; }
+  async guildFound(a: string, g: { name: string; tag: string; emblem: any }, o: { cost: number; minLvl: number; rejoinMs: number }) {
+    try {
+      return await this.sql.begin(async tx => {
+        const [m] = await tx`SELECT 1 FROM guild_members WHERE account_id = ${a}`; if (m) return { ok: false, reason: 'em-guilda' };
+        if (await this.waiting(tx, a, o.rejoinMs)) return { ok: false, reason: 'espera' };
+        const [s] = await tx`SELECT data FROM saves WHERE account_id = ${a} FOR UPDATE`; if (!s) return { ok: false, reason: 'sem-save' };
+        const d = s.data; if ((Number(d.lvl) || 1) < o.minLvl) return { ok: false, reason: 'nivel' };
+        if ((Number(d.gold) || 0) < o.cost) return { ok: false, reason: 'sem-centelhas' };
+        const [dn] = await tx`SELECT 1 FROM guilds WHERE lower(name) = lower(${g.name})`; if (dn) return { ok: false, reason: 'nome' };
+        const [dt] = await tx`SELECT 1 FROM guilds WHERE tag = ${g.tag}`; if (dt) return { ok: false, reason: 'sigla' };
+        d.gold = Number(d.gold) - o.cost; d.spent = (Number(d.spent) || 0) + o.cost;
+        const [u] = await tx`UPDATE saves SET data = ${tx.json(d)}, rev = rev + 1, updated_at = now() WHERE account_id = ${a} RETURNING rev`;
+        const [ng] = await tx`INSERT INTO guilds (name, tag, emblem) VALUES (${g.name}, ${g.tag}, ${tx.json(g.emblem)}) RETURNING id`;
+        await tx`INSERT INTO guild_members (account_id, guild_id, role) VALUES (${a}, ${ng.id}, 'lider')`;
+        await tx`DELETE FROM guild_invites WHERE account_id = ${a}`;
+        return { ok: true, rev: Number(u.rev), guildId: ng.id as string };
+      }) as any;
+    } catch (e: any) { if (e?.code === '23505') return { ok: false, reason: String(e?.constraint_name ?? '').includes('tag') ? 'sigla' : 'nome' } as const; throw e; }
+  }
+  async guildInvite(g: string, a: string, from: string, max: number) {
+    const [m] = await this.sql`SELECT guild_id FROM guild_members WHERE account_id = ${a}`; if (m && m.guild_id === g) return 'ja-membro' as const;
+    const [c] = await this.sql`SELECT count(*)::int AS n FROM guild_members WHERE guild_id = ${g}`; if (c.n >= max) return 'cheia' as const;
+    await this.sql`INSERT INTO guild_invites (guild_id, account_id, from_id) VALUES (${g}, ${a}, ${from}) ON CONFLICT (guild_id, account_id) DO UPDATE SET created_at = now(), from_id = ${from}`;
+    return 'ok' as const;
+  }
+  async guildInvites(a: string, maxAgeMs: number) {
+    const rows = await this.sql`SELECT i.guild_id, i.created_at, g.name, g.tag, g.emblem, coalesce(f.name, '?') AS from_name FROM guild_invites i JOIN guilds g ON g.id = i.guild_id LEFT JOIN accounts f ON f.id = i.from_id
+      WHERE i.account_id = ${a} AND i.created_at > now() - make_interval(secs => ${maxAgeMs / 1000}) ORDER BY i.created_at DESC`;
+    return rows.map(r => ({ guildId: r.guild_id, name: r.name, tag: r.tag, emblem: r.emblem, fromName: r.from_name, createdAt: r.created_at }));
+  }
+  async guildAccept(a: string, g: string, o: { max: number; rejoinMs: number; inviteMs: number }) {
+    return this.sql.begin(async tx => {
+      const [i] = await tx`SELECT created_at FROM guild_invites WHERE guild_id = ${g} AND account_id = ${a}`;
+      if (!i || Date.now() - new Date(i.created_at).getTime() > o.inviteMs) return { ok: false, reason: 'sem-convite' };
+      const [m] = await tx`SELECT 1 FROM guild_members WHERE account_id = ${a}`; if (m) return { ok: false, reason: 'em-guilda' };
+      if (await this.waiting(tx, a, o.rejoinMs)) return { ok: false, reason: 'espera' };
+      await tx`SELECT id FROM guilds WHERE id = ${g} FOR UPDATE`;
+      const [c] = await tx`SELECT count(*)::int AS n FROM guild_members WHERE guild_id = ${g}`; if (c.n >= o.max) return { ok: false, reason: 'cheia' };
+      await tx`INSERT INTO guild_members (account_id, guild_id, role) VALUES (${a}, ${g}, 'membro')`;
+      await tx`DELETE FROM guild_invites WHERE account_id = ${a}`;
+      return { ok: true };
+    }) as any;
+  }
+  async guildDecline(a: string, g: string) { await this.sql`DELETE FROM guild_invites WHERE guild_id = ${g} AND account_id = ${a}`; }
+  async guildLeave(a: string) {
+    return this.sql.begin(async tx => {
+      const [m] = await tx`SELECT guild_id, role FROM guild_members WHERE account_id = ${a}`; if (!m) return null;
+      await tx`SELECT id FROM guilds WHERE id = ${m.guild_id} FOR UPDATE`;
+      await tx`DELETE FROM guild_members WHERE account_id = ${a}`;
+      await tx`INSERT INTO guild_leaves (account_id) VALUES (${a}) ON CONFLICT (account_id) DO UPDATE SET left_at = now()`;
+      const rest = await tx`SELECT m.account_id, m.role, a.name FROM guild_members m JOIN accounts a ON a.id = m.account_id WHERE m.guild_id = ${m.guild_id} ORDER BY (m.role = 'oficial') DESC, m.joined_at`;
+      if (!rest.length) { await tx`DELETE FROM guilds WHERE id = ${m.guild_id}`; return { guildId: m.guild_id, disbanded: true, newLeader: null }; }
+      if (m.role === 'lider') { await tx`UPDATE guild_members SET role = 'lider' WHERE account_id = ${rest[0].account_id}`; return { guildId: m.guild_id, disbanded: false, newLeader: rest[0].name as string }; }
+      return { guildId: m.guild_id, disbanded: false, newLeader: null };
+    }) as any;
+  }
+  async guildKick(g: string, a: string) {
+    const r = await this.sql`DELETE FROM guild_members WHERE guild_id = ${g} AND account_id = ${a} AND role <> 'lider' RETURNING account_id`;
+    if (r.length) await this.sql`INSERT INTO guild_leaves (account_id) VALUES (${a}) ON CONFLICT (account_id) DO UPDATE SET left_at = now()`;
+    return r.length > 0;
+  }
+  async guildSetRole(g: string, a: string, role: GuildMember['role'], officersMax: number) {
+    return this.sql.begin(async tx => {
+      const [m] = await tx`SELECT role FROM guild_members WHERE guild_id = ${g} AND account_id = ${a} FOR UPDATE`; if (!m) return 'nao-membro';
+      if (role === 'oficial' && m.role !== 'oficial') { const [c] = await tx`SELECT count(*)::int AS n FROM guild_members WHERE guild_id = ${g} AND role = 'oficial'`; if (c.n >= officersMax) return 'muitos-oficiais'; }
+      if (role === 'lider') await tx`UPDATE guild_members SET role = 'oficial' WHERE guild_id = ${g} AND role = 'lider'`;
+      await tx`UPDATE guild_members SET role = ${role} WHERE guild_id = ${g} AND account_id = ${a}`; return 'ok';
+    }) as any;
+  }
+  async guildUpdate(g: string, p: { motd?: string; emblem?: any }) {
+    if (p.motd !== undefined) await this.sql`UPDATE guilds SET motd = ${p.motd} WHERE id = ${g}`;
+    if (p.emblem !== undefined) await this.sql`UPDATE guilds SET emblem = ${this.sql.json(p.emblem)} WHERE id = ${g}`;
+  }
+  async guildAddFios(a: string, n: number, week: number) {
+    return this.sql.begin(async tx => {
+      const [m] = await tx`UPDATE guild_members SET week_fios = CASE WHEN week = ${week} THEN week_fios + ${n} ELSE ${n} END, week = ${week}, total_fios = total_fios + ${n} WHERE account_id = ${a} RETURNING guild_id`;
+      if (!m) return 0; await tx`UPDATE guilds SET fios = fios + ${n} WHERE id = ${m.guild_id}`; return n;
+    }) as Promise<number>;
+  }
+  async guildDonate(a: string, gold: number, o: { per: number; dayMax: number; day: number; week: number }) {
+    return this.sql.begin(async tx => {
+      const [m] = await tx`SELECT guild_id, donate_day, donate_fios FROM guild_members WHERE account_id = ${a} FOR UPDATE`; if (!m) return { ok: false, reason: 'sem-guilda' };
+      const used = m.donate_day === o.day ? m.donate_fios : 0, fios = Math.min(Math.floor(gold / o.per), o.dayMax - used);
+      if (fios <= 0) return { ok: false, reason: 'limite' };
+      const cost = fios * o.per;
+      const [s] = await tx`SELECT data FROM saves WHERE account_id = ${a} FOR UPDATE`; if (!s) return { ok: false, reason: 'sem-save' };
+      const d = s.data; if ((Number(d.gold) || 0) < cost) return { ok: false, reason: 'sem-centelhas' };
+      d.gold = Number(d.gold) - cost; d.spent = (Number(d.spent) || 0) + cost;
+      const [u] = await tx`UPDATE saves SET data = ${tx.json(d)}, rev = rev + 1, updated_at = now() WHERE account_id = ${a} RETURNING rev`;
+      await tx`UPDATE guild_members SET donate_day = ${o.day}, donate_fios = ${used + fios}, week_fios = CASE WHEN week = ${o.week} THEN week_fios + ${fios} ELSE ${fios} END, week = ${o.week}, total_fios = total_fios + ${fios} WHERE account_id = ${a}`;
+      await tx`UPDATE guilds SET fios = fios + ${fios} WHERE id = ${m.guild_id}`;
+      return { ok: true, rev: Number(u.rev), fios, gold: cost };
+    }) as any;
+  }
+  async guildLog(g: string, kind: string, detail: any) { await this.sql`INSERT INTO guild_log (guild_id, kind, detail) VALUES (${g}, ${kind}, ${this.sql.json(detail)})`; }
+  async guildLogList(g: string, limit: number) { const r = await this.sql`SELECT kind, detail, created_at FROM guild_log WHERE guild_id = ${g} ORDER BY id DESC LIMIT ${limit}`; return r.map(x => ({ kind: x.kind, detail: x.detail, at: x.created_at })); }
+  async suspicion(a: string, hours: number) {
+    const [r] = await this.sql`SELECT count(*)::int AS n FROM audit WHERE account_id = ${a} AND kind IN ('save_alerta', 'suspeita_velocidade', 'suspeita_dano') AND created_at > now() - make_interval(hours => ${hours})`; return r.n as number;
+  }
+  async suspects(hours: number, limit: number) {
+    const rows = await this.sql`SELECT a.id, a.name, a.banned, count(*)::int AS n, array_agg(DISTINCT x.kind) AS kinds FROM audit x JOIN accounts a ON a.id = x.account_id
+      WHERE x.kind IN ('save_alerta', 'suspeita_velocidade', 'suspeita_dano') AND x.created_at > now() - make_interval(hours => ${hours}) GROUP BY a.id ORDER BY n DESC LIMIT ${limit}`;
+    return rows.map(r => ({ id: r.id as string, name: r.name as string, n: r.n as number, banned: r.banned as boolean, kinds: r.kinds as string[] }));
+  }
+  async listReports(status: string | null, limit: number) {
+    const rows = status
+      ? await this.sql`SELECT r.*, a.name FROM reports r LEFT JOIN accounts a ON a.id = r.account_id WHERE r.status = ${status} ORDER BY r.id DESC LIMIT ${limit}`
+      : await this.sql`SELECT r.*, a.name FROM reports r LEFT JOIN accounts a ON a.id = r.account_id ORDER BY r.id DESC LIMIT ${limit}`;
+    return rows.map(r => ({ id: Number(r.id), accountId: r.account_id, name: r.name ?? null, kind: r.kind, target: r.target, text: r.text, ctx: r.ctx, status: r.status, createdAt: r.created_at }));
+  }
+  async setReportStatus(id: number, status: string) { const r = await this.sql`UPDATE reports SET status = ${status} WHERE id = ${id} RETURNING id`; return r.length > 0; }
   async addReport(r: { accountId: string | null; kind: string; target: string | null; text: string; ctx: Record<string, unknown> }) {
     const [x] = await this.sql`INSERT INTO reports (account_id, kind, target, text, ctx) VALUES (${r.accountId}, ${r.kind}, ${r.target}, ${r.text}, ${this.sql.json(r.ctx as any)}) RETURNING id`; return Number(x.id);
   }

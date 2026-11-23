@@ -30,7 +30,7 @@ export function normalize(s: string): string {
 
 const collapse = (w: string) => w.replace(/(.)\1+/g, '$1');
 
-function badToken(raw: string): boolean {
+export function badToken(raw: string): boolean {
   const n = normalize(raw).replace(/[^a-z]/g, '');
   if (!n) return false;
   if (BLOCK_WORDS.has(n) || BLOCK_WORDS.has(collapse(n))) return true;

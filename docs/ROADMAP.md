@@ -75,7 +75,8 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
 ## Fase 4 · Lançamento (em andamento)
 
 - [ ] Beta fechado
-- [ ] Proteção contra trapaça: velocidade e cooldowns validados no servidor durante o combate
+- [x] Proteção contra trapaça, etapa 1 (0.49): velocidade na vila e nos Ermos, teto de dano PvP, ritmo de pesca e de Fios do Tear no save, alertas e moderação
+- [ ] Proteção contra trapaça, etapa 2: tempo de recarga e dano contra monstros validados pelo servidor (vem com o combate decidido pelo servidor)
 - [ ] Login com Apple (exigido pela App Store, se houver versão iOS)
 - [x] Passe do Tear e loja de cosméticos (0.44 e 0.45; ver [MONETIZATION.md](MONETIZATION.md))
 - [ ] Google Play: conta de desenvolvedor, APK assinado, ficha da loja, classificação etária

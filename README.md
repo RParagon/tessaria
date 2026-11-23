@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.48.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.49.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -165,7 +165,7 @@ Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 
 - **Contas:** e-mail e senha, Google ou convidado (que vira conta depois sem perder nada).
 - **Save na nuvem:** continue em outro aparelho. Se dois aparelhos gravarem ao mesmo tempo, o jogo pergunta qual progresso usar.
-- **Servidor que confere:** saves impossíveis (itens acima do teto, Centelhas demais para o tempo jogado) são recusados.
+- **Servidor que confere:** saves impossíveis (itens acima do teto, Centelhas, peixes ou Fios do Tear demais para o tempo jogado) são recusados; velocidade e dano PvP impossíveis são barrados e registrados, e quem insiste é desconectado.
 - **Vila Brasa online:** até 40 por sala, chat com filtro, emotes, e moradores que andam igual para todos.
 - **Amigos e grupo:** pedidos de amizade, lista com quem está online e onde, grupo de até 4 com chat próprio.
 - **Correio pelo nome**, sem duplicar itens.

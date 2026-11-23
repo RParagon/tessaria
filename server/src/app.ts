@@ -21,6 +21,8 @@ import { FISH, FISH_KG, fishById, fishPoints, fishPrice, fishTrendDelta, sellFis
 declare module 'fastify' { interface FastifyRequest { account?: Account } }
 
 const publicAccount = (a: Account) => ({ id: a.id, name: a.name, guest: a.guest, email: a.email ? a.email.replace(/^(.).*(@.*)$/, '$1•••$2') : null, google: !!a.googleSub, password: !!a.passHash });
+/** Alertas de trapaça (8 dias) a partir dos quais prêmios ficam retidos para análise. */
+const SUSPECT_HOLD = 6;
 const isUnique = (e: any) => e && (e.code === '23505');
 
 export interface AppOptions { config: Config; store: Store; hub?: HubOptions }
@@ -159,6 +161,34 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
 
   app.post('/auth/logout', { preHandler: auth }, async req => { const t = bearer(req); if (t) await store.deleteSession(hashToken(t)); return { ok: true }; });
   app.get('/me', { preHandler: auth }, async req => ({ account: publicAccount(req.account!) }));
+
+  // ---------- moderação (ADMIN_TOKEN) ----------
+  // Reportes, contas com mais alertas de trapaça e suspender/reativar. Sem ADMIN_TOKEN, as rotas não existem.
+  const admin = async (req: FastifyRequest, rep: FastifyReply) => {
+    if (!config.adminToken) return fail(rep, 404, 'Não encontrado.');
+    if (!sameSecret(bearer(req), config.adminToken)) { await new Promise(r => setTimeout(r, 300)); return fail(rep, 401, 'Não autorizado.'); }
+  };
+  const adminLimit = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } };
+  app.get('/admin/reports', { preHandler: admin, ...adminLimit }, async req => {
+    const q = req.query as any, st = typeof q.status === 'string' && /^[a-z]{1,20}$/.test(q.status) ? q.status : null;
+    return { reports: await store.listReports(st, 200) };
+  });
+  app.post('/admin/reports/:id', { preHandler: admin, ...adminLimit }, async (req, rep) => {
+    const b = parse(z.object({ status: z.enum(['novo', 'visto', 'resolvido', 'descartado']) }), req.body, rep); if (!b) return;
+    const id = Number((req.params as any).id); if (!Number.isInteger(id)) return fail(rep, 400, 'Id inválido.');
+    return (await store.setReportStatus(id, b.status)) ? { ok: true } : fail(rep, 404, 'Reporte não encontrado.');
+  });
+  app.get('/admin/suspects', { preHandler: admin, ...adminLimit }, async req => {
+    const h = Math.min(24 * 30, Math.max(1, Number((req.query as any).horas) || 24 * 7));
+    return { horas: h, contas: await store.suspects(h, 100) };
+  });
+  app.post('/admin/accounts/:name/ban', { preHandler: admin, ...adminLimit }, async (req, rep) => {
+    const b = parse(z.object({ banned: z.boolean(), motivo: z.string().max(300).optional() }), req.body, rep); if (!b) return;
+    const a = await store.accountByName(String((req.params as any).name)); if (!a) return fail(rep, 404, 'Conta não encontrada.');
+    await store.updateAccount(a.id, { banned: b.banned });
+    if (b.banned) hub.dropAccount(a.id, 'Esta conta foi suspensa.');
+    await store.audit(a.id, b.banned ? 'suspensa' : 'reativada', { motivo: b.motivo ?? '' }); return { ok: true };
+  });
 
   // ---------- LGPD: baixar os dados e excluir a conta ----------
   app.get('/account/export', { preHandler: auth, config: perAccount(3) }, async (req, rep) => {
@@ -420,6 +450,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
   app.post('/fish/tournament/claim', { preHandler: auth, config: perAccount(10) }, async (req, rep) => {
     const wk = tourneyWeek(Date.now()) - 1, id = req.account!.id, me = await store.fishMine(wk, id);
     if (!me || me.rank > TOURNEY_PRIZES.length) return fail(rep, 404, 'Sem prêmio na semana passada.');
+    if ((await store.suspicion(id, 24 * 8)) >= SUSPECT_HOLD) { await store.audit(id, 'torneio_premio_retido', { semana: wk, posicao: me.rank }); return fail(rep, 403, 'Seu prêmio está em análise. Fale com a moderação pelo Reportar problema.'); }
     if (!(await store.claimFishPrize(wk, id))) return fail(rep, 409, 'Prêmio já resgatado.');
     const gold = TOURNEY_PRIZES[me.rank - 1]; if (me.rank === 1) await store.grantCosmetic(id, 'tit_campeao', 'torneio');   // título de conquista: nunca vendido
     await store.audit(id, 'torneio_premio', { semana: wk, posicao: me.rank, centelhas: gold });

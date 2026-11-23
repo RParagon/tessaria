@@ -12,6 +12,8 @@ export interface Config {
   corsOrigins: string[];          // vazio = qualquer origem (só em desenvolvimento)
   googleClientId: string | null;
   metricsToken: string | null;
+  /** Token da moderação (/admin/...): reportes, contas suspeitas, suspender. Vazio = rotas desligadas. */
+  adminToken: string | null;
   /** Compras de Fios Dourados de mentira, só para desenvolvimento e testes (nunca em produção). */
   devPayments: boolean;
   /** Mercado Pago (Checkout Pro): Access Token de produção. Só por variável de ambiente, nunca no repositório. */
@@ -39,6 +41,7 @@ export function loadConfig(over: Partial<Config> = {}): Config {
     corsOrigins: list(env.CORS_ORIGINS),
     googleClientId: env.GOOGLE_CLIENT_ID || null,
     metricsToken: env.METRICS_TOKEN || null,
+    adminToken: env.ADMIN_TOKEN?.trim() || null,
     devPayments: !production && env.DEV_PAYMENTS === '1',
     mpAccessToken: env.MP_ACCESS_TOKEN?.trim() || null,
     mpWebhookSecret: env.MP_WEBHOOK_SECRET?.trim() || null,

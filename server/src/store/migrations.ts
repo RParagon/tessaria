@@ -225,4 +225,49 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS reports_new ON reports (status, created_at DESC);
 ` },
+  { id: '010_guildas', sql: `
+-- Guildas (etapa social): guilda, membros com cargo e contribuição da semana, convites, espera de 24 h ao sair e registro.
+CREATE TABLE IF NOT EXISTS guilds (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        text NOT NULL,
+  tag         text NOT NULL,
+  emblem      jsonb NOT NULL,
+  motd        text NOT NULL DEFAULT '',
+  fios        integer NOT NULL DEFAULT 0,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS guilds_name_lower ON guilds (lower(name));
+CREATE UNIQUE INDEX IF NOT EXISTS guilds_tag ON guilds (tag);
+CREATE TABLE IF NOT EXISTS guild_members (
+  account_id  uuid PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  guild_id    uuid NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+  role        text NOT NULL,
+  week        integer NOT NULL DEFAULT 0,
+  week_fios   integer NOT NULL DEFAULT 0,
+  total_fios  integer NOT NULL DEFAULT 0,
+  donate_day  integer NOT NULL DEFAULT 0,
+  donate_fios integer NOT NULL DEFAULT 0,
+  joined_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS guild_members_guild ON guild_members (guild_id);
+CREATE TABLE IF NOT EXISTS guild_invites (
+  guild_id    uuid NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+  account_id  uuid NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  from_id     uuid REFERENCES accounts(id) ON DELETE SET NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (guild_id, account_id)
+);
+CREATE TABLE IF NOT EXISTS guild_leaves (
+  account_id  uuid PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  left_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS guild_log (
+  id          bigserial PRIMARY KEY,
+  guild_id    uuid NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+  kind        text NOT NULL,
+  detail      jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS guild_log_guild ON guild_log (guild_id, id DESC);
+` },
 ];
