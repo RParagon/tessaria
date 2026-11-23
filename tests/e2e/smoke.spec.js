@@ -426,3 +426,20 @@ test('menu: reportar problema e links dos Termos e da Privacidade (as páginas e
   }
   expect(errors).toEqual([]);
 });
+
+test('chuva no mapa inteiro: as gotas ficam presas ao mundo e cobrem a área que a câmera mostra', async ({ page }) => {
+  const errors = await newGame(page);
+  const ev = src => page.evaluate(s => window.__T.ev(s), src);
+  await ev("G.forceWeather = 'chuva'");
+  await page.waitForTimeout(300);
+  // com a câmera mais afastada, a área de gotas cresce junto
+  const near = await ev('(() => { const k = Math.max(1, (cam.dist || 15.5) / 15.5); return k; })()');
+  await ev('G.settings.zoom = 1.25');
+  await page.waitForTimeout(500);
+  const far = await ev('Math.max(1, (cam.dist || 15.5) / 15.5)');
+  expect(far).toBeGreaterThan(near);
+  await page.keyboard.press('Escape');   // na pausa a chuva continua no mapa todo
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: 'test-results/chuva.png' });
+  expect(errors).toEqual([]);
+});

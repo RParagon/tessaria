@@ -642,15 +642,15 @@ function toTitle() {
   for (const n of NPCS) { if (n.id === 'desf') continue; const m = makeModel('npc-' + n.id, () => buildHumanoid(n.cfg, 32 + NPCS.indexOf(n) * 8)); npcs.push({ ...n, model: m, anim: newAnim(m), yaw: n.baseYaw || 0, talkT: 0, visible: true }); }
   spawnCritters();
   uploadPalette('hub');
-  const sv = readSave(); $('#mContinue').hidden = !sv;
+  const sv = readOfflineSave(); $('#mContinue').hidden = !sv;   // o Continuar do título é sempre o offline
   showOnly('#title'); refreshHudVis();
 }
-$('#mNew').onclick = () => { sfx('ui'); const n = NET(); if (n) { n.offline = true; n.leaveHub(); } if (G.touch) goLandscape(); openCreator(); };
+$('#mNew').onclick = () => { sfx('ui'); useOfflineSlot(); const n = NET(); if (n) { n.offline = true; n.leaveHub(); } if (G.touch) goLandscape(); openCreator(); };
 $('#pFull').onclick = () => { goLandscape(); };
 // Reportar problema: pelo painel online (funciona sem conta); sem servidor, abre a página de privacidade, que tem o contato.
 $('#pReport').onclick = () => { const u = window.TessNetUI; if (u) u.report(); else window.open('privacidade.html#direitos', '_blank', 'noopener'); };
 $('#sVib').onchange = e => { G.settings.vib = e.target.checked; saveSettings(); };
-$('#mContinue').onclick = () => { sfx('ui'); const n = NET(); if (n) n.offline = true; const sv = readSave(); if (sv) startFromSave(sv); };
+$('#mContinue').onclick = () => { sfx('ui'); useOfflineSlot(); const n = NET(); if (n) { n.offline = true; n.leaveHub(); } const sv = readSave(); if (sv) startFromSave(sv); };
 function startFromSave(sv) {
   sv.inv = sv.inv || []; sv.eq = sv.eq || {}; sv.met = sv.met || {}; sv.talents = sv.talents || []; sv.pgp = sv.pgp || {}; sv.perks = sv.perks || {}; sv.q = sv.q || {}; sv.riftMax = sv.riftMax || 0; sv.fios = sv.fios || 0; sv.riftBest = sv.riftBest || {}; G.rift = null;
   G.save = sv; G.char = { ...sv.char }; rebuildPlayerModel(); P = null;

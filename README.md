@@ -9,7 +9,7 @@ Crie seu Tecelão, explore Tessária e recosture o Sol, um fio de cada vez.
 
 [![CI](https://github.com/RParagon/tessaria/actions/workflows/ci.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/ci.yml)
 [![Android APK](https://github.com/RParagon/tessaria/actions/workflows/android.yml/badge.svg)](https://github.com/RParagon/tessaria/actions/workflows/android.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-0.53.0-f2b84b)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-0.54.0-f2b84b)
 ![Plataformas](https://img.shields.io/badge/plataformas-web%20%7C%20android-3fd1d0)
 
 <img src="docs/img/hero.png" alt="Herói enfrentando a Hidra do Lodo no Pântano Afogado" width="100%">
@@ -164,6 +164,7 @@ Passo a passo em [docs/DEPLOY.md](docs/DEPLOY.md).
 <img src="docs/img/online.png" alt="Dois jogadores na Vila Brasa online, com nome, título e balão de conversa" width="100%">
 
 - **Contas:** e-mail e senha, Google ou convidado (que vira conta depois sem perder nada).
+- **Offline e online separados:** o jogo offline tem o próprio save e não usa nada do online; o progresso offline nunca vai para a conta.
 - **Save na nuvem:** continue em outro aparelho. Se dois aparelhos gravarem ao mesmo tempo, o jogo pergunta qual progresso usar.
 - **Servidor que confere:** saves impossíveis (itens acima do teto, Centelhas, peixes ou Fios do Tear demais para o tempo jogado) são recusados; velocidade e dano PvP impossíveis são barrados e registrados, e quem insiste é desconectado.
 - **Vila Brasa online:** até 40 por sala, chat com filtro, emotes, e moradores que andam igual para todos.

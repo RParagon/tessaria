@@ -19,8 +19,14 @@ function newSave() {
   return { v: 1, char: { ...G.char }, lvl: 1, xp: 0, gold: 0, potions: 3, up: { pow: 0, vig: 0, agi: 0, foc: 0, pot: 0 }, frags: [], chests: [], bosses: {}, met: {}, region: 'hub', cp: null, time: 0, deaths: 0, kills: 0, endings: [], inv: [], eq: { weapon: makeItem('weapon', 1, 0, true) }, shop: null, talents: [], pgp: {}, perks: {}, q: {}, contracts: null, riftMax: 0, rune: 0, fios: 0, riftBest: {} };
 }
 const SKEY = 'fios-de-tessaria-v1';
-function writeSave() { try { G.save.char = { ...G.char }; localStorage.setItem(SKEY, JSON.stringify(G.save)); } catch (e) { } netSaveChanged(); }
-function readSave() { try { const s = localStorage.getItem(SKEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+// Saves separados: o offline (SKEY) e, para cada conta online, uma cópia local do save da nuvem (SKEY-online-<conta>).
+// Um nunca vira o outro: o progresso offline não sobe para a nuvem, e o online não aparece no "Continuar" offline.
+let SAVE_SLOT = SKEY;
+const onlineSlot = id => SKEY + '-online-' + id;
+function useOfflineSlot() { SAVE_SLOT = SKEY; }
+function readOfflineSave() { try { const s = localStorage.getItem(SKEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+function writeSave() { try { G.save.char = { ...G.char }; localStorage.setItem(SAVE_SLOT, JSON.stringify(G.save)); } catch (e) { } if (SAVE_SLOT !== SKEY) netSaveChanged(); }   // offline nunca fala com a nuvem
+function readSave() { try { const s = localStorage.getItem(SAVE_SLOT); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
 // ---------- Fio de Elo e dificuldade do grupo (docs/ONLINE.md) ----------
 // ELO é preenchido pelo co-op ao entrar numa instância do grupo: { diff, ref (nível do líder), kind }.
 let ELO = null;

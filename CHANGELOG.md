@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 0.54.0 · Offline separado do online e chuva no mapa inteiro
+- **Offline e online agora são separados:** o jogo offline (Novo jogo e Continuar, no título) tem o próprio save e não usa nada do online (sem chat, Passe, guilda nem nuvem, mesmo com a conta logada). Cada conta online tem a sua cópia do save da nuvem no aparelho
+- O progresso offline **nunca** vai para a conta (antes, o jogo oferecia levar o progresso do aparelho para a nuvem), e o progresso online não aparece no Continuar offline
+- **Chuva no mapa inteiro:** as gotas e as poças cobrem toda a área que a câmera mostra (inclusive com a câmera mais afastada, no zoom, na pausa e nos chefes) e ficam presas ao mundo, em vez de cair num retângulo que andava junto com o herói
+
 ## 0.53.0 · Duelos e ranking
 - **Desafie para um duelo** tocando no nome de outro jogador na vila (opção "Desafiar para duelo") ou com `/duelo Nome`. Os dois precisam estar perto (até 15 m)
 - O desafiado recebe um cartão com **Aceitar** e **Recusar** (vale 20 s). Aceito, começa uma **contagem de 3 s** e o duelo dura até 90 s, com um marcador no topo da tela

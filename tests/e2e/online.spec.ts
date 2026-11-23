@@ -733,3 +733,33 @@ test('duelo na vila: desafio pelo chat, aceitar no cartão, contagem, quem cai p
   expect(R.me.wins).toBe(1); expect(R.me.rating).toBe(1016);
   for (const P of [A, B]) { expect(P.errors).toEqual([]); await P.ctx.close(); }
 });
+
+test('offline e online separados: o progresso offline nunca vai para a conta, e o online não aparece no Continuar offline', async ({ browser }) => {
+  const A = await onlinePlayer(browser), { page } = A;
+  const ev = (src: string) => page.evaluate(s => (window as any).__T.ev(s), src);
+  await ev("G.save.gold = 777; writeSave()");
+  await page.evaluate(async () => { await (window as any).TessNet.flushNow(); });
+  await expect.poll(() => page.evaluate(() => (window as any).TessNet.sync)).toBe('salvo');
+  // volta ao título: o Continuar (offline) não mostra o progresso online
+  await page.evaluate(() => (window as any).TessGame.toTitle());
+  await expect(page.locator('#mContinue')).toBeHidden();
+  // jogo offline novo: nada do online (sem chat, sem Passe), e o ouro dele não sobe para a conta
+  await page.click('#mNew');
+  await page.click('#cGo');
+  for (let i = 0; i < 8; i++) { const st = page.locator('#story'); if (!(await st.isVisible())) break; await st.click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(150); }
+  await page.waitForFunction(() => (window as any).__T?.RG?.key === 'hub' && (window as any).TessGame.mode === 'play', null, { timeout: 30_000 });
+  expect(await ev('NETON() === null && SAVE_SLOT === SKEY')).toBe(true);
+  await expect(page.locator('.net-chatbtn')).toBeHidden();
+  await ev("G.save.gold = 99999; writeSave()");
+  await page.waitForTimeout(1500);
+  const cloud = await page.evaluate(async () => (await (window as any).TessNet.cloudSave()).data.gold);
+  expect(cloud).toBe(777);
+  // de volta ao online: usa o progresso da conta, sem oferecer o offline
+  await page.evaluate(() => (window as any).TessGame.toTitle());
+  await expect(page.locator('#mContinue')).toBeVisible();
+  await page.click('#mOnline');
+  await page.locator('.net-box button.gold', { hasText: 'Continuar online' }).click();
+  await page.waitForFunction(() => (window as any).TessGame.mode === 'play' && (window as any).__T.G.save.gold === 777, null, { timeout: 40_000 });
+  expect(A.errors).toEqual([]);
+  await A.ctx.close();
+});

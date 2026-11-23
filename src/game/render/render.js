@@ -19,13 +19,19 @@ function nightLamps(c) {
   return LAMP_BUF;
 }
 const EMOTES_PV = ['acenar', 'comemorar', 'dancar', 'sentar'];   // poses do espelho
-/** Chuva: gotas caindo em volta da câmera (mais na tempestade) e respingos no chão. */
+/** Chuva: gotas caindo em toda a área visível (mais na tempestade) e respingos no chão. */
 function drawRain(t) {
   const w = weatherNow(); if (w.type !== 'chuva' && w.type !== 'tempestade') return;
-  const n = Math.round((w.type === 'tempestade' ? 300 : 170) * w.k), cx = cam.x, cz = cam.z, wind = w.type === 'tempestade' ? .35 : .12;
+  // A área cobre o que a câmera mostra (zoom, formato da tela, câmera afastada na pausa ou no chefe), e cada gota fica
+  // presa a um ponto do mundo (só "dá a volta" na borda): a chuva cai no mapa inteiro, não anda junto com o herói.
+  const k = Math.max(1, (cam.dist || 15.5) / 15.5), asp = canvas.width / Math.max(1, canvas.height);
+  const hw = 15 * k * Math.max(1, asp / 1.6) + 4, hd = 12 * k + 4, area = (hw * hd) / (19 * 16);
+  const n = Math.min(1400, Math.round((w.type === 'tempestade' ? 300 : 170) * w.k * area)), cx = cam.x, cz = cam.z, wind = w.type === 'tempestade' ? .35 : .12;
+  const wrap = (v, m) => v - Math.floor(v / m) * m;
   for (let i = 0; i < n; i++) {
     const h1 = frac(Math.sin(i * 12.9898) * 43758.55), h2 = frac(Math.sin(i * 78.233) * 12345.67), h3 = frac(Math.sin(i * 39.425) * 24634.6);
-    const ph = frac(t * (1.6 + h3 * .6) + h1), y = 7 * (1 - ph), x = cx + (h1 * 2 - 1) * 15 + wind * y, z = cz + (h2 * 2 - 1) * 12;
+    const ph = frac(t * (1.6 + h3 * .6) + h1), y = 7 * (1 - ph);
+    const x = cx - hw + wrap(h1 * 2 * hw - cx, 2 * hw) + wind * y, z = cz - hd + wrap(h2 * 2 * hd - cz, 2 * hd);
     if (y < .25) { dyn(x, .05, z, .45, 28, .12); continue; }   // respingo
     dyn(x, y, z, .9, 28, .085); dyn(x - wind * .12, y + .25, z, .7, 28, .07); dyn(x - wind * .24, y + .5, z, .45, 28, .055);
   }
@@ -34,7 +40,8 @@ function drawRain(t) {
 function drawPuddles(t) {
   const wv = G.wet || 0; if (wv < .05 || !outdoors() || !RG) return;
   const rain = raining();
-  for (let cz = Math.floor((cam.z - 14) / 4); cz <= Math.floor((cam.z + 14) / 4); cz++) for (let cx = Math.floor((cam.x - 18) / 4); cx <= Math.floor((cam.x + 18) / 4); cx++) {
+  const k = Math.max(1, (cam.dist || 15.5) / 15.5), asp = canvas.width / Math.max(1, canvas.height), pw = 18 * k * Math.max(1, asp / 1.6), pd = 14 * k;   // a área visível
+  for (let cz = Math.floor((cam.z - pd) / 4); cz <= Math.floor((cam.z + pd) / 4); cz++) for (let cx = Math.floor((cam.x - pw) / 4); cx <= Math.floor((cam.x + pw) / 4); cx++) {
     const h = frac(Math.sin(cx * 127.1 + cz * 311.7) * 43758.55); if (h > .16) continue;
     const px = cx * 4 + 1 + frac(h * 91) * 2, pz = cz * 4 + 1 + frac(h * 57) * 2; if (blocked(Math.floor(px / T), Math.floor(pz / T))) continue;
     const r = (.55 + frac(h * 37) * .8) * wv, y = groundAt(px, pz) + .03;
@@ -152,7 +159,7 @@ function render(dt) {
     if (G.cine) { const k = sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)); tx = lerp(tx, G.cine.x, k); tz = lerp(tz, G.cine.z, k); }
     cam.x = lerp(cam.x, tx, 1 - Math.exp(-dt * 6)); cam.z = lerp(cam.z, tz, 1 - Math.exp(-dt * 6));
     const fit = Math.pow(clamp(1.1 / asp, 1, 2), .55), dist = 15.5 * (G.settings.zoom || 1) * fit * (G.lookT > 0 ? 1 + 1.3 * sm(0, 1.2, 7 - G.lookT) * sm(0, 1.2, G.lookT) : 1) * (RG && RG.key === 'home' ? 1.16 : RG && RG.key === 'taverna' ? 1.32 : RG && RG.key === 'casa' ? 1.0 : 1) * (boss ? 1.3 : 1) * (boss && boss.type === 'dragon' ? 1.12 : 1) * (G.cine ? 1 - .3 * sm(0, .4, G.cine.t) * (1 - sm(G.cine.dur - .5, G.cine.dur, G.cine.t)) : 1), pitch = .98;
-    const sh = G.shake || 0;
+    cam.dist = dist; const sh = G.shake || 0;
     tgt = [cam.x + rr(-sh, sh), .8 + groundAt(cam.x, cam.z), cam.z + rr(-sh, sh)]; eye = [tgt[0], tgt[1] + dist * Math.sin(pitch), tgt[2] + dist * Math.cos(pitch)];
     xray = 1; player = [P.x, groundAt(P.x, P.z), P.z];
   }

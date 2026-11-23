@@ -18,7 +18,7 @@ const h = (tag: string, attrs: Record<string, any> = {}, ...kids: Array<Node | s
   return el;
 };
 const game = () => (window as any).TessGame as {
-  mode: string; region: string | null; save: any; readLocalSave(): any; writeLocalSave(s: any): void;
+  mode: string; region: string | null; save: any; readLocalSave(): any; writeLocalSave(s: any): void; useOnlineSlot(id: string): void; forgetOnline(id: string): void;
   startFromSave(s: any): void; newGame(): void; toTitle(): void; toast(a: string, big?: boolean, sub?: string, c?: string): void; sfx(k: string): void;
 } | undefined;
 const CLS: Record<string, string> = { lamina: 'Lâmina', arcano: 'Arcano', arco: 'Arco' };
@@ -116,7 +116,7 @@ export function mountOnlineUI(net: Net) {
         h('p', { class: 'sub', text: `Isto apaga de vez a conta ${a.name}: o progresso na nuvem, os itens, os Fios Dourados e os cosméticos, os amigos, o correio e os anúncios no mercado. Não dá para desfazer. O progresso salvo neste aparelho (offline) continua aqui.` }),
         h('p', { class: 'sub', text: 'Os registros de pagamento ficam guardados pelo prazo exigido por lei, sem a ligação com a conta.' }));
       const f = h('form', { class: 'net-form', onsubmit: (e: Event) => { e.preventDefault(); const c = ($('#netDel', box) as HTMLInputElement).value, pw = ($('#netPass', box) as HTMLInputElement | null)?.value;
-        act(() => net.deleteAccount(c, pw || undefined), () => { refreshTitle(); closeModal(); game()?.toast('Conta excluída', true, 'OBRIGADO POR TER JOGADO'); if (game()?.mode !== 'title') game()?.toTitle(); }); } },
+        const accId = a.id; act(() => net.deleteAccount(c, pw || undefined), () => { game()?.forgetOnline(accId); refreshTitle(); closeModal(); game()?.toast('Conta excluída', true, 'OBRIGADO POR TER JOGADO'); if (game()?.mode !== 'title') game()?.toTitle(); }); } },
         field(`Digite o nome do Tecelão (${a.name}) para confirmar`, 'netDel', 'text', { maxlength: 40 }),
         a.password ? field('Senha da conta', 'netPass', 'password', { maxlength: 200 }) : null,
         h('button', { class: 'px danger', type: 'submit', text: 'Excluir minha conta para sempre' }));
@@ -292,6 +292,7 @@ export function mountOnlineUI(net: Net) {
   /** preferCloud: depois de recusa/conflito, carrega direto o que está na nuvem (se houver). */
   async function chooseProgress(preferCloud = false) {
     view = 'progresso'; modal.hidden = false; box.innerHTML = '';
+    if (net.account) game()?.useOnlineSlot(net.account.id);   // o online usa só o save da conta (nunca o offline)
     box.append(h('h2', { id: 'netTitle', text: 'Seu progresso' }), h('p', { class: 'sub', text: 'Buscando seu progresso na nuvem…' }));
     const cloud = await net.cloudSave(), local = preferCloud && cloud.ok && cloud.data ? null : game()?.readLocalSave();
     box.innerHTML = '';
@@ -303,8 +304,8 @@ export function mountOnlineUI(net: Net) {
     if (cloud.data) {
       const same = local && local.time === cloud.data.time && local.lvl === cloud.data.lvl && local.gold === cloud.data.gold;
       if (!local || same) return start(cloud.data, cloud.rev);
-      box.append(h('p', { class: 'sub', text: 'O progresso deste aparelho é diferente do que está na nuvem. Qual você quer usar?' }),
-        card('NA NUVEM', cloud.data), card('NESTE APARELHO', local),
+      box.append(h('p', { class: 'sub', text: 'Este aparelho guardou um progresso desta conta diferente do que está na nuvem (talvez a conexão caiu antes de salvar). Qual você quer usar?' }),
+        card('NA NUVEM', cloud.data), card('NESTE APARELHO (DESTA CONTA)', local),
         h('button', { class: 'px gold', onclick: () => start(cloud.data, cloud.rev), text: 'Usar o da nuvem' }),
         h('button', { class: 'px', onclick: () => act(async () => { const r = await net.putNow(local, cloud.rev); return r.ok ? { ok: true } : { ok: false, error: (r.erros && r.erros.length ? 'O servidor recusou: ' + r.erros[0] : r.error) + ' Use o progresso da nuvem.' }; }, () => start(local, net.rev)), text: 'Enviar o deste aparelho para a nuvem' }));
       let confirm = false;
@@ -314,7 +315,7 @@ export function mountOnlineUI(net: Net) {
       }, text: 'Apagar o progresso da nuvem e começar do zero' });
       box.append(del);
     } else if (local) {
-      box.append(h('p', { class: 'sub', text: 'Sua conta ainda não tem progresso. Quer levar o progresso deste aparelho para ela?' }), card('NESTE APARELHO', local),
+      box.append(h('p', { class: 'sub', text: 'A nuvem ainda não tem o progresso desta conta, mas este aparelho guardou um. Quer enviá-lo?' }), card('NESTE APARELHO (DESTA CONTA)', local),
         h('button', { class: 'px gold', onclick: () => act(async () => { const r = await net.putNow(local, 0); return r.ok ? { ok: true } : { ok: false, error: r.erros && r.erros.length ? 'O servidor recusou este progresso: ' + r.erros[0] : r.error }; }, () => start(local, net.rev)), text: 'Levar este progresso' }),
         h('button', { class: 'px', onclick: () => { net.adopt(0); closeModal(); game()?.newGame(); }, text: 'Começar uma aventura nova' }));
     } else { net.adopt(0); closeModal(); game()?.newGame(); return; }

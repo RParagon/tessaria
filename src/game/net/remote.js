@@ -3,7 +3,7 @@
 // Sem servidor configurado, TessNet não existe ou está desligado, e o jogo segue offline.
 
 const NET = () => (window.TessNet && window.TessNet.enabled ? window.TessNet : null);
-const NETON = () => { const n = NET(); return n && n.account ? n : null; };
+const NETON = () => { const n = NET(); return n && n.account && !n.offline && SAVE_SLOT !== SKEY ? n : null; };   // jogando offline: nada do online (nem com a conta logada)
 const RSLOTS = 12, RBASE = 160;            // 12 jogadores visíveis, cada um com 8 linhas próprias na paleta (160..255)
 const REMOTE_ROWS = {};
 const rslots = Array.from({ length: RSLOTS }, () => ({ id: 0, key: '', model: null }));
@@ -394,7 +394,11 @@ window.TessGame = {
   get region() { return RG ? RG.key : null; },
   get save() { return G.save; },
   readLocalSave: () => readSave(),
-  writeLocalSave: sv => { try { localStorage.setItem(SKEY, JSON.stringify(sv)); } catch (e) { } },
+  writeLocalSave: sv => { try { localStorage.setItem(SAVE_SLOT, JSON.stringify(sv)); } catch (e) { } },
+  /** Passa a usar o save desta conta online (cópia local do da nuvem). Chamado antes de escolher o progresso online. */
+  useOnlineSlot: id => { SAVE_SLOT = onlineSlot(id); },
+  /** Conta excluída: apaga a cópia local dela. */
+  forgetOnline: id => { try { localStorage.removeItem(onlineSlot(id)); } catch (e) { } if (SAVE_SLOT === onlineSlot(id)) useOfflineSlot(); },
   startFromSave: sv => startFromSave(sv),
   newGame: () => { sfx('ui'); if (G.touch) goLandscape(); openCreator(); },
   toTitle: () => { writeSave(); showOnly(null); toTitle(); },
