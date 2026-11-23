@@ -6,7 +6,8 @@ const keys = new Set();
 const input = { atk: false, mouseX: 0, mouseY: 0, mouseT: -9, joy: { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0 } };
 function setTouch(on) { if (G.touch === on) return; G.touch = on; refreshHudVis(); updateUiScale(); }
 /** PC: a interface cresce com a janela (1x em 1100x640, até 1,75x). No celular fica 1x. */
-function updateUiScale() { const ui = G.touch ? 1 : Math.max(1, Math.min(1.75, Math.min(innerWidth / 1100, innerHeight / 640))); document.documentElement.style.setProperty('--ui', ui.toFixed(3)); document.documentElement.style.setProperty('--uim', Math.min(ui, 1.3).toFixed(3)); }
+/** Escala da interface: automática pela tela (no computador) vezes o "Tamanho da interface" do menu (computador e celular). */
+function updateUiScale() { const us = clamp(+(G.settings.uis || 1), .85, 1.4); document.documentElement.style.setProperty('--uit', clamp(us, .85, 1.25).toFixed(3)); const ui = (G.touch ? 1 : Math.max(1, Math.min(1.75, Math.min(innerWidth / 1100, innerHeight / 640)))) * us; document.documentElement.style.setProperty('--ui', ui.toFixed(3)); document.documentElement.style.setProperty('--uim', Math.min(ui, 1.3).toFixed(3)); }
 addEventListener('resize', updateUiScale); updateUiScale();
 /** Zoom: no jogo, a distância da câmera (lembrada); no espelho, a aproximação do personagem. */
 function camZoom(dir) {

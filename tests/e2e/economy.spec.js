@@ -54,7 +54,9 @@ test('correio: código viaja entre jogadores, não reabre e rejeita adulteraçã
   await unlock(page, { bosses: ['forest'], gold: 5000 });
   const code = await T(page, () => { __T.gamble('weapon'); const it = __T.G.save.inv[0]; return __T.itemCode(it); });
   expect(code).toMatch(/^TEAR-[A-Za-z0-9+/=]+-[0-9A-Z]{4}$/);
-  expect(await T(page, c => __T.readCode(c.slice(0, -2) + 'ZZ'), code)).toBeNull();
+  // adulterar: trocar a última letra da soma por outra (sempre diferente) e trocar uma letra do conteúdo
+  expect(await T(page, c => __T.readCode(c.slice(0, -1) + (c.slice(-1) === 'A' ? 'B' : 'A')), code)).toBeNull();
+  expect(await T(page, c => { const i = 8, ch = c[i] === 'A' ? 'B' : 'A'; return __T.readCode(c.slice(0, i) + ch + c.slice(i + 1)); }, code)).toBeNull();
 
   const page2 = await browser.newPage();
   await newGame(page2, { cls: 'arco', name: 'Amigo' });

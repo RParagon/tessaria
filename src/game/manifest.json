@@ -26,6 +26,7 @@
     "core/progression.js",
     "ui/ui.js",
     "ui/season.js",
+    "ui/tips.js",
     "render/render.js",
     "net/remote.js",
     "net/coop.js",

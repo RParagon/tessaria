@@ -49,10 +49,11 @@ const waitSync = (page: Page) => page.waitForFunction(() => (window as any).Tess
 test('dois jogadores se veem na vila, conversam e usam emotes', async ({ browser }) => {
   const A = await onlinePlayer(browser, 'arcano'), B = await onlinePlayer(browser, 'arco');
   await A.page.evaluate(() => { const T = (window as any).__T; T.P.x = 44; T.P.z = 40; });
+  await B.page.bringToFront();   // aba em primeiro plano: o laço do jogo de B roda e a posição chega logo
   await B.page.evaluate(() => { const T = (window as any).__T; T.P.x = 46.5; T.P.z = 40; });
   await B.page.waitForTimeout(600);
   const bx = await B.page.evaluate(() => [(window as any).__T.P.x, (window as any).__T.P.z]);
-  await A.page.waitForFunction(([n, x, z]) => (window as any).TessNet.players().some((p: any) => p.name === n && p.slot !== undefined && Math.hypot(p.tx - x, p.tz - z) < .5), [B.name, bx[0], bx[1]] as const, { timeout: 10_000 })
+  await A.page.waitForFunction(([n, x, z]) => (window as any).TessNet.players().some((p: any) => p.name === n && p.slot !== undefined && Math.hypot(p.tx - x, p.tz - z) < .5), [B.name, bx[0], bx[1]] as const, { timeout: 20_000 })
     .catch(async e => { console.log('B em', bx, 'A vê', await A.page.evaluate(() => (window as any).TessNet.players().map((p: any) => [p.name, p.tx, p.tz, p.slot]))); throw e; });
   await expect(A.page.locator('#marks .tag.rp .rn', { hasText: B.name })).toBeVisible();
   await expect(A.page.locator('.net-chip')).toContainText('2 online');

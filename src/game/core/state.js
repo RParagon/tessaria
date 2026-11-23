@@ -51,7 +51,7 @@ let stats = function () {
     skillCd: c.skillCd * (1 - .1 * s.up.foc) * (1 - Math.min(50, e.cdr + (pg.cdr || 0)) / 100) * (tal.has('brasa') ? .8 : 1),
     atkCd: c.atkCd * (tal.has('mao') ? .88 : 1), maxPot: 3 + s.up.pot,
     crit: .08 + Math.min(52, e.crit + (pg.crit || 0) * .5) / 100 + (tal.has('olho') ? .08 : 0), critMul: tal.has('olho') ? 2.5 : 2,
-    ls: e.ls / 100 + (tal.has('sangue') ? .03 : 0), dr: Math.min(.7, Math.min(60, e.dr) / 100 + (tal.has('casca') ? .1 : 0)),
+    ls: e.ls / 100 + (tal.has('sangue') ? .03 : 0), dr: Math.min(.7, Math.min(60, e.dr) / 100 + (tal.has('casca') ? .1 : 0) + (c.dr || 0)),
     gold: (1 + e.gold / 100) * (tal.has('sorte') ? 1.25 : 1), itemFind: tal.has('sorte') ? 1.3 : 1, potHeal: pk.mel ? .55 : .45, tal,
   };
 };

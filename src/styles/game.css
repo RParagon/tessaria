@@ -496,3 +496,18 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 /* duelos */
 .net-invite.duel b{color:#ff8a5a}
 .net-duelbar{display:flex;gap:10px;align-items:center;padding:6px 12px;border-color:#a8323a}.net-duelbar b{color:#ff8a5a}
+
+/* 0.55 · tamanho da interface no celular (o computador já usa --ui) e legibilidade mínima */
+:root{--uit:1}
+body.tch .hud-l,body.tch #feed .toast,body.tch #toast,body.tch #dialog,body.tch .net-chat,body.tch .net-box,body.tch .screen.modal>.panel,body.tch .net-invites{zoom:var(--uit)}
+body.tch #mmapZ{font-size:8px}body.tch #feed .toast{font-size:10px}body.tch #feed .toast small{font-size:9px}
+/* PvP: quem pode atacar você tem um símbolo, além da cor (daltonismo) */
+.tag.rp.foe .rn::before{content:'⚔ ';color:#ff5a7a}
+
+/* primeiros passos */
+#tip{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);transform:translateX(-50%);max-width:min(460px,calc(100% - 32px));display:flex;gap:8px;align-items:flex-start;background:rgba(10,7,18,.92);border:2px solid var(--gold);padding:8px 30px 8px 10px;color:var(--bone);font-size:12px;line-height:1.4;pointer-events:none;animation:feedIn .2s steps(4);z-index:5}
+#tip .tl{display:block;font-family:var(--f-display);font-size:9px;letter-spacing:.14em;color:var(--gold);white-space:nowrap;margin-top:2px}
+#tip kbd{font-family:var(--f-display);font-size:10px;border:1px solid var(--gold);padding:0 4px;background:#000;color:var(--gold)}
+#tip .x{position:absolute;right:4px;top:4px;background:none;border:0;color:var(--dim);font-size:13px;cursor:pointer;pointer-events:auto}
+body:not(.playing) #tip{display:none}   /* só jogando: nunca por cima de menus e painéis */
+body.tch #tip{top:calc(env(safe-area-inset-top,0px) + 92px);zoom:var(--uit)}

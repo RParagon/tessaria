@@ -82,6 +82,7 @@ function updateHud() {
   { const R2 = RUNES[G.char.cls][curRune()], tip = (R2 ? R2.n + '\n' + R2.d : 'Habilidade') + '\nBotão direito do mouse (ou K)'; if (hudCache.tip !== tip) { hudCache.tip = tip; $('#abSkill').dataset.tip = tip; } }   // dica com a runa ativa
   if (!G.touch && (G.keysT = (G.keysT ?? 60) - 1 / 60) <= 0 && G.keysT > -1) { $('#keys').classList.add('faded'); G.keysT = -2; }   // a linha de controles some depois de um tempo (H mostra de novo)
   { const f = $('#feed'); if (f && f.children.length && (G.time - (hudCache.feedT || 0) > .2 || G.time < (hudCache.feedT || 0))) { hudCache.feedT = G.time; feedPos(); } }   // o minimapa pode aparecer/sumir depois do aviso
+  tipsTick();   // primeiros passos
   const trk = trackerHTML(); if (hudCache.trk !== trk) { hudCache.trk = trk; $('#hTrk').innerHTML = trk; }
   const S = G.streak, se = $('#streak');
   if (S.n >= 3) { se.hidden = false; setTxt('#stN', 'x' + S.n); setTxt('#stL', S.n >= 50 ? 'CARNIFICINA' : S.n >= 25 ? 'MASSACRE' : S.n >= 10 ? 'MATANÇA' : 'SEQUÊNCIA'); $('#stBar').style.width = clamp(S.t / 3.2, 0, 1) * 100 + '%'; } else se.hidden = true;
@@ -103,6 +104,7 @@ function refreshHudVis() {
 }
 function showOnly(id) { for (const s of ['#bank', '#profile', '#title', '#create', '#story', '#forge', '#journal', '#pause', '#ending', '#inv', '#shop', '#skills', '#board', '#riftm', '#home', '#stash', '#mail', '#wshop', '#wmap', '#fishery', '#market', '#trade', '#season']) $(s).hidden = s !== id; }
 function openMenu(which) {
+  (G.menuSeen = G.menuSeen || {})[which] = 1;   // primeiros passos: já abriu a Bolsa, o Grimório…
   if (G.mode !== 'play' && !(G.mode === 'dialog' && (which === 'forge' || which === 'shop' || which === 'fishery'))) return;
   $('#dialog').hidden = true; DLG.q = []; DLG.cur = null;
   G.mode = 'menu'; input.atk = false; sfx('ui');
@@ -429,7 +431,7 @@ function renderShop() {
 } $('#bPause').onclick = () => openMenu('pause');
 $('#hmClose').onclick = closeMenus; $('#stClose').onclick = closeMenus; $('#mlClose').onclick = closeMenus;
 $('#fClose').onclick = closeMenus; $('#jClose').onclick = closeMenus; $('#pResume').onclick = closeMenus;
-$('#pQuit').onclick = () => { writeSave(); showOnly(null); toTitle(); };
+$('#pQuit').onclick = () => { writeSave(); const n = NETON(); if (n) void n.flushNow(); showOnly(null); toTitle(); };   // online: manda o progresso à nuvem antes do título
 function renderForge() {
   const s = G.save; $('#fGold').textContent = s.gold;
   const list = $('#fList'); list.innerHTML = '';
@@ -620,10 +622,12 @@ function renderJournal() {
   const rn = { forest: 'Bosque Sussurrante', crypt: 'Ossuário Real', peaks: 'Picos de Cinza' };
   $('#jFrags').innerHTML = FRAG.map((f, i) => s.frags.includes(i) ? `<div class="frag"><b>${f.t}</b><p>${f.x}</p></div>` : `<div class="frag lock"><b>??? · ${rn[f.r]}</b><p>Uma memória escondida num canto afastado.</p></div>`).join('');
 }
-function renderPause() { $('#sZoom').value = G.settings.zoom || 1; $('#sHalo').checked = G.settings.halo !== false; renderDiff(); $('#sVib').checked = G.settings.vib !== false; $('#sMusic').value = G.settings.music; $('#sPx').value = G.settings.px; $('#sDither').value = G.settings.dither; $('#sOutline').checked = G.settings.outline; $('#sSound').checked = G.settings.sound; }
+function renderPause() { $('#sTips').checked = G.settings.tips !== false; $('#sUi').value = G.settings.uis || 1; $('#sZoom').value = G.settings.zoom || 1; $('#sHalo').checked = G.settings.halo !== false; renderDiff(); $('#sVib').checked = G.settings.vib !== false; $('#sMusic').value = G.settings.music; $('#sPx').value = G.settings.px; $('#sDither').value = G.settings.dither; $('#sOutline').checked = G.settings.outline; $('#sSound').checked = G.settings.sound; }
 $('#sPx').oninput = e => { G.settings.px = +e.target.value; saveSettings(); };
 $('#sZoom').oninput = e => { G.settings.zoom = +e.target.value; saveSettings(); };
 $('#sHalo').onchange = e => { G.settings.halo = e.target.checked; saveSettings(); };
+$('#sTips').onchange = e => { G.settings.tips = e.target.checked; saveSettings(); if (!e.target.checked) tipHide(); else if (G.save && G.save.tips) { G.save.tips = { _vet: 0 }; writeSave(); } };   // religar recomeça as dicas
+$('#sUi').oninput = e => { G.settings.uis = +e.target.value; saveSettings(); updateUiScale(); };
 // barra de poses do espelho (bolsa e criação)
 document.querySelectorAll('#poseBar button').forEach(b => b.onclick = () => { const p = b.dataset.p; sfx('ui'); if (p === 'zin') camZoom(-1); else if (p === 'zout') camZoom(1); else { G.pvPose = p; document.querySelectorAll('#poseBar button').forEach(x => x.classList.toggle('on', x === b)); } });
 $('#sDither').oninput = e => { G.settings.dither = +e.target.value; saveSettings(); };
@@ -633,6 +637,7 @@ $('#sSound').onchange = e => { G.settings.sound = e.target.checked; saveSettings
 $('#sMusic').oninput = e => { G.settings.music = +e.target.value; if (MUS.master && AC) MUS.master.gain.setTargetAtTime(G.settings.music * .8, AC.currentTime, .1); saveSettings(); };
 function saveSettings() { try { localStorage.setItem(SKEY + '-set', JSON.stringify(G.settings)); } catch (e) { } }
 try { const s = JSON.parse(localStorage.getItem(SKEY + '-set') || 'null'); if (s) { Object.assign(G.settings, s); if ((s.sv || 0) < 2) { G.settings.px = 3; G.settings.dither = .5; G.settings.sv = 2; } } } catch (e) { }   /* sv 2: novo padrão de pixel 3 e pontilhado .5 */
+updateUiScale();   // o tamanho da interface salvo vale desde a primeira tela
 
 /* ---- título, criador, história ---- */
 function toTitle() {

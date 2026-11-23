@@ -302,7 +302,8 @@ export function mountOnlineUI(net: Net) {
     const start = (data: any, rev: number) => { net.adopt(rev); game()?.writeLocalSave(data); closeModal(); game()?.startFromSave(data); };
     const card = (title: string, s: any) => h('div', { class: 'net-card' }, h('b', { text: title }), h('span', { text: summary(s) }));
     if (cloud.data) {
-      const same = local && local.time === cloud.data.time && local.lvl === cloud.data.lvl && local.gold === cloud.data.gold;
+      // Mesmo progresso: o aparelho costuma estar só alguns segundos à frente (o envio à nuvem é agrupado). Só pergunta se mudou de verdade.
+      const same = local && local.lvl === cloud.data.lvl && local.gold === cloud.data.gold && local.xp === cloud.data.xp && Math.abs((local.time || 0) - (cloud.data.time || 0)) < 300;
       if (!local || same) return start(cloud.data, cloud.rev);
       box.append(h('p', { class: 'sub', text: 'Este aparelho guardou um progresso desta conta diferente do que está na nuvem (talvez a conexão caiu antes de salvar). Qual você quer usar?' }),
         card('NA NUVEM', cloud.data), card('NESTE APARELHO (DESTA CONTA)', local),

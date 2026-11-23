@@ -346,7 +346,9 @@ function pvpProj(p) {
 const PVP_MUL = .3;
 function pvpHurt(from, name, dmg) {
   const n = NETON(), duel = !!(n && n.duel && n.duel.opp === from && Date.now() >= n.duel.go);
-  if (!n || !P || G.mode !== 'play' || P.dieT >= 0 || P.iframe > 0 || P.dashT > 0 || (!duel && (!deepAt(P.x, P.z) || n.isAlly(name)))) return;
+  // Aba escondida: o jogo pausa e a invulnerabilidade curta não acaba; sem isto, trocar de aba deixava o jogador imune no PvP e no duelo.
+  const hid = document.hidden;
+  if (!n || !P || (G.mode !== 'play' && !hid) || P.dieT >= 0 || (!hid && (P.iframe > 0 || P.dashT > 0)) || (!duel && (!deepAt(P.x, P.z) || n.isAlly(name)))) return;
   const r = n.players().find(q => q.id === from);
   let d = Math.max(1, Math.round(Math.min(dmg * PVP_MUL, P.maxHp * .2) * (1 - stats().dr)));
   if (P.ultT > 0) d = Math.round(d * .5);
@@ -401,7 +403,7 @@ window.TessGame = {
   forgetOnline: id => { try { localStorage.removeItem(onlineSlot(id)); } catch (e) { } if (SAVE_SLOT === onlineSlot(id)) useOfflineSlot(); },
   startFromSave: sv => startFromSave(sv),
   newGame: () => { sfx('ui'); if (G.touch) goLandscape(); openCreator(); },
-  toTitle: () => { writeSave(); showOnly(null); toTitle(); },
+  toTitle: () => { writeSave(); const n = NETON(); if (n) void n.flushNow(); showOnly(null); toTitle(); },
   toast: (a, big, sub, c) => toast(a, big, sub, c),
   sfx: k => sfx(k),
   look: () => lookOfPlayer(),

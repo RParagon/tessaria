@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.55.0 · Polimento 1: primeiros passos, legibilidade e a Lâmina
+- **Primeiros passos:** dicas curtas, uma por vez, na hora em que fazem sentido: andar, seguir o objetivo, o primeiro monstro (atacar), esquiva, habilidade, vida baixa (poção), o primeiro item (bolsa), o Golpe do Tear carregado e o Grimório ao subir de nível. Cada dica some sozinha quando você faz a ação (ou no ✕), com o texto certo para teclado ou toque. Quem já tem experiência (nível 5 ou 30 minutos) não vê; dá para desligar ou recomeçar em "Dicas de primeiros passos", no menu
+- **Tamanho da interface** no menu (85% a 140%): aumenta textos e painéis no computador e também no celular. Textos mínimos do celular (feed de avisos, nome da região) ficaram maiores
+- **PvP sem depender só da cor:** quem pode atacar você no Ermo Profundo e no duelo tem o símbolo ⚔ antes do nome (ajuda quem é daltônico)
+- **Lâmina com Couraça:** 12% menos dano recebido. No simulador, o dano levado no chefe caiu de 67 para 52 (as outras classes ficam entre 19 e 37); o corpo a corpo continua o mais exposto, mas sem ser punido demais
+- **Aba escondida não dá mais imunidade:** com o jogo em segundo plano, a invulnerabilidade curta pós-golpe não "congela" mais; golpes de PvP e de duelo valem normalmente
+- Voltar ao título jogando online envia o progresso à nuvem na hora, e o jogo não pergunta mais "qual progresso usar?" quando a diferença é só de alguns segundos de jogo
+- Testes: corrigido o teste do correio que às vezes falhava (a adulteração de mentira às vezes gerava a soma verdadeira) e estabilizado o primeiro teste online
+
 ## 0.54.0 · Offline separado do online e chuva no mapa inteiro
 - **Offline e online agora são separados:** o jogo offline (Novo jogo e Continuar, no título) tem o próprio save e não usa nada do online (sem chat, Passe, guilda nem nuvem, mesmo com a conta logada). Cada conta online tem a sua cópia do save da nuvem no aparelho
 - O progresso offline **nunca** vai para a conta (antes, o jogo oferecia levar o progresso do aparelho para a nuvem), e o progresso online não aparece no Continuar offline
