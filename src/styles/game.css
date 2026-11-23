@@ -477,3 +477,6 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 .px.danger{border-color:#a8323a;color:#ff9a9a}.px.danger:hover:not(:disabled){background:#3a1418}
 .net-legal,.mbox .legal{font-size:11px;color:var(--dim);text-align:center;margin:.6em 0 0}.net-legal a,.mbox .legal a{color:var(--gold)}
 #netRepKind,#netRepText{width:100%;box-sizing:border-box;background:#0d0a16;color:var(--bone);border:2px solid var(--line);font:inherit;padding:6px}
+
+/* chat local: rótulo do canal (Vila, Ermos, Taverna…) */
+.net-ch{display:inline-block;font-size:.8em;color:var(--dim);border:1px solid var(--line);padding:0 4px;margin-right:4px;letter-spacing:.04em}

@@ -130,5 +130,29 @@ for (const kind of STORES) {
       assert.equal((await api(S.url, 'GET', '/health')).body.ok, true);
       A.c.close();
     });
+
+    test('chat local: na vila só quem está perto ouve; na taverna e em cada casa, quem está lá dentro', async () => {
+      const A = await join(), B = await join(), C = await join();
+      for (const [x, P] of [[44, A], [50, B], [150, C]] as const) P.c.send({ t: 'pos', x, z: 42, yaw: 0, m: 0, a: '' });
+      await sleep(250);
+      // C anda até longe (passos curtos, sem teleporte)
+      for (let x = 44; x <= 150; x += 2) { C.c.send({ t: 'pos', x, z: 42, yaw: 0, m: 1, a: '' }); await sleep(170); }
+      A.c.send({ t: 'chat', text: 'oi de perto' });
+      const m = await B.c.waitFor(x => x.t === 'chat' && x.text === 'oi de perto');
+      assert.equal(m.ch, 'Vila');
+      await sleep(200); assert.ok(!C.c.msgs.some(x => x.t === 'chat' && x.text === 'oi de perto'), 'longe não ouve');
+      // taverna: A e B entram; C fica na vila
+      A.c.send({ t: 'where', r: 'taverna' }); B.c.send({ t: 'where', r: 'taverna' }); await sleep(200);
+      A.c.send({ t: 'chat', text: 'na taverna' });
+      const t = await B.c.waitFor(x => x.t === 'chat' && x.text === 'na taverna');
+      assert.equal(t.ch, 'Taverna da Mel');
+      // casas diferentes não se ouvem
+      A.c.send({ t: 'where', r: 'casa', n: 2 }); B.c.send({ t: 'where', r: 'casa', n: 3 }); await sleep(200);
+      A.c.send({ t: 'chat', text: 'na casa 2' });
+      await A.c.waitFor(x => x.t === 'sys' && /Ninguém por perto ouviu/.test(x.text));
+      await sleep(150); assert.ok(!B.c.msgs.some(x => x.t === 'chat' && x.text === 'na casa 2'));
+      assert.ok(!C.c.msgs.some(x => x.t === 'chat' && (x.text === 'na taverna' || x.text === 'na casa 2')));
+      A.c.close(); B.c.close(); C.c.close();
+    });
   });
 }

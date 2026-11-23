@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, WILDS_CAP, deepWilds, PVP_RANGE, PVP_RATE, LOOT_MS, LOOT_TAKE_R, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, pvpHitCap, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, WILDS_CAP, deepWilds, PVP_RANGE, PVP_RATE, LOOT_MS, LOOT_TAKE_R, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, pvpHitCap, CHAT_RADIUS, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
 import type { Account, Store } from './store/types';
@@ -268,14 +268,19 @@ export class Hub {
     const clean = cleanChat(String(text ?? ''), CHAT_MAX);
     if (!clean) return;
     if (clean.startsWith('/')) return this.command(p, clean);
-    if (!p.room) return this.partyChat(p, clean);              // fora da vila, o chat vai para o grupo
+    // Chat local, em qualquer lugar: nas salas com posição (vila, Ermos, Fenda do grupo), chega a quem está até CHAT_RADIUS;
+    // fora delas (taverna, casas, regiões da história, Fenda sozinho), a quem está no mesmo lugar. /g fala com o grupo.
     const masked = await this.filterChat(p, clean); if (masked === null) return;
-    const room = p.room; if (!room) return;
-    const s = JSON.stringify({ t: 'chat', id: p.id, name: p.account.name, text: masked, ts: now } satisfies ServerMsg);
-    // Quem bloqueou o autor não recebe a mensagem.
-    for (const o of room.players.values()) if (o.ws.readyState === 1 && !o.blocks.has(p.account.id)) o.ws.send(s);
+    const room = p.room, ch = room ? (room.kind === 'vila' ? 'Vila' : room.kind === 'ermos' ? 'Ermos' : whereLabel(p.where, p.whereN)) : whereLabel(p.where, p.whereN);
+    const s = JSON.stringify({ t: 'chat', id: p.id, name: p.account.name, text: masked, ts: now, ch } satisfies ServerMsg);
+    const hears = room
+      ? [...room.players.values()].filter(o => o === p || Math.hypot(o.x - p.x, o.z - p.z) <= CHAT_RADIUS)
+      : [...this.byAccount.values()].filter(o => o === p || (!o.room && o.where === p.where && o.whereN === p.whereN));
+    let others = 0;
+    for (const o of hears) if (o.ws.readyState === 1 && !o.blocks.has(p.account.id)) { o.ws.send(s); if (o !== p) others++; }   // quem bloqueou o autor não recebe
+    if (!others) send(p, { t: 'sys', text: this.partyOf.has(p.account.id) ? 'Ninguém por perto ouviu. Use /g para falar com o grupo.' : 'Ninguém por perto ouviu.' });
     inc('hub_chat');
-    this.store.logChat(p.account.id, room.id, clean).catch(e => this.log.warn({ err: e }, 'falha ao registrar chat'));
+    this.store.logChat(p.account.id, room ? room.id : 'local:' + p.where + (p.whereN ? ':' + p.whereN : ''), clean).catch(e => this.log.warn({ err: e }, 'falha ao registrar chat'));
   }
 
   /** Cota, filtro e silêncio automático, iguais para a vila e o grupo. Devolve o texto mascarado, ou null se não pode falar agora. */
@@ -501,7 +506,7 @@ export class Hub {
   // ---------- onde o jogador está ----------
   private onWhere(p: Player, r: unknown, n: unknown, i?: unknown) {
     if (typeof r !== 'string' || !WHERE_LABEL[r]) return;
-    const whereN = r === 'rift' && Number.isInteger(n) && (n as number) > 0 && (n as number) < 1000 ? (n as number) : 0;
+    const whereN = (r === 'rift' || r === 'casa') && Number.isInteger(n) && (n as number) > 0 && (n as number) < 1000 ? (n as number) : 0;   // Fenda: o nível; casa: qual casa
     // Na Fenda do grupo, a sala é a da instância; na vila, uma sala da vila; no resto, nenhuma.
     const inst0 = Number.isInteger(i) ? this.partyOf.get(p.account.id)?.inst : null, inst = inst0 && inst0.kind === r ? inst0 : null;
     // Nos Ermos sem o grupo: uma sala pública dos Ermos (todos se veem; cada jogo simula os próprios monstros).

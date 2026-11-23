@@ -4,7 +4,7 @@
 import type { Net, ChatLine } from './online';
 import { EMOTES, EMOTE_LABEL, CHAT_MAX } from '../../shared/protocol';
 import { nameProblem } from '../../shared/text';
-import { PARTY_MAX } from '../../shared/social';
+import { PARTY_MAX, WHERE_LABEL } from '../../shared/social';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string, root: ParentNode = document) => root.querySelector(s) as T;
 const h = (tag: string, attrs: Record<string, any> = {}, ...kids: Array<Node | string | null | false>) => {
@@ -267,7 +267,9 @@ export function mountOnlineUI(net: Net) {
   const playing = () => { const g = game(); return !!(g && (g.mode === 'play' || g.mode === 'dialog')); };
   const inHub = () => { const g = game(); return !!(g && g.region === 'hub' && playing() && net.inRoom); };
   /** O chat abre na vila, e fora dela quando há grupo (aí vai para o grupo). */
-  const chatOk = () => inHub() || (playing() && net.connected && !!net.party);
+  // O chat funciona em qualquer lugar: cada ambiente tem o seu (vila e Ermos por raio; taverna, casas e regiões por lugar).
+  const chatOk = () => playing() && net.connected;
+  const chanName = () => { const g = game(), r = g?.region ?? ''; return r === 'hub' ? 'Vila' : r === 'wilds' ? 'Ermos' : WHERE_LABEL[r] ?? 'Tessária'; };
   function updateChip() {
     const g = game(), on = g && (g.mode === 'play' || g.mode === 'dialog' || g.mode === 'menu') && !!net.account && !net.offline;
     chip.hidden = !on;
@@ -280,15 +282,16 @@ export function mountOnlineUI(net: Net) {
     const ok = chatOk();
     chat.hidden = !ok; chatBtn.hidden = !ok || !input.hidden;
     friendsBtn.hidden = !(on && playing() && net.connected);
-    input.placeholder = inHub() ? 'Mensagem (Enter envia, Esc fecha) · /g fala com o grupo' : 'Mensagem para o grupo (Enter envia, Esc fecha)';
-    emotes.hidden = input.hidden || !inHub();
+    { const r = game()?.region, open = r === 'hub' || r === 'wilds' || (r === 'rift' && !!net.inst);
+      input.placeholder = `${chanName()}: ${open ? 'quem estiver perto ouve' : 'quem estiver aqui ouve'} · /g grupo · Enter envia`; }
+    emotes.hidden = input.hidden || !(net.inRoom && playing());
     if (!ok && !input.hidden) closeChat();
     renderParty();
   }
-  function openChat() { if (!chatOk()) return; input.hidden = false; emotes.hidden = !inHub(); chat.classList.add('open'); chatBtn.hidden = true; input.focus(); }
+  function openChat() { if (!chatOk()) return; input.hidden = false; emotes.hidden = !(net.inRoom && playing()); chat.classList.add('open'); chatBtn.hidden = true; input.focus(); }
   function closeChat() { input.hidden = true; emotes.hidden = true; chat.classList.remove('open'); input.blur(); updateChip(); }
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { const t = input.value.trim(); if (t) { if (inHub() || t.startsWith('/')) net.chat(t); else net.partyChat(t); } input.value = ''; if (!t) closeChat(); e.preventDefault(); }
+    if (e.key === 'Enter') { const t = input.value.trim(); if (t) net.chat(t); input.value = ''; if (!t) closeChat(); e.preventDefault(); }   // chat local em qualquer lugar; /g fala com o grupo
     else if (e.key === 'Escape') { closeChat(); e.preventDefault(); }
     e.stopPropagation();
   });
@@ -406,7 +409,7 @@ export function mountOnlineUI(net: Net) {
   function addLine(l: ChatLine) {
     const row = h('div', { class: 'net-line' + (l.kind === 'sys' ? ' sys' : l.kind === 'grupo' ? ' grp' : '') + (l.mine ? ' mine' : '') });
     if (l.kind === 'grupo') row.append(h('b', { text: '[Grupo] ' + l.name + ': ' }), document.createTextNode(l.text));
-    else if (l.kind === 'chat') row.append(h('b', { text: l.name + ': ' }), document.createTextNode(l.text)); else row.textContent = l.text;
+    else if (l.kind === 'chat') { if (l.ch) row.append(h('span', { class: 'net-ch', text: l.ch })); row.append(h('b', { text: l.name + ': ' }), document.createTextNode(l.text)); } else row.textContent = l.text;
     log.append(row); while (log.children.length > 30) log.firstChild!.remove();
     log.scrollTop = log.scrollHeight;
     setTimeout(() => row.classList.add('old'), 12000);

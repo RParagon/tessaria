@@ -26,6 +26,8 @@ export const INST_EMPTY_MS = 60_000;       // instância vazia fecha depois diss
 export const WILDS_CAP = 30;          // jogadores por sala pública dos Ermos
 /** Ermo Profundo (o anel de fora), em unidades do mundo (ladrilho = 2). Aproximação sem o ruído da borda: o jogo confere o bioma exato. */
 export const deepWilds = (x: number, z: number) => Math.hypot(x / 2 - 200, (z / 2 - 175) * 1.15) > 132;
+/** Chat local: nas áreas abertas (vila, Ermos, Fenda do grupo), a mensagem chega a quem está até este raio. */
+export const CHAT_RADIUS = 30;
 export const PVP_RANGE = 30;          // distância máxima de um acerto entre jogadores
 /** Teto de um acerto PvP pelo save de quem bate: o dano mais alto possível da classe mais forte, com crítico e o maior golpe especial, e folga. */
 export function pvpHitCap(save: any) {
@@ -137,7 +139,7 @@ export type ServerMsg =
   | { t: 'join'; p: PublicPlayer }
   | { t: 'leave'; id: number }
   | { t: 'snap'; ps: Array<[number, number, number, number, number, string]> }   // id, x, z, yaw, mover(0..1), ação
-  | { t: 'chat'; id: number; name: string; text: string; ts: number }
+  | { t: 'chat'; id: number; name: string; text: string; ts: number; ch?: string }
   | { t: 'emote'; id: number; e: Emote }
   | { t: 'act'; id: number; a: Act; c: number; yaw: number }
   | { t: 'look'; id: number; look: Look }

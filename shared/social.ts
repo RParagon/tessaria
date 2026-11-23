@@ -12,7 +12,7 @@ export const PARTY_GRACE_MS = 120_000;   // quem cai da conexão continua no gru
 /** Lugares que o cliente pode informar (chave da região no jogo) e como aparecem para os amigos. */
 export const WHERE_LABEL: Record<string, string> = {
   hub: 'Vila Brasa', home: 'Casa do Tecelão', forest: 'Bosque Sussurrante', crypt: 'Ossuário Real', peaks: 'Picos de Cinza',
-  swamp: 'Pântano Afogado', glass: 'Cidadela de Vidro', wilds: 'Ermos', rift: 'Fenda do Tear',
+  swamp: 'Pântano Afogado', glass: 'Cidadela de Vidro', wilds: 'Ermos', rift: 'Fenda do Tear', taverna: 'Taverna da Mel', casa: 'Casa na vila',
 };
 export const whereLabel = (where: string, n = 0, room = '') =>
   where === 'hub' && room ? room : where === 'rift' && n > 0 ? `Fenda ${n}` : WHERE_LABEL[where] ?? 'Tessária';

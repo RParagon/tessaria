@@ -107,6 +107,14 @@ Quem tenta receber um item acima do teto vê: "Nível de item 34. Lume pode rece
 - **Queda de conexão:** quem cai tem 2 minutos para voltar e continua no grupo. Depois disso, sai.
 - **Grupo de 1:** se todos saírem, o grupo acaba.
 
+### Chat local (0.50)
+
+- O chat funciona em qualquer lugar. A mensagem comum vai para quem está **no mesmo ambiente**:
+  - **vila, Ermos e Fenda do grupo** (salas com posição): só quem está até **30 m** (`CHAT_RADIUS`);
+  - **taverna, cada casa da vila, regiões da história e Fenda sozinho:** quem está no mesmo lugar (a casa é identificada pelo número da casa; a Fenda, pelo nível).
+- Cada mensagem leva o rótulo do lugar (`ch`). Se ninguém ouviu, o autor recebe um aviso.
+- Interiores (taverna e casas) são ambientes próprios: quem entra sai da sala da vila e volta a ela ao sair pela porta.
+
 ### Chat do grupo
 
 - Mensagens começadas por `/g` vão só para o grupo, onde quer que cada um esteja.

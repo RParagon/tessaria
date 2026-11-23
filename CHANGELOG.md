@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.50.0 · Chat em todo lugar, por local
+- **O chat não some mais:** ele fica disponível em qualquer lugar do jogo online (vila, taverna, casas, Pesqueiro, Ermos, Fendas e regiões da história)
+- **Cada ambiente com o seu bate-papo:** na vila, nos Ermos e na Fenda do grupo, a mensagem chega a quem está **perto** (até 30 m); na taverna, em cada casa e nas regiões, a quem está **no mesmo lugar**. Cada casa tem o seu chat
+- Cada mensagem mostra o **rótulo do lugar** (Vila, Ermos, Taverna da Mel…), e o campo de texto diz onde você está falando
+- Se ninguém estiver perto, o jogo avisa ("Ninguém por perto ouviu") e lembra do `/g`, que fala com o grupo de qualquer lugar
+- Emotes funcionam em qualquer sala com outros jogadores (vila, Ermos e Fenda do grupo)
+- Dentro da taverna e das casas, você sai da sala da vila (cada interior é um ambiente próprio), e os amigos veem "Taverna da Mel" ou "Casa na vila" na lista
+
 ## 0.49.0 · Proteção contra trapaça e moderação
 - **Velocidade impossível** na vila e nos Ermos: o servidor já segurava o personagem; agora também conta. Muitos saltos seguidos ficam registrados e, se continuarem, a conexão é encerrada
 - **Teto de dano no PvP** do Ermo Profundo, calculado pelo nível, pelos pontos de Poder e pelo equipamento de quem bate (com folga para crítico e para o meteoro do Arcano). Acerto acima do teto não chega à vítima e conta como suspeita

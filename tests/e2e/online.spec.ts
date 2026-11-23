@@ -112,12 +112,12 @@ test('amigos e grupo: tocar no nome, convidar, aceitar e conversar fora da vila'
   await expect(B.page.locator('.net-party .net-pm').first()).toContainText('★ ' + A.name);
   await expect(A.page.locator('#marks .tag.rp.ally')).toBeVisible();
 
-  // B sai da vila: continua no grupo, aparece no Bosque, e o chat dele vai para o grupo
+  // B sai da vila: continua no grupo, aparece no Bosque; o chat do Bosque é local, e /g fala com o grupo
   await B.page.evaluate(() => { const T = (window as any).__T; T.G.save.met.ysolde = true; T.travel('forest'); });
   await expect(A.page.locator('.net-party .net-pm', { hasText: B.name })).toContainText('Bosque Sussurrante', { timeout: 20_000 });
   await B.page.waitForFunction(() => (window as any).__T.RG.key === 'forest' && (window as any).TessGame.mode === 'play', null, { timeout: 20_000 });
   await B.page.keyboard.press('Enter');
-  await B.page.keyboard.type('Vem pro bosque!');
+  await B.page.keyboard.type('/g Vem pro bosque!');
   await B.page.keyboard.press('Enter');
   await expect(A.page.locator('.net-log')).toContainText('[Grupo] ' + B.name + ': Vem pro bosque!');
   await expect(A.page.locator('#marks .tag.rp')).toHaveCount(0);
@@ -633,4 +633,22 @@ test('conta: reportar problema pelo menu, baixar os dados e excluir a conta (con
   await expect(page.locator('#mOnline')).toHaveText('Jogar online');
   expect(A.errors.filter(e => !/status of 400/.test(e))).toEqual([]);   // o 400 é o nome errado, de propósito
   await A.ctx.close();
+});
+
+test('chat em todo lugar: na taverna o chat continua, com o rótulo do lugar, e só quem está lá dentro ouve', async ({ browser }) => {
+  const A = await onlinePlayer(browser), B = await onlinePlayer(browser), C = await onlinePlayer(browser);
+  for (const P of [A, B]) {
+    await P.page.evaluate(() => (window as any).__T.travel('taverna'));
+    await P.page.waitForFunction(() => (window as any).__T.RG.key === 'taverna' && (window as any).TessGame.mode === 'play', null, { timeout: 20_000 });
+  }
+  await expect(A.page.locator('.net-chat')).toBeVisible();
+  await A.page.waitForTimeout(400);
+  await A.page.keyboard.press('Enter');
+  await expect(A.page.locator('.net-input')).toHaveAttribute('placeholder', /Taverna da Mel/);
+  await A.page.keyboard.type('Uma rodada pra todos!');
+  await A.page.keyboard.press('Enter');
+  await expect(B.page.locator('.net-log')).toContainText('Taverna da Mel' + A.name + ': Uma rodada pra todos!');
+  await C.page.waitForTimeout(500);
+  await expect(C.page.locator('.net-log')).not.toContainText('Uma rodada pra todos!');
+  for (const P of [A, B, C]) { expect(P.errors).toEqual([]); await P.ctx.close(); }
 });

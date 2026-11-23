@@ -8,7 +8,7 @@ import type { FriendsList, PartyView } from '../../shared/social';
 export interface PublicAccount { id: string; name: string; guest: boolean; email: string | null; google: boolean; password?: boolean }
 export interface Remote { id: number; name: string; title: string; look: Look; tx: number; tz: number; tyaw: number; m: number; a: string; x?: number; z?: number; yaw?: number; slot?: number; emote?: Emote | null; emoteT?: number; chat?: string; chatT?: number; act?: Act | null; actT?: number }
 export type SyncState = 'desligado' | 'salvo' | 'pendente' | 'enviando' | 'recusado' | 'conflito' | 'sem-rede';
-export interface ChatLine { kind: 'chat' | 'sys' | 'grupo'; name?: string; text: string; ts: number; mine?: boolean }
+export interface ChatLine { kind: 'chat' | 'sys' | 'grupo'; name?: string; text: string; ts: number; mine?: boolean; ch?: string }
 
 type Listener = (ev: string, data?: any) => void;
 const VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
@@ -366,7 +366,7 @@ export class Net {
       case 'snap': for (const [id, x, z, yaw, mv, a] of m.ps) { const r = this.remotes.get(id); if (r) { r.tx = x; r.tz = z; r.tyaw = yaw; r.m = mv; r.a = a; } } break;
       case 'chat': {
         const mine = m.id === this.myId;
-        this.pushChat({ kind: 'chat', name: m.name, text: m.text, ts: m.ts, mine });
+        this.pushChat({ kind: 'chat', name: m.name, text: m.text, ts: m.ts, mine, ch: m.ch });
         if (!mine) G?.remoteChat(m.id, m.text); break;
       }
       case 'emote': if (m.id === this.myId) G?.myEmote(m.e); else G?.remoteEmote(m.id, m.e); break;

@@ -107,11 +107,13 @@ for (const kind of STORES) {
       const pc = await a.c.waitFor(m => m.t === 'pchat');
       assert.deepEqual([pc.name, pc.text], [B.account.name, 'bora pra Fenda?']);
       await sleep(150); assert.ok(!c.c.msgs.some(m => m.t === 'pchat'));
-      // sair da vila atualiza o "onde" para o grupo, e o chat comum vira chat do grupo
+      // sair da vila atualiza o "onde" para o grupo; o chat comum fica no local (ninguém ouviu) e /g chega ao grupo
       b.c.send({ t: 'where', r: 'rift', n: 7 });
       await a.c.waitFor(m => m.t === 'party' && m.party.members.some((x: any) => x.where === 'Fenda 7'));
       await a.c.waitFor(m => m.t === 'leave' && m.id === b.w.id);
       b.c.send({ t: 'chat', text: 'da Fenda' });
+      await b.c.waitFor(m => m.t === 'sys' && /Ninguém por perto ouviu. Use \/g/.test(m.text));
+      b.c.send({ t: 'chat', text: '/g da Fenda' });
       await a.c.waitFor(m => m.t === 'pchat' && m.text === 'da Fenda');
       // passar a liderança e sair: o grupo de 2 acaba
       a.c.send({ t: 'plead', name: B.account.name });

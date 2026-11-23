@@ -55,7 +55,7 @@ function startGroupRift(inst, prm, diff, lvl) {
   setTimeout(() => toast('FENDA DO GRUPO', false, 'MESMO MAPA E MESMOS MONSTROS · O JOGO DO LÍDER COMANDA OS INIMIGOS'), 1800);
 }
 
-function netRegion(key) { coopReset(); const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : 0); if (!n || !n.inst) ELO = null; if (key !== 'hub') clearRemoteMarks(); }
+function netRegion(key) { coopReset(); const n = NETON(); if (n) n.setRegion(key, lookOfPlayer(), P ? [P.x, P.z] : null, key === 'rift' && G.rift ? G.rift.L : key === 'casa' && INDOOR && INDOOR.house !== undefined ? INDOOR.house + 1 : 0); if (!n || !n.inst) ELO = null; if (key !== 'hub') clearRemoteMarks(); }   // casa: qual casa (cada uma tem o seu chat)
 function netLook() { const n = NETON(); if (n) n.setLook(lookOfPlayer()); }
 let netPosAcc = 0, netAct = null, netActT = 0;
 const NET_ACTS = ['swing', 'cast', 'shoot', 'spin', 'nova', 'dash'];
