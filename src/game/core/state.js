@@ -51,7 +51,7 @@ let stats = function () {
     skillCd: c.skillCd * (1 - .1 * s.up.foc) * (1 - Math.min(50, e.cdr + (pg.cdr || 0)) / 100) * (tal.has('brasa') ? .8 : 1),
     atkCd: c.atkCd * (tal.has('mao') ? .88 : 1), maxPot: 3 + s.up.pot,
     crit: .08 + Math.min(52, e.crit + (pg.crit || 0) * .5) / 100 + (tal.has('olho') ? .08 : 0), critMul: tal.has('olho') ? 2.5 : 2,
-    ls: e.ls / 100 + (tal.has('sangue') ? .03 : 0), dr: Math.min(.7, Math.min(60, e.dr) / 100 + (tal.has('casca') ? .1 : 0) + (c.dr || 0)),
+    ls: e.ls / 100 + (tal.has('sangue') ? .03 : 0) + (c.ls || 0), dr: Math.min(.7, Math.min(60, e.dr) / 100 + (tal.has('casca') ? .1 : 0) + (c.dr || 0)),
     gold: (1 + e.gold / 100) * (tal.has('sorte') ? 1.25 : 1), itemFind: tal.has('sorte') ? 1.3 : 1, potHeal: pk.mel ? .55 : .45, tal,
   };
 };
@@ -111,16 +111,17 @@ stats = function () {
   if (hasF('estante')) st.dmg *= 1 + .02 * ['forest', 'crypt', 'peaks', 'swamp', 'glass'].filter(k => G.save.bosses[k]).length;
   return st;
 };
-const xpNeed = l => Math.round(30 * Math.pow(l, 1.5));
+// 0.56: primeiros níveis em ~3 a 5 min (antes passavam em segundos) e +20% no meio do jogo. Ver tools/progression-table.mjs.
+const xpNeed = l => Math.round(Math.max(36 * Math.pow(l, 1.5), 90 + 75 * l));
 /* ---- dificuldade (estilo Diablo) ---- */
 const DIFFS = [
-  { n: 'Normal', hp: 1, dmg: 1, xp: 1, gold: 1, find: 1, spd: 1, lvl: 1, tier: 0, c: '#d8d2c4', d: 'A jornada como foi tecida.' },
-  { n: 'Difícil', hp: 1.5, dmg: 1.25, xp: 1.25, gold: 1.25, find: 1.12, spd: 1.06, lvl: 1, tier: .3, c: '#6fd36a', d: 'Inimigos mais duros e ágeis. Mais XP, Centelhas e itens.' },
-  { n: 'Expert', hp: 2.2, dmg: 1.55, xp: 1.6, gold: 1.6, find: 1.28, spd: 1.12, lvl: 6, tier: .65, c: '#5aa2ff', d: 'Para quem já domina a esquiva. Itens bem melhores.' },
-  { n: 'Mestre', hp: 3.2, dmg: 1.9, xp: 2, gold: 2, find: 1.45, spd: 1.18, lvl: 12, tier: 1, c: '#c07bff', d: 'Cada elite é uma luta. Épicos e lendários aparecem com frequência.' },
-  { n: 'Tormento I', hp: 4.6, dmg: 2.3, xp: 2.6, gold: 2.5, find: 1.65, spd: 1.22, lvl: 16, act2: true, tier: 1.5, c: '#ffbf3d', d: 'O Tear cobra caro. Lendários de verdade.' },
-  { n: 'Tormento II', hp: 6.5, dmg: 2.8, xp: 3.3, gold: 3, find: 1.85, spd: 1.27, lvl: 20, act2: true, tier: 2, c: '#ff8a3d', d: 'Só para Tecelões com o equipamento certo.' },
-  { n: 'Tormento III', hp: 9, dmg: 3.4, xp: 4.2, gold: 3.6, find: 2.1, spd: 1.32, lvl: 24, act2: true, tier: 2.5, c: '#ff4a4a', d: 'O limite do Tear. Boa sorte.' },
+  { n: 'Normal', hp: 1, dmg: 2, xp: 1, gold: 1, find: 1, spd: 1, lvl: 1, tier: 0, c: '#d8d2c4', d: 'A jornada como foi tecida.' },
+  { n: 'Difícil', hp: 1.5, dmg: 2.4, xp: 1.25, gold: 1.25, find: 1.12, spd: 1.06, lvl: 1, tier: .3, c: '#6fd36a', d: 'Inimigos mais duros e ágeis. Mais XP, Centelhas e itens.' },
+  { n: 'Expert', hp: 2.2, dmg: 2.8, xp: 1.6, gold: 1.6, find: 1.28, spd: 1.12, lvl: 6, tier: .65, c: '#5aa2ff', d: 'Para quem já domina a esquiva. Itens bem melhores.' },
+  { n: 'Mestre', hp: 3.2, dmg: 3.2, xp: 2, gold: 2, find: 1.45, spd: 1.18, lvl: 12, tier: 1, c: '#c07bff', d: 'Cada elite é uma luta. Épicos e lendários aparecem com frequência.' },
+  { n: 'Tormento I', hp: 4.6, dmg: 3.6, xp: 2.6, gold: 2.5, find: 1.65, spd: 1.22, lvl: 16, act2: true, tier: 1.5, c: '#ffbf3d', d: 'O Tear cobra caro. Lendários de verdade.' },
+  { n: 'Tormento II', hp: 6.5, dmg: 4.1, xp: 3.3, gold: 3, find: 1.85, spd: 1.27, lvl: 20, act2: true, tier: 2, c: '#ff8a3d', d: 'Só para Tecelões com o equipamento certo.' },
+  { n: 'Tormento III', hp: 9, dmg: 4.7, xp: 4.2, gold: 3.6, find: 2.1, spd: 1.32, lvl: 24, act2: true, tier: 2.5, c: '#ff4a4a', d: 'O limite do Tear. Boa sorte.' },
 ];
 // ---------- Ermos: biomas ----------
 // O mapa é dividido em anéis (distância da vila) e, nos anéis do meio, em setores (direção). As bordas são
@@ -173,7 +174,7 @@ function monsterScale() {
   const D = curDiff();
   if (RG && RG.wild) { const zl = P ? wildLv(P.x, P.z) : 2; const nk = typeof nightK === 'function' ? nightK() : 0; return { hp: D.hp * (1 + .1 * (zl - 1)), dmg: D.dmg * (1 + .06 * (zl - 1)) * (1 + .15 * nk), xp: D.xp * (1 + .08 * (zl - 1)) * (G.bloodT > 0 ? 1.5 : 1) * (1 + .25 * nk) * (typeof foggy === 'function' && foggy() ? 1.15 : 1) }; }   // Lua de Sangue: +50% de XP · noite: +15% de dano dos monstros e +25% de XP
   if (G.rift) return { hp: G.rift.hm * D.hp, dmg: G.rift.dm * D.dmg, xp: D.xp };
-  const base = REGBASE[RG ? RG.key : 'hub'] || 1, over = Math.max(0, (G.save ? G.save.lvl : 1) - base - 2), n = G.save && G.save.diff ? 1 : .6;
+  const base = REGBASE[RG ? RG.key : 'hub'] || 1, over = Math.max(0, (G.save ? G.save.lvl : 1) - base - 2), n = 1;   // 0.56: no Normal também (antes .6): passar do nível da região não deixa tudo trivial
   return { hp: D.hp * (1 + .08 * n * over), dmg: D.dmg * (1 + .05 * n * over), xp: D.xp * (1 + .05 * over) };
 }
 function updateDiffHud() {
@@ -186,7 +187,7 @@ function renderDiff() {
   sel.innerHTML = DIFFS.map((d, i) => `<option value="${i}"${diffOk(d) ? '' : ' disabled'}${i === cur ? ' selected' : ''}>${d.n}${diffOk(d) ? '' : ' — ' + (d.act2 && !G.save.bosses.glass ? 'conclua o Ato II' : 'nível ' + d.lvl)}</option>`).join('');
   sel.disabled = !can;
   const D = DIFFS[cur];
-  $('#dInfo').innerHTML = `<b style="color:${D.c}">${D.n}</b> · ${D.d}<br>Vida dos inimigos ×${D.hp} · dano ×${D.dmg} · XP ×${D.xp} · Centelhas ×${D.gold}${cur ? `<br>Cair custa ${Math.round(Math.min(.2, .04 * cur) * 100)}% das Centelhas.` : ''}<br>Monstros sobem de nível junto com você.${can ? '' : '<br><i>Só dá para mudar na Vila Brasa.</i>'}`;
+  $('#dInfo').innerHTML = `<b style="color:${D.c}">${D.n}</b> · ${D.d}<br>Vida dos inimigos ×${D.hp} · dano ×${+(D.dmg / DIFFS[0].dmg).toFixed(2)} · XP ×${D.xp} · Centelhas ×${D.gold}${cur ? `<br>Cair custa ${Math.round(Math.min(.2, .04 * cur) * 100)}% das Centelhas.` : ''}<br>Monstros sobem de nível junto com você.${can ? '' : '<br><i>Só dá para mudar na Vila Brasa.</i>'}`;
 }
 function diffFirst(key, b) {
   const s = G.save, D = s.diff || 0, bd = s.bossDiff = s.bossDiff || {};

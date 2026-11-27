@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.56.0 · O jogo ficou mais desafiador
+- **Combate:** os monstros batem cerca de **2× mais forte** (no Normal, um monstro comum derruba a Lâmina em 8 a 11 golpes e o Arcano e o Arco em 6 a 9; antes eram 16 a 29). Nas dificuldades altas o aumento é menor, para o Tormento não ficar injusto. Chefes e perigos dos Ermos também acompanham
+- **Passar do nível da região não deixa tudo trivial:** os monstros crescem junto com o herói também no Normal
+- **Subir de nível:** os primeiros níveis levam cerca de 3 a 5 minutos (antes, o nível 1 passava em menos de 1 minuto) e o meio do jogo pede ~20% mais XP
+- **Lâmina:** a Couraça agora dá 15% menos dano recebido (era 12%) e 2% do dano causado vira vida: o corpo a corpo continua o que mais arrisca, mas ficar no ataque compensa
+- Morcego mais perigoso (o mais inofensivo do Ossuário) e Afogado com um pouco menos de vida (lento demais de matar com o Arcano)
+- O menu de dificuldade mostra os multiplicadores em relação ao Normal
+- **Nova ferramenta:** `npm run test:progression` imprime, por região e nível, quanto tempo se leva para matar, quantos golpes se aguenta e quantos minutos por nível, e falha quando algo sai das metas. Metas e histórico em `docs/BALANCE.md`
+
 ## 0.55.0 · Polimento 1: primeiros passos, legibilidade e a Lâmina
 - **Primeiros passos:** dicas curtas, uma por vez, na hora em que fazem sentido: andar, seguir o objetivo, o primeiro monstro (atacar), esquiva, habilidade, vida baixa (poção), o primeiro item (bolsa), o Golpe do Tear carregado e o Grimório ao subir de nível. Cada dica some sozinha quando você faz a ação (ou no ✕), com o texto certo para teclado ou toque. Quem já tem experiência (nível 5 ou 30 minutos) não vê; dá para desligar ou recomeçar em "Dicas de primeiros passos", no menu
 - **Tamanho da interface** no menu (85% a 140%): aumenta textos e painéis no computador e também no celular. Textos mínimos do celular (feed de avisos, nome da região) ficaram maiores

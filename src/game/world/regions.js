@@ -148,7 +148,7 @@ const DEF = {
   gosmo: { hp: 34, dmg: 9, r: .55, xp: 6, gold: 3, model: 'gosmo', scale: 1 },
   wisp: { hp: 26, dmg: 10, r: .45, xp: 8, gold: 4, model: 'wisp', scale: 1 },
   skel: { hp: 70, dmg: 14, r: .45, xp: 12, gold: 6, model: 'skel', scale: 1 },
-  bat: { hp: 32, dmg: 9, r: .45, xp: 9, gold: 5, model: 'bat', scale: 1.1 },
+  bat: { hp: 32, dmg: 12, r: .45, xp: 9, gold: 5, model: 'bat', scale: 1.1 },   // 0.56: 9 → 12 (era o mais inofensivo do Ossuário)
   imp: { hp: 80, dmg: 16, r: .45, xp: 16, gold: 8, model: 'imp', scale: 1.15 },
   thief: { hp: 240, dmg: 0, r: .45, xp: 40, gold: 0, model: 'imp', scale: .85 },
   aranha: { hp: 22, dmg: 8, r: .4, xp: 5, gold: 1, model: 'spiderling', scale: 1 },
@@ -157,14 +157,14 @@ const DEF = {
   lobo: { hp: 34, dmg: 9, r: .45, xp: 9, gold: 4, model: 'wolf', scale: 1.05 },
   urso: { hp: 150, dmg: 20, r: .8, xp: 28, gold: 10, model: 'bear', scale: 1.25 },
   sapo: { hp: 150, dmg: 22, r: .6, xp: 30, gold: 12, model: 'toad', scale: 1.1 },
-  afogado: { hp: 210, dmg: 26, r: .45, xp: 32, gold: 13, model: 'drowned', scale: 1.05 },
+  afogado: { hp: 185, dmg: 26, r: .45, xp: 32, gold: 13, model: 'drowned', scale: 1.05 },   // 0.56: 210 → 185 (lento demais de matar com o Arcano)
   sentinela: { hp: 170, dmg: 22, r: .55, xp: 36, gold: 14, model: 'sentinel', scale: 1 },
   fantasma: { hp: 190, dmg: 30, r: .45, xp: 40, gold: 15, model: 'phantom', scale: 1.05 },
 };
 const MODEL_FN = { dummy: buildDummy, gosmo: buildGosmo, wisp: buildWisp, skel: buildSkeleton, bat: buildBat, imp: buildImp, beetle: buildBeetle, golem: buildGolem, skull: buildSkullBoss, dragon: buildDragon, shrine: buildShrine, chest: buildChest, frag: buildFragment, portal: buildPortal, riftgate: buildRiftGate, camp: () => buildCamp(), portal_forest: () => buildPortalStyle('forest'), portal_crypt: () => buildPortalStyle('crypt'), portal_peaks: () => buildPortalStyle('peaks'), portal_swamp: () => buildPortalStyle('swamp'), portal_wilds: () => buildPortalStyle('wilds'), portal_glass: () => buildPortalStyle('glass'), pedestal: buildPedestal, chicken: buildChicken, pylon: buildPylon, spider: buildSpider, spiderling: buildSpiderling, eye: buildEye, knight: () => buildHumanoid(KNIGHT_CFG, 128), toad: buildToad, boar: buildBoar, wolf: buildWolf, bear: buildBear, drowned: buildDrowned, sentinel: buildSentinel, phantom: buildPhantom, hydra: buildHydra, reflexo: () => buildHumanoid(reflexCfg(), 152) };
 const getModel = k => k === 'reflexo' ? makeModel('reflexo:' + JSON.stringify(G.char), MODEL_FN.reflexo) : makeModel(k, MODEL_FN[k]);
 const CLS = {
-  lamina: { label: 'Lâmina', desc: 'Corte em arco de perto. Couraça: 12% menos dano recebido. Hab.: Giro Flamejante.', hp: 130, dmg: 17, spd: 5.2, atkCd: .36, skillCd: 6, dr: .12 },   // 0.55: Couraça (o corpo a corpo apanhava 2,5 a 3× mais que as outras no simulador)
+  lamina: { label: 'Lâmina', desc: 'Corte em arco de perto. Couraça: 15% menos dano recebido e 2% do dano vira vida. Hab.: Giro Flamejante.', hp: 130, dmg: 17, spd: 5.2, atkCd: .36, skillCd: 6, dr: .15, ls: .02 },   // 0.55: Couraça (o corpo a corpo apanhava 2,5 a 3× mais que as outras no simulador)
   arcano: { label: 'Arcano', desc: 'Projéteis teleguiados que explodem em área. Hab.: Nova Arcana.', hp: 90, dmg: 13.5, spd: 5.0, atkCd: .34, skillCd: 6 },   // 0.44: mais dano e área (era o mais fraco no simulador)
   arco: { label: 'Arco', desc: 'Flechas que atravessam. Hab.: Chuva de Flechas.', hp: 110, dmg: 12.8, spd: 5.6, atkCd: .25, skillCd: 6 },   // 0.44: +7% de dano (menor dano num alvo no simulador)
 };

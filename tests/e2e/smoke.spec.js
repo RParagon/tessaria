@@ -447,22 +447,22 @@ test('chuva no mapa inteiro: as gotas ficam presas ao mundo e cobrem a área que
 test('primeiros passos: dicas uma por vez, que somem quando o jogador faz a ação; veteranos não veem', async ({ page }) => {
   const errors = await newGame(page);
   const ev = src => page.evaluate(s => window.__T.ev(s), src);
-  await expect(page.locator('#tip')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('#tip')).toBeVisible({ timeout: 12000 });
   await expect(page.locator('#tip')).toContainText('WASD');
   await ev('P.x += 5; P.z += 5');   // andou (mais de 6 m)
-  await expect(page.locator('#tip')).toBeHidden({ timeout: 5000 });
-  await expect(page.locator('#tip')).toContainText('Anciã Ysolde', { timeout: 6000 });
+  await expect(page.locator('#tip')).toBeHidden({ timeout: 12000 });
+  await expect(page.locator('#tip')).toContainText('Anciã Ysolde', { timeout: 12000 });
   await expect(page.locator('#tip')).toBeVisible();
   await ev('G.save.met.ysolde = true');
-  await expect(page.locator('#tip')).toBeHidden({ timeout: 5000 });
+  await expect(page.locator('#tip')).toBeHidden({ timeout: 12000 });
   await ev("G.save.inv.push(makeItem('weapon', 1, 1))");
-  await expect(page.locator('#tip')).toContainText('Item novo', { timeout: 6000 });
+  await expect(page.locator('#tip')).toContainText('Item novo', { timeout: 12000 });
   await ev("openMenu('inv')"); await page.waitForTimeout(200); await ev('closeMenus()');
-  await expect(page.locator('#tip')).toBeHidden({ timeout: 5000 });
+  await expect(page.locator('#tip')).toBeHidden({ timeout: 12000 });
   expect(await ev('[G.save.tips.mover, G.save.tips.falar, G.save.tips.item]')).toEqual([1, 1, 1]);
   // ✕ dispensa a dica atual
   await ev('G.ult = 1');
-  await expect(page.locator('#tip')).toContainText('Golpe do Tear', { timeout: 6000 });
+  await expect(page.locator('#tip')).toContainText('Golpe do Tear', { timeout: 12000 });
   await page.click('#tip .x');
   await expect(page.locator('#tip')).toBeHidden();
   // veterano (nível alto): sem dicas

@@ -392,7 +392,7 @@ test('Fio de Elo: o amigo de nível baixo sobe para perto do líder e o grupo jo
   expect(await ev(B.page, 'stats().maxHp')).toBe(hpAntes + 70);   // +10 de vida por nível
   await expect(B.page.locator('#hLv')).toHaveText('1→8');
   // carregado pelo líder: o XP por abate fica limitado (3% do nível, menos com a diferença)
-  expect(await ev(B.page, '(() => { const x0 = G.save.xp; gainXp(5000); return G.save.lvl === 1 && G.save.xp - x0 <= 2; })()')).toBe(true);   // selo do retrato: nível real → nível do Fio de Elo
+  expect(await ev(B.page, '(() => { const x0 = G.save.xp; gainXp(5000); return G.save.lvl === 1 && G.save.xp - x0 <= Math.ceil(xpNeed(1) * .03); })()')).toBe(true);   // selo do retrato: nível real → nível do Fio de Elo
   // de volta à vila, cada um com a própria dificuldade
   await ev(A.page, "travel('hub')");
   await A.page.waitForFunction(() => (window as any).__T.RG?.key === 'hub', null, { timeout: 20_000 });
