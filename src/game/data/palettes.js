@@ -1,14 +1,15 @@
-/* Fios de Tessária · Paletas por região */
+/* Fios de Tessária (módulo ES) · Paletas por região */
+import { clamp } from '../engine/math.js';
 /* =========================================================
    PALETAS
    ========================================================= */
-function hsl2rgb(h, s, l) {
+export function hsl2rgb(h, s, l) {
   h = (((h % 360) + 360) % 360) / 360;
   const f = n => { const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l); return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
   return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
 }
-const lerpHue = (a, b, t) => { const d = ((b - a + 540) % 360) - 180; return a + d * t; };
-function rp(h, s, l, shift = 1) {
+export const lerpHue = (a, b, t) => { const d = ((b - a + 540) % 360) - 180; return a + d * t; };
+export function rp(h, s, l, shift = 1) {
   const o = [];
   for (let i = 0; i < 5; i++) {
     const t = i / 4, L = clamp(l + (t - .55) * .64, .04, .96);
@@ -17,41 +18,41 @@ function rp(h, s, l, shift = 1) {
   }
   return o;
 }
-const hx = a => a.map(h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
-const hex1 = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
-const css = c => `rgb(${c[0]},${c[1]},${c[2]})`;
-const FIRE = hx(['#2a0c10', '#8f1d17', '#e2541c', '#ffb02e', '#fff3c4']);
-const VIOLET = hx(['#160826', '#511a86', '#a03ee0', '#de8cff', '#fbeaff']);
-const GHOST = hx(['#05200c', '#0e6a2c', '#2ed15a', '#a2ff8c', '#f3ffe2']);
-const GOLDS = hx(['#2c1606', '#8a4a10', '#e09a2a', '#ffd866', '#fff8dc']);
-const CYANE = hx(['#04202a', '#0a6b80', '#20c4d8', '#9cf6ff', '#f0ffff']);
-const REDGEM = hx(['#2e0610', '#8a0f24', '#e0263f', '#ff8a8a', '#fff0f0']);
-const TOXIC = hx(['#0f2a06', '#3f8a14', '#8fdc2e', '#d6ff86', '#f8ffe4']);
-const EYEY = hx(['#3a1a00', '#b05a00', '#ffa800', '#ffe34d', '#fffbe0']);
-const SPARK = hx(['#2a1a05', '#9a6a10', '#ffc83d', '#fff08a', '#ffffff']);
-const HEAL = hx(['#06202a', '#0d6b6b', '#2fd1b0', '#a8ffe6', '#f2fffb']);
+export const hx = a => a.map(h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+export const hex1 = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+export const css = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+export const FIRE = hx(['#2a0c10', '#8f1d17', '#e2541c', '#ffb02e', '#fff3c4']);
+export const VIOLET = hx(['#160826', '#511a86', '#a03ee0', '#de8cff', '#fbeaff']);
+export const GHOST = hx(['#05200c', '#0e6a2c', '#2ed15a', '#a2ff8c', '#f3ffe2']);
+export const GOLDS = hx(['#2c1606', '#8a4a10', '#e09a2a', '#ffd866', '#fff8dc']);
+export const CYANE = hx(['#04202a', '#0a6b80', '#20c4d8', '#9cf6ff', '#f0ffff']);
+export const REDGEM = hx(['#2e0610', '#8a0f24', '#e0263f', '#ff8a8a', '#fff0f0']);
+export const TOXIC = hx(['#0f2a06', '#3f8a14', '#8fdc2e', '#d6ff86', '#f8ffe4']);
+export const EYEY = hx(['#3a1a00', '#b05a00', '#ffa800', '#ffe34d', '#fffbe0']);
+export const SPARK = hx(['#2a1a05', '#9a6a10', '#ffc83d', '#fff08a', '#ffffff']);
+export const HEAL = hx(['#06202a', '#0d6b6b', '#2fd1b0', '#a8ffe6', '#f2fffb']);
 
-const SKINS = [[28, .45, .8], [26, .45, .68], [22, .42, .56], [20, .4, .44], [18, .36, .32], [205, .2, .72], [135, .25, .5]];
-const HAIRS = [[250, .12, .16], [25, .45, .3], [44, .6, .6], [12, .68, .44], [220, .06, .86], [210, .6, .5], [330, .55, .62], [150, .45, .42]];
-const OUTFITS = [[355, .55, .42], [22, .6, .45], [45, .6, .5], [95, .4, .38], [150, .4, .36], [185, .45, .4], [215, .5, .42], [255, .4, .4], [285, .4, .4], [320, .45, .45], [30, .12, .42], [240, .1, .22]];
-const TRIMS = [[44, .7, .55], [220, .08, .75], [28, .45, .36], [250, .15, .15], [40, .15, .88], [350, .6, .45]];
-const GLOWS = [['Âmbar', EYEY], ['Ciano', CYANE], ['Violeta', VIOLET], ['Verde', GHOST], ['Rubi', REDGEM]];
-const HAIR_STYLES = [['curto', 'Curto'], ['longo', 'Longo'], ['rabo', 'Rabo'], ['coque', 'Coque'], ['moicano', 'Moicano'], ['careca', 'Raspado']];
-const ACCS = [['nenhum', 'Nenhum'], ['capuz', 'Capuz'], ['chapeu', 'Chapéu'], ['pena', 'Chapéu de pena'], ['elmo', 'Elmo'], ['bandana', 'Bandana'], ['chifres', 'Chifres'], ['coroa', 'Coroa de folhas'], ['cachecol', 'Cachecol'], ['tapa', 'Tapa-olho']];
+export const SKINS = [[28, .45, .8], [26, .45, .68], [22, .42, .56], [20, .4, .44], [18, .36, .32], [205, .2, .72], [135, .25, .5]];
+export const HAIRS = [[250, .12, .16], [25, .45, .3], [44, .6, .6], [12, .68, .44], [220, .06, .86], [210, .6, .5], [330, .55, .62], [150, .45, .42]];
+export const OUTFITS = [[355, .55, .42], [22, .6, .45], [45, .6, .5], [95, .4, .38], [150, .4, .36], [185, .45, .4], [215, .5, .42], [255, .4, .4], [285, .4, .4], [320, .45, .45], [30, .12, .42], [240, .1, .22]];
+export const TRIMS = [[44, .7, .55], [220, .08, .75], [28, .45, .36], [250, .15, .15], [40, .15, .88], [350, .6, .45]];
+export const GLOWS = [['Âmbar', EYEY], ['Ciano', CYANE], ['Violeta', VIOLET], ['Verde', GHOST], ['Rubi', REDGEM]];
+export const HAIR_STYLES = [['curto', 'Curto'], ['longo', 'Longo'], ['rabo', 'Rabo'], ['coque', 'Coque'], ['moicano', 'Moicano'], ['careca', 'Raspado']];
+export const ACCS = [['nenhum', 'Nenhum'], ['capuz', 'Capuz'], ['chapeu', 'Chapéu'], ['pena', 'Chapéu de pena'], ['elmo', 'Elmo'], ['bandana', 'Bandana'], ['chifres', 'Chifres'], ['coroa', 'Coroa de folhas'], ['cachecol', 'Cachecol'], ['tapa', 'Tapa-olho']];
 // estilos raros: só no Guarda-Roupa da casa, comprados uma vez com Centelhas (ficam em save.cos)
-const RARE_ACCS = [['flor', 'Flor no cabelo', 500], ['oculos', 'Óculos redondos', 600], ['orelhas', 'Orelhas de elfo', 800], ['aureola', 'Auréola', 1500], ['cartola', 'Cartola', 2000]];
-const RARE_HAIR = [['trancas', 'Tranças', 1000]];
+export const RARE_ACCS = [['flor', 'Flor no cabelo', 500], ['oculos', 'Óculos redondos', 600], ['orelhas', 'Orelhas de elfo', 800], ['aureola', 'Auréola', 1500], ['cartola', 'Cartola', 2000]];
+export const RARE_HAIR = [['trancas', 'Tranças', 1000]];
 // auras de partículas (Guarda-Roupa): caras, compradas uma vez; [id, nome, preço, cor]
-const AURAS = [['nenhuma', 'Nenhuma', 0, 0], ['brasas', 'Brasas', 3000, 21], ['vagalumes', 'Vaga-lumes', 3500, 30], ['petalas', 'Pétalas', 4500, 16], ['gelo', 'Cristais de gelo', 6000, 150], ['sombra', 'Sombra violeta', 8000, 151], ['fios', 'Fios dourados', 12000, 14]];
+export const AURAS = [['nenhuma', 'Nenhuma', 0, 0], ['brasas', 'Brasas', 3000, 21], ['vagalumes', 'Vaga-lumes', 3500, 30], ['petalas', 'Pétalas', 4500, 16], ['gelo', 'Cristais de gelo', 6000, 150], ['sombra', 'Sombra violeta', 8000, 151], ['fios', 'Fios dourados', 12000, 14]];
 // estilos de armadura (só aparecem com uma armadura equipada): os dois primeiros grátis, os outros comprados uma vez
-const ARMOR_STYLES = [['classica', 'Clássica'], ['couro', 'Couro'], ['placas', 'Placas', 1200], ['escamas', 'Escamas', 1500], ['tabardo', 'Tabardo real', 1800]];
-const BEARDS = [['nenhuma', 'Liso'], ['barba', 'Barba'], ['bigode', 'Bigode'], ['cavanhaque', 'Cavanhaque']];
-const BODIES = [['Esguio'], ['Médio'], ['Robusto']];
-function charRows(c) {
+export const ARMOR_STYLES = [['classica', 'Clássica'], ['couro', 'Couro'], ['placas', 'Placas', 1200], ['escamas', 'Escamas', 1500], ['tabardo', 'Tabardo real', 1800]];
+export const BEARDS = [['nenhuma', 'Liso'], ['barba', 'Barba'], ['bigode', 'Bigode'], ['cavanhaque', 'Cavanhaque']];
+export const BODIES = [['Esguio'], ['Médio'], ['Robusto']];
+export function charRows(c) {
   const sk = SKINS[c.skin], hr = HAIRS[c.hairCol], of = OUTFITS[c.outfit], tr = TRIMS[c.trim], gl2 = GLOWS[c.glow][1];
   return [rp(sk[0], sk[1], sk[2], .5), rp(hr[0], hr[1], hr[2], .7), rp(of[0], of[1], of[2]), rp(tr[0], tr[1], tr[2], .7), rp(215, .1, .62, .5), rp(28, .4, .33), gl2, gl2];
 }
-const REGPAL = {
+export const REGPAL = {
   hub: { bg: ['#0b0a16', '#1d1832', '#43293f'], outline: '#06050b', star: '#ffe9c9', rows: {
     8: rp(95, .42, .4), 9: rp(35, .28, .55, .6), 10: rp(85, .5, .5), 11: rp(32, .12, .58, .5), 12: rp(25, .45, .34), 13: rp(125, .45, .32), 14: GOLDS, 15: rp(195, .55, .48),
     16: rp(350, .65, .55), 17: rp(48, .75, .6), 18: rp(200, .45, .45), 19: rp(30, .35, .45), 20: EYEY, 21: FIRE, 22: rp(8, .5, .38), 23: rp(210, .35, .36), 24: rp(40, .28, .8, .5), 25: rp(14, .32, .64, .5), 26: GHOST, 27: FIRE, 28: rp(45, .2, .85), 29: rp(250, .3, .12) } },
@@ -67,8 +68,8 @@ const REGPAL = {
 };
 
 
-const KNIGHT_CFG = { seed: 90, body: 2, hair: 'careca', hairCol: 0, skin: 5, outfit: 11, trim: 1, glow: 2, acc: 'elmo', cape: true, cls: 'lamina', armor: 4, charm: 3, beard: 'nenhuma' };
-const XROWS = (() => {
+export const KNIGHT_CFG = { seed: 90, body: 2, hair: 'careca', hairCol: 0, skin: 5, outfit: 11, trim: 1, glow: 2, acc: 'elmo', cape: true, cls: 'lamina', armor: 4, charm: 3, beard: 'nenhuma' };
+export const XROWS = (() => {
   const r = {}, kc = charRows(KNIGHT_CFG); for (let i = 0; i < 8; i++) r[128 + i] = kc[i];
   Object.assign(r, { 136: rp(275, .3, .2), 137: rp(330, .45, .38), 138: rp(270, .2, .15), 139: rp(45, .15, .82, .5), 140: rp(275, .3, .2), 141: rp(275, .3, .2), 142: REDGEM, 143: hx(['#20203a', '#6a6aa0', '#c8c8f0', '#f0f0ff', '#ffffff']),
     144: rp(10, .25, .75, .5), 145: rp(340, .5, .2), 146: rp(190, .5, .6), 147: rp(300, .35, .3), 148: rp(300, .35, .3), 149: rp(300, .35, .3), 150: CYANE, 151: VIOLET });

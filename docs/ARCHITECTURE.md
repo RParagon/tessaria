@@ -116,7 +116,13 @@ A regra principal: **o servidor decide tudo o que importa.** Dano, drops, ouro, 
 
 ### Passos de migração
 
-1. **Módulos ES.** Trocar o escopo único por módulos com exportações explícitas. O estado mutável compartilhado (`P`, `enemies`, `boss`, `RG`, `G`) passa a viver num objeto `world` passado às funções.
+1. **Módulos ES (em andamento desde a 0.58).** O manifesto aceita `{ "module": "caminho.js" }`: o arquivo vira um módulo
+   ES de verdade (importa o que usa) e o que ele exporta entra no escopo único, então os arquivos antigos continuam
+   funcionando sem mudança. Já migrados: `core/game.js` (o estado `G`), `engine/math.js`, `engine/materials.js`,
+   `engine/splatset.js`, `data/palettes.js`, `render/icons.js`, `audio/sfx.js` e `audio/music.js`. O `npm run typecheck`
+   confere se cada módulo importa tudo o que usa. A ordem de migração segue das folhas (sem estado) para o centro;
+   os próximos são os que dependem de `P`, `RG` e `enemies`, que precisam virar um objeto `world` compartilhado.
+   O objetivo final continua: trocar o escopo único por módulos com exportações explícitas. O estado mutável compartilhado (`P`, `enemies`, `boss`, `RG`, `G`) passa a viver num objeto `world` passado às funções.
 2. **Separar simulação de render.** O núcleo de simulação fica em `src/sim/`: movimento, colisão, IA, combate, drops e geração de mapas, sem DOM nem WebGL, rodando em passos fixos de 20 por segundo. O render lê o estado e interpola entre os passos. O simulador de equilíbrio passa a rodar direto em Node.
 3. **Determinismo.** Usar PRNG com semente por sala e não chamar `Math.random()` dentro da simulação. Assim o cliente pode prever o movimento e o servidor corrigir.
 4. **Servidor.** O mesmo `src/sim` roda no servidor, nas salas que hoje servem a vila (WebSocket próprio; Colyseus fica como opção se a sincronização de estado crescer), com PostgreSQL para persistência.

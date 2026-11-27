@@ -634,7 +634,7 @@ $('#sDither').oninput = e => { G.settings.dither = +e.target.value; saveSettings
 $('#sOutline').onchange = e => { G.settings.outline = e.target.checked; saveSettings(); };
 $('#sDiff').onchange = e => { const v = +e.target.value; if (!G.save || !diffOk(DIFFS[v]) || !(RG && RG.key === 'hub')) { renderDiff(); return; } G.save.diff = v; writeSave(); renderDiff(); updateObjective(); toast('DIFICULDADE: ' + DIFFS[v].n.toUpperCase(), true, DIFFS[v].d, DIFFS[v].c); sfx(v > 0 ? 'epic' : 'open'); };
 $('#sSound').onchange = e => { G.settings.sound = e.target.checked; saveSettings(); };
-$('#sMusic').oninput = e => { G.settings.music = +e.target.value; if (MUS.master && AC) MUS.master.gain.setTargetAtTime(G.settings.music * .8, AC.currentTime, .1); saveSettings(); };
+$('#sMusic').oninput = e => { G.settings.music = +e.target.value; if (MUS.master && audioCtx(false)) MUS.master.gain.setTargetAtTime(G.settings.music * .8, audioCtx(false).currentTime, .1); saveSettings(); };
 function saveSettings() { try { localStorage.setItem(SKEY + '-set', JSON.stringify(G.settings)); } catch (e) { } }
 try { const s = JSON.parse(localStorage.getItem(SKEY + '-set') || 'null'); if (s) { Object.assign(G.settings, s); if ((s.sv || 0) < 2) { G.settings.px = 3; G.settings.dither = .5; G.settings.sv = 2; } } } catch (e) { }   /* sv 2: novo padrão de pixel 3 e pontilhado .5 */
 updateUiScale();   // o tamanho da interface salvo vale desde a primeira tela

@@ -1,15 +1,17 @@
-/* Fios de Tessária · Gerador de splats (SplatSet) */
+/* Fios de Tessária (módulo ES) · Gerador de splats (SplatSet) */
+import { V, clamp, lerp, rng } from './math.js';
+import { isEm } from './materials.js';
 /* =========================================================
    GERADOR DE SPLATS
    flags: 1 dupla face · 2 emissivo · 4 recebe sombra · 8 oclusor (some na frente do herói) · 16 tremeluz
    ========================================================= */
-const STRIDE = 10;
-function catmull(p0, p1, p2, p3, u) {
+export const STRIDE = 10;
+export function catmull(p0, p1, p2, p3, u) {
   const u2 = u * u, u3 = u2 * u, o = [];
   for (let i = 0; i < 3; i++) o.push(0.5 * (2 * p1[i] + (-p0[i] + p2[i]) * u + (2 * p0[i] - 5 * p1[i] + 4 * p2[i] - p3[i]) * u2 + (-p0[i] + 3 * p1[i] - 3 * p2[i] + p3[i]) * u3));
   return o;
 }
-function smoothPath(nodes, sub, closed) {
+export function smoothPath(nodes, sub, closed) {
   const N = nodes.length, out = [];
   const get = i => closed ? nodes[(i + N) % N] : nodes[clamp(i, 0, N - 1)];
   const segs = closed ? N : N - 1;
@@ -21,7 +23,7 @@ function smoothPath(nodes, sub, closed) {
   else { const l = nodes[N - 1]; out.push({ p: [l[0], l[1], l[2]], r: l[3], b: nodes[N - 2][4] }); }
   return out;
 }
-class SplatSet {
+export class SplatSet {
   constructor(seed, density, remap, world) { this.R = rng(seed); this.D = density; this.remap = remap || null; this.world = !!world; this.parts = []; this.solids = []; this.out = []; this.sid = 0; }
   _sEll(c, r) { const id = this.sid++; this.solids.push({ k: 0, id, c, r, bc: c, br: Math.max(r[0], r[1], r[2]) }); return id; }
   _sSeg(a, b, ra, rb) { const id = this.sid++; this.solids.push({ k: 1, id, a, b, ra, rb, bc: V.lerp(a, b, .5), br: V.len(V.sub(b, a)) / 2 + Math.max(ra, rb) }); return id; }

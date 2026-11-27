@@ -1,12 +1,15 @@
-/* Fios de Tessária · Efeitos sonoros sintetizados */
+/* Fios de Tessária (módulo ES) · Efeitos sonoros sintetizados */
+import { G } from '../core/game.js';
 /* =========================================================
    ÁUDIO (sintetizado)
    ========================================================= */
-let AC = null, lastSfx = {};
-function sfx(type) {
+let AC = null, lastSfx = {};   /* privado */
+/** O contexto de áudio único do jogo (efeitos e música). create=false só devolve o que já existe. */
+export function audioCtx(create = true) { if (!AC && create) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } return AC; }
+export function sfx(type) {
   if (!G.settings.sound) return;
   const now = performance.now(); if (lastSfx[type] && now - lastSfx[type] < 45) return; lastSfx[type] = now;
-  try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { return; }
+  try { if (!audioCtx()) return; if (AC.state === 'suspended') AC.resume(); } catch (e) { return; }
   const t = AC.currentTime, g = AC.createGain(); g.connect(AC.destination);
   const osc = (type2, f0, f1, dur, vol) => { const o = AC.createOscillator(); o.type = type2; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur); const gg = AC.createGain(); gg.gain.setValueAtTime(vol, t); gg.gain.exponentialRampToValueAtTime(.001, t + dur); o.connect(gg); gg.connect(g); o.start(t); o.stop(t + dur + .02); };
   const noise = (dur, vol, f) => { const b = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length); const s = AC.createBufferSource(); s.buffer = b; const fl = AC.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = f; const gg = AC.createGain(); gg.gain.value = vol; s.connect(fl); fl.connect(gg); gg.connect(g); s.start(t); };
@@ -37,8 +40,8 @@ function sfx(type) {
 
 
 /* Chuva: ruído contínuo filtrado (mais forte na tempestade; abafado dentro de casa). level 0 a 1. */
-let RAIN = null;
-function rainAudio(level, muffled) {
+let RAIN = null;   /* privado */
+export function rainAudio(level, muffled) {
   if (!AC) return;
   if (!G.settings.sound) level = 0;
   if (!RAIN) {

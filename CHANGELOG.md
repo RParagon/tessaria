@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.58.0 · Início da migração para módulos
+- **Por dentro (sem mudança para o jogador):** o jogo começou a sair do "escopo único" (todos os arquivos colados num só) para módulos ES de verdade. O manifesto aceita `{ "module": "..." }`: o arquivo importa o que usa e o que ele exporta continua disponível para os arquivos antigos
+- Já migrados: o estado do jogo (`core/game.js`), matemática, materiais, o conjunto de splats, paletas, ícones, efeitos sonoros e música (com um contexto de áudio único, `audioCtx()`)
+- **Proteção:** `npm run typecheck` agora confere os módulos do jogo (`tools/check-modules.mjs`): falha se um módulo usar um nome sem importar ou declarar algo sem exportar. Essa checagem nasceu de um erro real pego pelos testes nesta migração
+- Regras novas em `CLAUDE.md` e o plano em `docs/ARCHITECTURE.md`
+
 ## 0.57.0 · Operação: backup, monitoramento e roteiro de problemas
 - **Guia de operação** (`docs/OPERATIONS.md`): backup diário do banco no Easypanel (com destino fora do servidor e teste de restauração mensal), monitor externo do `/health`, painel de saúde e o que fazer quando o servidor cai, um pagamento não credita ou um segredo vaza
 - **`/health` responde 503** quando o banco não responde (antes era 200), para os monitores de disponibilidade avisarem

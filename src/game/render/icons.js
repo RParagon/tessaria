@@ -1,9 +1,10 @@
-/* Fios de Tessária · Ícones em pixel art */
+/* Fios de Tessária (módulo ES) · Ícones em pixel art */
+
 /* =========================================================
    ÍCONES (pixel art 12×12 desenhada em código)
    ========================================================= */
-const ICONC = { k: '#120c1a', w: '#fff7e6', g: '#a9a3b8', s: '#d8d2e6', y: '#f2b84b', r: '#d9433a', b: '#4a8fe0', p: '#a35ee0', n: '#7a4a2a', N: '#b07a48', G: '#5fbf4a', c: '#3fd1d0', o: '#ff8a2a' };
-const ICONS = {
+export const ICONC = { k: '#120c1a', w: '#fff7e6', g: '#a9a3b8', s: '#d8d2e6', y: '#f2b84b', r: '#d9433a', b: '#4a8fe0', p: '#a35ee0', n: '#7a4a2a', N: '#b07a48', G: '#5fbf4a', c: '#3fd1d0', o: '#ff8a2a' };
+export const ICONS = {
   sword: ['..........kk', '.........kwk', '........kwgk', '.......kwgk.', '......kwgk..', '..k..kwgk...', '..kkkwgk....', '...kygk.....', '..knkk......', '.knk.k......', 'knk.........', 'kk..........'],
   staff: ['.......kkk..', '......kcwck.', '......kccck.', '.......kkk..', '......knk...', '.....knk....', '....knk.....', '...knk......', '..knk.......', '.knk........', 'knk.........', 'kk..........'],
   bow: ['...kkk......', '..knnnk.....', '.kn..knk..k.', '.kn...k..kwk', 'kn....k.kwk.', 'kn....kkwk..', 'kn....kwkk..', 'kn...kwk.k..', '.kn.kwk..k..', '.knkwk..k...', '..kkk..kk...', '...kkkk.....'],
@@ -21,9 +22,9 @@ const ICONS = {
   book: ['............', '.kkkkkkkkk..', '.knnnnnnnnk.', '.knwwwwwwnk.', '.knwkkkkwnk.', '.knwwwwwwnk.', '.knwkkkkwnk.', '.knwwwwwwnk.', '.knwkkkwwnk.', '.knnnnnnnnk.', '.kkkkkkkkkk.', '............'],
   gear: ['....k..k....', '...kgkkgk...', '.k.kggggk.k.', 'kgkggkkggkgk', '.kggk..kggk.', '.kgk....kgk.', '.kgk....kgk.', '.kggk..kggk.', 'kgkggkkggkgk', '.k.kggggk.k.', '...kgkkgk...', '....k..k....'],
 };
-const iconURL = {};
-const ICON3D = {};   // ícones 3D assados pelo motor de splats (render.js, bakeIcons); os de pixel ficam de reserva
-function icon(name) {
+export const iconURL = {};
+export const ICON3D = {};   // ícones 3D assados pelo motor de splats (render.js, bakeIcons); os de pixel ficam de reserva
+export function icon(name) {
   if (ICON3D[name]) return ICON3D[name];
   if (iconURL[name]) return iconURL[name];
   const rows = ICONS[name] || ICONS.gem, c = document.createElement('canvas'); c.width = c.height = 12;
@@ -31,7 +32,7 @@ function icon(name) {
   rows.forEach((r, y) => { for (let i = 0; i < 12; i++) { const ch = r[i]; if (ch && ch !== '.' && ICONC[ch]) { x.fillStyle = ICONC[ch]; x.fillRect(i, y, 1, 1); } } });
   return (iconURL[name] = c.toDataURL());
 }
-const CLSICON = { lamina: 'sword', arcano: 'staff', arco: 'bow' };
-const SKILLICON = { lamina: 'fire', arcano: 'nova', arco: 'rain' };
-const SKILLNAME = { lamina: 'Giro', arcano: 'Nova', arco: 'Chuva' };
+export const CLSICON = { lamina: 'sword', arcano: 'staff', arco: 'bow' };
+export const SKILLICON = { lamina: 'fire', arcano: 'nova', arco: 'rain' };
+export const SKILLNAME = { lamina: 'Giro', arcano: 'Nova', arco: 'Chuva' };
 
