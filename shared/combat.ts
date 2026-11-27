@@ -34,3 +34,19 @@ export function combatProfile(save: any): CombatProfile {
 export const maxHit = (p: CombatProfile) => p.dmg * 12 * p.critMul * 1.15;
 /** Dano de PvP que um golpe bruto causa na vítima. */
 export const pvpDamage = (raw: number, victim: CombatProfile) => Math.max(1, Math.round(Math.min(raw * PVP_MUL, victim.maxHp * PVP_MAX_FRAC) * (1 - victim.dr)));
+
+// ---------- dano em monstros (Fendas e Ermos do grupo) ----------
+// O anfitrião simula os monstros; o servidor não sabe a vida de cada um, mas sabe o mínimo que um abate custa
+// (o monstro mais fraco do jogo, a aranha: 22 de vida, na dificuldade e no nível da Fenda) e o máximo de dano que o
+// grupo consegue causar (perfil de cada um). Abate mais rápido que isso, sem ninguém atacando ou longe de todos: não vale.
+/** Vida dos monstros por dificuldade (DIFFS em src/game/core/state.js). */
+export const DIFF_HP = [1, 1.5, 2.2, 3.2, 4.6, 6.5, 9];
+export const MIN_MONSTER_HP = 22, ELITE_HP = 3.2, MONSTER_AOE = 8;
+/** Menor vida possível de um monstro na instância (folga: nos Ermos, monstros de nível baixo em zona baixa valem 60%). */
+export function minMonsterHp(o: { kind: 'rift' | 'wilds'; L: number; diff: number; aff?: string[] }, elite = false) {
+  const d = DIFF_HP[Math.max(0, Math.min(DIFF_HP.length - 1, Math.floor(o.diff) || 0))];
+  const scale = o.kind === 'rift' ? (1 + .4 * (Math.max(1, o.L) - 1)) * (o.aff?.includes('fortificada') ? 1.4 : 1) : .6;
+  return MIN_MONSTER_HP * d * scale * (elite ? ELITE_HP * MONSTER_AOE / 2 : 1);   // elite: no máximo 2 por golpe (a folga de área é para os comuns)
+}
+/** Dano por segundo máximo de um jogador contra monstros, com folga para golpes em área (vários monstros por golpe), bênçãos e comida. */
+export const dpsCap = (p: CombatProfile) => p.dmg * p.critMul / Math.max(.15, p.atkCd) * MONSTER_AOE;

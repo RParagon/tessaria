@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import { combatProfile, maxHit, pvpDamage, type CombatProfile } from '../../shared/combat';
+import { combatProfile, dpsCap, maxHit, minMonsterHp, pvpDamage, type CombatProfile } from '../../shared/combat';
 import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, WILDS_CAP, deepWilds, PVP_RANGE, PVP_RATE, LOOT_MS, LOOT_TAKE_R, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, pvpHitCap, CHAT_RADIUS, DUEL_INVITE_MS, DUEL_RANGE, DUEL_GO_MS, DUEL_MS, DUEL_ELO_START, DUEL_ELO_K, DUEL_PAIR_DAY, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
@@ -12,6 +12,8 @@ import { DIFF_LEVEL } from '../../shared/save';
 import { requestFriend } from './social';
 
 /** PvP: cura máxima de uma vez (fração da vida) e por segundo; instante sem dano depois de apanhar (igual ao do jogo); tempo para renascer depois de cair. */
+/** Dano em monstros: quanto tempo de dano o grupo acumula, ataque recente e alcance para um abate valer, abates ruins até registrar. */
+const MON_BUDGET_S = 8, MON_ATK_RECENT = 6000, MON_REACH = 32, MON_BAD_LOG = 5;
 const HEAL_BURST = .6, HEAL_RATE = .3, HURT_IFRAME = 240, DOWN_GRACE = 4000;
 const CLS_LABEL: Record<string, string> = { lamina: 'Lâmina', arcano: 'Arcano', arco: 'Arco' };
 const DIFF_N = ['Normal', 'Difícil', 'Expert', 'Mestre', 'Tormento I', 'Tormento II', 'Tormento III'];
@@ -68,7 +70,7 @@ class Room {
 interface Trade { a: Player; b: Player; offers: Map<number, { items: any[]; gold: number; ready: boolean }>; busy: boolean }
 interface Party { id: number; leader: string; members: string[]; info: Map<string, { name: string; cls: string; lvl: number }>; gone: Map<string, NodeJS.Timeout>; inst?: Instance | null }
 /** Instância do grupo (Fenda): uma sala própria, com os dados que geram o mesmo mapa para todos. */
-interface Instance { diff: number; lvl: number; kills: Set<number>; killTokens: number; killRefill: number; host: number; id: number; party: Party; kind: 'rift' | 'wilds'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
+interface Instance { diff: number; lvl: number; kills: Set<number>; killTokens: number; killRefill: number; dmg: number; badKills: number; badLogged: number; host: number; id: number; party: Party; kind: 'rift' | 'wilds'; L: number; base: string; aff: string[]; boss: string; seed: number; room: Room; closeT: NodeJS.Timeout | null }
 export interface HubOptions { inviteMs?: number; graceMs?: number; instEmptyMs?: number }
 /** Suspeitas em 60 s para registrar (e 3× isso para derrubar a conexão). */
 const SUS_SPEED = 25, SUS_DMG = 6;
@@ -357,7 +359,17 @@ export class Hub {
     if (p.actTokens < 1) { inc('hub_act_drops'); return; }
     p.actTokens -= 1;
     const c = Number.isInteger(m.c) && m.c >= 0 && m.c <= 3 ? m.c : 0;
-    if (m.a === 'dash') p.lastDash = now; else p.lastAtk = now;   // duelos: golpe só vale logo depois de um ataque; esquiva dá um instante sem dano
+    if (m.a === 'dash') p.lastDash = now;
+    else {   // duelos e PvP: golpe só vale logo depois de um ataque. Instância: cada ataque soma ao dano que o grupo pode ter causado.
+      const inst = p.room?.inst;
+      if (inst) {
+        const cap = dpsCap(p.prof), dt = Math.min(1, Math.max(p.prof.atkCd, (now - p.lastAtk) / 1000));   // um ataque vale o tempo de um golpe
+        const skill = m.a === 'cast' || m.a === 'nova' || m.a === 'volley' || m.a === 'spin' ? maxHit(p.prof) * 3 : 0;   // habilidades: um golpe grande em área (o giro dura alguns segundos)
+        let room = 0; for (const q of inst.room.players.values()) room += dpsCap(q.prof);
+        inst.dmg = Math.min(room * MON_BUDGET_S, inst.dmg + cap * dt + skill);
+      }
+      p.lastAtk = now;
+    }
     p.yaw = yaw % 6.2832; p.dirty = true;
     p.room?.broadcast({ t: 'act', id: p.id, a: m.a as Act, c, yaw: +p.yaw.toFixed(2) }, p);
   }
@@ -681,7 +693,7 @@ export class Hub {
     let diff = p.diff, limit = '';
     for (const mid of pt.members) { const q = this.byAccount.get(mid); if (!q) continue; const md = maxDiff(q); if (md < diff) { diff = md; limit = q.account.name; } }
     if (limit) send(p, { t: 'sys', text: `Dificuldade do grupo: ${DIFF_NAME[diff]} (${limit} ainda não desbloqueou a ${DIFF_NAME[p.diff]}).` });
-    const inst: Instance = { diff, lvl: p.lvl, kills: new Set(), killTokens: KILL_BURST, killRefill: Date.now(), host: 0, id, party: pt, kind, L, base: kind === 'wilds' ? 'wilds' : m.base, aff: aff!.slice(), boss: kind === 'wilds' ? '' : m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
+    const inst: Instance = { diff, lvl: p.lvl, kills: new Set(), killTokens: KILL_BURST, killRefill: Date.now(), dmg: 0, badKills: 0, badLogged: 0, host: 0, id, party: pt, kind, L, base: kind === 'wilds' ? 'wilds' : m.base, aff: aff!.slice(), boss: kind === 'wilds' ? '' : m.boss, seed: 1 + Math.floor(Math.random() * 2147483000), room, closeT: null };
     room.bounds = INST_BOUNDS; room.inst = inst; pt.inst = inst; this.instances.set(id, inst);
     send(p, this.enterMsg(inst));
     const far: string[] = [];
@@ -739,8 +751,13 @@ export class Hub {
     const now = Date.now();
     inst.killTokens = Math.min(KILL_BURST, inst.killTokens + (now - inst.killRefill) / 1000 * KILL_RATE); inst.killRefill = now;
     if (inst.killTokens < 1) { inc('hub_kill_rejects'); void this.store.audit(p.account.id, 'abates_rapidos', { inst: inst.id }).catch(() => {}); return; }
-    inst.killTokens -= 1; inst.kills.add(nid);
     const kind = { elite: m.el === 1, thief: m.th === 1 };
+    // Dano em monstros: alguém do grupo atacou há pouco, perto do monstro, e o grupo pode ter causado o dano que esse abate custa.
+    const near = [...inst.room.players.values()].some(q => now - q.lastAtk < MON_ATK_RECENT && Math.hypot(q.x - x, q.z - z) <= MON_REACH);
+    const cost = minMonsterHp({ kind: inst.kind, L: inst.L, diff: inst.diff, aff: inst.aff }, kind.elite);
+    if (!near || inst.dmg < cost) { this.badKill(p, inst, near ? 'dano' : 'longe'); return; }
+    inst.dmg -= cost;
+    inst.killTokens -= 1; inst.kills.add(nid);
     for (const q of inst.room.players.values()) {
       if (Math.hypot(q.x - x, q.z - z) > KILL_SHARE) continue;
       const biome = Number.isInteger(m.b) && m.b >= 0 && m.b <= 7 ? m.b : 0;   // Ermos: bioma informado pelo anfitrião (o teto é o Ermo Profundo)
@@ -752,6 +769,12 @@ export class Hub {
       send(q, { t: 'loot', x, z, items });
       inc('hub_loot_items', items.length);
     }
+  }
+  /** Abate que o grupo não podia ter feito: sem loot. Repetido, fica registrado (uma vez por minuto) para a moderação. */
+  private badKill(p: Player, inst: Instance, why: 'dano' | 'longe') {
+    inc('hub_kill_impossible_' + why); inst.badKills++;
+    const now = Date.now();
+    if (inst.badKills >= MON_BAD_LOG && now - inst.badLogged > 60_000) { inst.badLogged = now; void this.store.audit(p.account.id, 'abates_impossiveis', { inst: inst.id, n: inst.badKills, por: why === 'dano' ? 1 : 2 }).catch(() => {}); }
   }
   private enterMsg(i: Instance): ServerMsg { return { t: 'ienter', inst: i.id, kind: i.kind, rift: i.kind === 'rift' ? { L: i.L, base: i.base, aff: i.aff, boss: i.boss, seed: i.seed } : null, diff: i.diff, lvl: i.lvl }; }
   private scheduleClose(inst: Instance) {

@@ -223,6 +223,7 @@ test('Fenda do grupo: os monstros são os mesmos para os dois, o acerto do convi
 
   // 2. o convidado acerta: o líder aplica o dano, o inimigo cai e o convidado ganha a recompensa
   const killsB = await ev(B.page, 'G.save.kills');
+  await ev(B.page, "TessNet.sendAct('nova', 0, 0)");   // o servidor só paga abate com ataque de alguém do grupo por perto
   await ev(B.page, `hurtEnemy(enemies.find(e => e.nid === ${nid}), 9999, 1, 0, false)`);
   await A.page.waitForFunction(() => (window as any).__T.ev('__g.dieT >= 0'), null, { timeout: 5000 });
   await B.page.waitForFunction(id => (window as any).__T.ev(`!!(enemies.find(e => e.nid === ${id}) || { rewarded: true }).rewarded`), nid, { timeout: 5000 });
@@ -294,6 +295,7 @@ test('Fenda do grupo: o servidor sorteia o loot de cada um e o item pego é acei
   await ev(A.page, "(() => { const r = TessNet.players()[0]; const e = spawnEnemy('gosmo', (P.x + r.x) / 2, (P.z + r.z) / 2); e.spawnT = 0; makeElite(e); e.def = Object.assign({}, e.def, { dmg: 0 }); window.__el = e; })()");
   await A.page.waitForFunction(() => (window as any).__T.ev('__el.nid > 0'), null, { timeout: 5000 });
   await A.page.waitForTimeout(300);
+  await ev(A.page, "TessNet.sendAct('nova', 0, 0)");   // o servidor só paga abate com ataque de alguém do grupo por perto
   await ev(A.page, 'hurtEnemy(__el, 99999, 1, 0, false)');
   const loot = (pg: Page) => pg.waitForFunction(() => (window as any).__T.ev("pickups.filter(p => p.kind === 'item' && p.item.g === 1).map(p => p.item.id)").length > 0, null, { timeout: 8000 });
   await Promise.all([loot(A.page), loot(B.page)]);
@@ -334,6 +336,7 @@ test('Ermos do grupo: o líder abre, os dois chegam ao mesmo mapa e o golpe do a
   await A.page.waitForFunction(() => (window as any).__T.ev('__w.nid > 0'), null, { timeout: 5000 });
   const nid = await ev(A.page, '__w.nid');
   await B.page.waitForFunction(id => (window as any).__T.ev(`enemies.some(e => e.proxy && e.nid === ${id})`), nid, { timeout: 5000 });
+  await ev(B.page, "TessNet.sendAct('nova', 0, 0)");   // o servidor só paga abate com ataque de alguém do grupo por perto
   await ev(B.page, `hurtEnemy(enemies.find(e => e.nid === ${nid}), 99999, 1, 0, false)`);
   const loot = (pg: Page) => pg.waitForFunction(() => (window as any).__T.ev("pickups.some(p => p.kind === 'item' && p.item.g === 1)"), null, { timeout: 8000 });
   await Promise.all([loot(A.page), loot(B.page)]);

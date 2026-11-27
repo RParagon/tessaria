@@ -453,3 +453,12 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 - A vítima recebe `pvp` com `d` (dano aplicado), `hp`, `max` e `kill: 1` quando chega a zero. O atacante recebe `dhp`. O jogo aplica `d` na escala da própria vida, nunca fica acima de `hp`, e cai com `kill` (fecha menus e diálogos).
 - Caído (`p.down`): não bate nem apanha até um teletransporte aceito (renascer). Se depois de 4 s (`DOWN_GRACE`) andar mais de 8 unidades sem renascer, conta como suspeita forte de dano (peso `SUS_DMG`, já registrada) e o servidor repete o `kill`. Três vezes, e a conexão cai.
 - Não coberto: o Escudo de Musgo (o servidor não conhece o escudo) e o dano contra monstros (próxima etapa).
+
+## Abates conferidos pelo servidor (0.62)
+
+- O anfitrião continua simulando os monstros e avisando `ikill`. Antes de sortear o loot, o servidor confere duas coisas:
+  - **Alguém atacou por perto:** um jogador da instância mandou um ataque (`act`, menos a esquiva) nos últimos 6 s (`MON_ATK_RECENT`), a até 32 passos do abate (`MON_REACH`).
+  - **O grupo tinha dano para isso:** a instância guarda um crédito de dano (`inst.dmg`). Cada ataque soma `dpsCap(perfil) × tempo de um golpe` (entre o `atkCd` e 1 s). Habilidades (cast, nova, volley, spin) somam ainda `maxHit × 3`. O crédito vai no máximo a 8 s do dano do grupo inteiro (`MON_BUDGET_S`). Cada abate gasta `minMonsterHp`: a aranha (22 de vida) × dificuldade × nível da Fenda (nos Ermos, 60%); a elite custa ×3,2 × 4 (no máximo 2 por golpe).
+- `dpsCap = dano × multiplicador do crítico / atkCd × 8` (folga para golpes em área, bênçãos e comida). As regras estão em `shared/combat.ts`.
+- Abate recusado: sem loot, contador `hub_kill_impossible_{dano,longe}`. A partir de 5 recusas, uma auditoria `abates_impossiveis` por minuto.
+- Limite: é uma conferência por limites, não por monstro. Um líder trapaceiro ainda pode adiantar abates dentro da folga, mas não farmar sem atacar, longe do grupo nem além do dano possível.

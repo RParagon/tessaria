@@ -220,9 +220,12 @@ for (const kind of STORES) {
       // loot pelo servidor: elite derrotada perto dos dois → item para cada um, registrado
       a.c.send({ t: 'pos', x: 150, z: 121, yaw: 0, m: 0, a: '' });
       await sleep(150);
+      a.c.send({ t: 'ikill', n: 76, el: 1, th: 0, x: 150, z: 120 });   // ninguém atacou: o abate não vale
+      await sleep(200); assert.ok(!a.c.msgs.some((m: any) => m.t === 'loot'), 'abate sem ataque não dá loot');
+      a.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); await sleep(50);   // o golpe que derrubou a elite
       a.c.send({ t: 'ikill', n: 77, el: 1, th: 0, x: 150, z: 120 });
       const la = await a.c.waitFor(m => m.t === 'loot'), lb = await b.c.waitFor(m => m.t === 'loot');
-      for (const L of [la, lb]) { assert.ok(L.items.length >= 1); assert.equal(L.items[0].g, 1); assert.match(L.items[0].id, /^g[0-9a-f]{12}$/); assert.ok(L.items[0].rar >= 2); }
+      for (const L of [la, lb]) { assert.ok(L.items.length >= 1); assert.equal(L.items[0].g, 1); assert.match(L.items[0].id, /^g[0-9a-f]{12}$/); assert.ok(L.items.some((it: any) => it.rar >= 2), 'a elite garante um raro (às vezes vem antes um item comum, 8%)'); }
       assert.notEqual(la.items[0].id, lb.items[0].id);
       const nLoot = () => b.c.msgs.filter((m: any) => m.t === 'loot').length, before = nLoot();
       a.c.send({ t: 'ikill', n: 77, el: 1, th: 0, x: 150, z: 120 });   // o mesmo monstro não paga duas vezes
@@ -230,6 +233,12 @@ for (const kind of STORES) {
       a.c.send({ t: 'ikill', n: 79, el: 1, th: 0, x: 10, z: 10 });     // longe dos dois: ninguém ganha
       await sleep(250);
       assert.equal(nLoot(), before);
+      // abates mais rápidos que o dano possível do grupo: um golpe não derruba vinte elites
+      a.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); await sleep(50);
+      for (let i = 0; i < 20; i++) a.c.send({ t: 'ikill', n: 200 + i, el: 1, th: 0, x: 150, z: 120 });
+      await sleep(400);
+      const got = b.c.msgs.filter((m: any) => m.t === 'loot').length - before;
+      assert.ok(got >= 1 && got <= 6, `elites pagas: ${got}`);
       // o item concedido entra no save; um forjado com a marca do servidor é recusado
       const sv = baseSave(); sv.inv = [lb.items[0]];
       assert.equal((await api(S.url, 'PUT', '/save', { rev: 1, data: sv }, B.token)).status, 200);
@@ -280,6 +289,7 @@ for (const kind of STORES) {
       const wb = await b.c.waitFor(m => m.t === 'welcome' && m.room === 'Ermos do grupo');
       a.c.send({ t: 'pos', x: 550, z: 480, yaw: 0, m: 0, a: '' }); b.c.send({ t: 'pos', x: 551, z: 481, yaw: 0, m: 0, a: '' });
       await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === wb.id && q[1] === 551));
+      a.c.send({ t: 'act', a: 'nova', c: 0, yaw: 0 }); await sleep(50);   // habilidade em área: paga os dois abates abaixo
       a.c.send({ t: 'ikill', n: 5, el: 1, th: 0, x: 550, z: 480, b: 7 });
       const L7 = await b.c.waitFor(m => m.t === 'loot');
       assert.ok(L7.items[0].tier > 5.4, `tier ${L7.items[0].tier}`);   // Ermo Profundo: 1 + 4 + (20-3)*0,05

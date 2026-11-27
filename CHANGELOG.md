@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.62.0 · Dano em monstros conferido pelo servidor
+- **Loot só de abate possível:** nas Fendas e nos Ermos do grupo, quem simula os monstros é o jogo do líder, mas agora o servidor confere cada abate antes de sortear o loot:
+  - alguém do grupo atacou nos últimos 6 s, a até 32 passos do monstro;
+  - o grupo tinha dano para isso. Cada ataque soma o dano máximo daquele personagem (perfil do save, com folga para crítico, golpes em área e bônus); cada abate gasta pelo menos a vida do monstro mais fraco naquela dificuldade e nível de Fenda, e a elite custa mais
+- Abate impossível não dá loot; repetidos, ficam registrados para a moderação (`abates_impossiveis`)
+- Testes: um abate sem ataque não paga; um golpe não paga vinte elites; o teste de raridade da elite deixou de falhar às vezes (um item comum de 8% podia vir antes do raro)
+- Fecha a etapa 3 da proteção contra trapaça. O servidor ainda não sabe a vida exata de cada monstro (é o jogo do líder que simula); a conferência é por limites, com folga para não punir quem joga limpo
+
 ## 0.61.0 · PvP do Ermo Profundo decidido pelo servidor
 - **O servidor conta a vida nos Ermos:** o jogo informa a vida junto com a posição. Perder vida vale na hora; recuperar tem limite de ritmo (uma poção, roubo de vida e regeneração). Assim, um jogo alterado não consegue ignorar o dano de outro jogador
 - **Cada golpe de PvP é conferido como no duelo:** só vale logo depois de um ataque, nunca passa do maior golpe possível do atacante, não pega quem acabou de esquivar nem quem acabou de apanhar (o mesmo instante de proteção do jogo), e o giro da Lâmina corta o dano pela metade. O dano é calculado no servidor a partir dos dois personagens salvos
