@@ -16,4 +16,7 @@ export function render(extra: Record<string, number> = {}): string {
   return lines.join('\n') + '\n';
 }
 
+/** Valor atual de um contador (0 se nunca contou). */
+export const counter = (name: string) => counters.get(name) ?? 0;
+
 export function resetMetricsForTests() { counters.clear(); }

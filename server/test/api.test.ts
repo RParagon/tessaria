@@ -10,6 +10,14 @@ for (const kind of STORES) {
     before(async () => { S = await startServer(kind, { metricsToken: 'segredo-metricas', googleClientId: 'cliente-teste' }); });
     after(async () => { await S.close(); });
 
+    test('saúde: 503 quando o banco não responde (os monitores olham o código)', async () => {
+      const orig = S.store.counts.bind(S.store);
+      (S.store as any).counts = async () => { throw new Error('banco fora'); };
+      try { const r = await api(S.url, 'GET', '/health'); assert.equal(r.status, 503); assert.equal(r.body.db, 'erro'); }
+      finally { (S.store as any).counts = orig; }
+      assert.equal((await api(S.url, 'GET', '/health')).status, 200);
+    });
+
     test('saúde e configuração públicas', async () => {
       const h = await api(S.url, 'GET', '/health');
       assert.equal(h.status, 200); assert.equal(h.body.ok, true);

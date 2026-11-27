@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.57.0 · Operação: backup, monitoramento e roteiro de problemas
+- **Guia de operação** (`docs/OPERATIONS.md`): backup diário do banco no Easypanel (com destino fora do servidor e teste de restauração mensal), monitor externo do `/health`, painel de saúde e o que fazer quando o servidor cai, um pagamento não credita ou um segredo vaza
+- **`/health` responde 503** quando o banco não responde (antes era 200), para os monitores de disponibilidade avisarem
+- **`/admin/status`** (com `ADMIN_TOKEN`): versão, banco, jogadores online, memória, pagamentos (creditados, estornados, falhas no webhook e no checkout, assinaturas inválidas), saves recusados, suspeitas de trapaça e reportes novos
+- **Aviso de reinício:** antes de uma atualização, os jogadores online recebem "o servidor está reiniciando… seu progresso está salvo" e reconectam sozinhos
+- **docker-compose:** `deploy/backup.sh` (backup com conferência e limpeza dos antigos) e `deploy/restore.sh`
+
 ## 0.56.0 · O jogo ficou mais desafiador
 - **Combate:** os monstros batem cerca de **2× mais forte** (no Normal, um monstro comum derruba a Lâmina em 8 a 11 golpes e o Arcano e o Arco em 6 a 9; antes eram 16 a 29). Nas dificuldades altas o aumento é menor, para o Tormento não ficar injusto. Chefes e perigos dos Ermos também acompanham
 - **Passar do nível da região não deixa tudo trivial:** os monstros crescem junto com o herói também no Normal

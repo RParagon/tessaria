@@ -117,7 +117,7 @@ export class Hub {
     clearInterval(this.timer); clearInterval(this.ping);
     for (const i of this.instances.values()) if (i.closeT) clearTimeout(i.closeT);
     for (const pt of this.parties.values()) for (const t of pt.gone.values()) clearTimeout(t);
-    for (const p of this.byAccount.values()) { try { p.ws.close(1001, 'servidor reiniciando'); } catch { /* já fechado */ } p.ws.terminate(); }
+    for (const p of this.byAccount.values()) { send(p, { t: 'sys', text: 'O servidor está reiniciando para uma atualização. Você volta sozinho em instantes; seu progresso está salvo.' }); try { p.ws.close(1001, 'servidor reiniciando'); } catch { /* já fechado */ } p.ws.terminate(); }
   }
   get online() { return this.byAccount.size; }
   /** Fecha a conexão de uma conta (conta excluída ou banida). */

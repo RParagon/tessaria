@@ -10,7 +10,7 @@ import { EMAIL_RE, guestName, hashPassword, hashToken, newToken, passwordProblem
 import { Hub, type HubOptions } from './hub';
 import { acceptFriend, removeFriend, requestFriend, setBlock } from './social';
 import { FRIEND_REQ_DAYS, type FriendsList } from '../../shared/social';
-import { inc, render as renderMetrics } from './metrics';
+import { counter, inc, render as renderMetrics } from './metrics';
 import { GUILD_FIOS, GUILD_FOUND_COST, GUILD_FOUND_LVL, GUILD_INVITE_MS, GUILD_MAX, GUILD_OFFICERS_MAX, GUILD_REJOIN_MS, MOTD_MAX, ROLE_N, canManage, cleanEmblem, cleanGuildName, cleanTag, guildDay, guildLevel, guildNameProblem, guildTagProblem, guildWeek, guildXpFor, type GuildRole } from '../../shared/guild';
 import { mpCreatePreference, mpGetPayment, mpSignatureOk, notificationPaymentId, paymentMatches, parseRef } from './payments';
 import { nameProblem, maskText, cleanChat } from '../../shared/text';
@@ -79,8 +79,10 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
   const perAccount = (max: number) => ({ rateLimit: { max, timeWindow: '1 minute', keyGenerator: (req: FastifyRequest) => req.headers.authorization ?? req.ip } });
 
   // ---------- informação ----------
-  app.get('/health', async () => {
+  // Monitores de disponibilidade (UptimeRobot, Better Stack…) olham o código HTTP: 503 quando o banco não responde.
+  app.get('/health', async (req, rep) => {
     let db = 'ok'; try { await store.counts(); } catch { db = 'erro'; }
+    if (db !== 'ok') rep.code(503);
     return { ok: db === 'ok', version: config.version, uptime: Math.round(process.uptime()), db, online: hub.online };
   });
   app.get('/config', async () => ({ version: config.version, protocol: PROTOCOL_VERSION, hubCap: HUB_CAP, googleClientId: config.googleClientId }));
@@ -273,6 +275,19 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
     if (!sameSecret(bearer(req), config.adminToken)) { await new Promise(r => setTimeout(r, 300)); return fail(rep, 401, 'Não autorizado.'); }
   };
   const adminLimit = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } };
+  // Painel rápido de saúde para quem opera: o que olhar primeiro quando algo parece errado.
+  app.get('/admin/status', { preHandler: admin, ...adminLimit }, async () => {
+    let db = 'ok'; try { await store.counts(); } catch { db = 'erro'; }
+    const c = (k: string) => counter(k);
+    return {
+      versao: config.version, desde: new Date(Date.now() - process.uptime() * 1000).toISOString(), db, online: hub.online,
+      memoriaMB: Math.round(process.memoryUsage().rss / 1048576),
+      pagamentos: { modo: config.mpAccessToken ? 'mercado-pago' : config.devPayments ? 'dev' : 'desligado', creditados: c('mp_credited'), estornados: c('mp_revoked'), falhasWebhook: c('mp_webhook_errors'), falhasCheckout: c('mp_checkout_errors'), assinaturasInvalidas: c('mp_bad_signature') },
+      saves: { aceitos: c('saves_ok'), recusados: c('saves_rejected'), conflitos: c('saves_conflict') },
+      trapaca: { velocidade: c('hub_suspect_speed'), dano: c('hub_suspect_dmg'), desconectados: c('hub_suspect_kicks') },
+      reportesNovos: (await store.listReports('novo', 200)).length,
+    };
+  });
   app.get('/admin/reports', { preHandler: admin, ...adminLimit }, async req => {
     const q = req.query as any, st = typeof q.status === 'string' && /^[a-z]{1,20}$/.test(q.status) ? q.status : null;
     return { reports: await store.listReports(st, 200) };
@@ -516,7 +531,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
         const pref = await mpCreatePreference(config.mpAccessToken, { pack: p, accountId: req.account!.id, notificationUrl: `${api}/payments/mp/webhook`, siteUrl: site });
         inc('mp_checkout'); await store.audit(req.account!.id, 'mp_checkout', { pack: p.id, preferencia: pref.id });
         return { checkout: pref.url };
-      } catch (e: any) { req.log.error({ err: e?.message }, 'mercado pago: falha ao criar a preferência'); return fail(rep, 502, 'Não foi possível abrir o pagamento agora. Tente de novo em instantes.'); }
+      } catch (e: any) { inc('mp_checkout_errors'); req.log.error({ err: e?.message }, 'mercado pago: falha ao criar a preferência'); return fail(rep, 502, 'Não foi possível abrir o pagamento agora. Tente de novo em instantes.'); }
     }
     if (!config.devPayments) return fail(rep, 501, 'Compras com dinheiro real chegam em breve.');
     await store.walletAdd(req.account!.id, p.n); return { view: await seasonView(req.account!.id) };
@@ -530,7 +545,7 @@ export async function buildApp({ config, store, hub: hubOpts }: AppOptions): Pro
       const dataId = String((req.query as any)?.['data.id'] ?? (req.body as any)?.data?.id ?? id);
       if (!mpSignatureOk(config.mpWebhookSecret, req.headers['x-signature'], req.headers['x-request-id'], dataId)) { inc('mp_bad_signature'); return rep.code(401).send({ error: 'Assinatura inválida.' }); }
     }
-    let pay; try { pay = await mpGetPayment(config.mpAccessToken, id); } catch (e: any) { req.log.error({ err: e?.message, id }, 'mercado pago: falha ao consultar o pagamento'); return rep.code(500).send({ error: 'Tente de novo.' }); }
+    let pay; try { pay = await mpGetPayment(config.mpAccessToken, id); } catch (e: any) { inc('mp_webhook_errors'); req.log.error({ err: e?.message, id }, 'mercado pago: falha ao consultar o pagamento'); return rep.code(500).send({ error: 'Tente de novo.' }); }
     if (!pay) return { ok: true };
     const ref = parseRef(pay.ref); if (!ref) { req.log.warn({ id }, 'mercado pago: pagamento sem referência do jogo'); return { ok: true }; }
     if (pay.status === 'refunded' || pay.status === 'charged_back') {

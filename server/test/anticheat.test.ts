@@ -66,6 +66,13 @@ for (const kind of STORES) {
       assert.equal(f.status, 422); assert.ok(f.body.erros.some((e: string) => /Fios do Tear/.test(e)));
     });
 
+    test('/admin/status: painel de saúde só com o token', async () => {
+      assert.equal((await api(S.url, 'GET', '/admin/status')).status, 401);
+      const r = await api(S.url, 'GET', '/admin/status', undefined, ADMIN);
+      assert.equal(r.status, 200); assert.equal(r.body.db, 'ok');
+      assert.equal(typeof r.body.pagamentos.falhasWebhook, 'number'); assert.equal(typeof r.body.reportesNovos, 'number');
+    });
+
     test('moderação: precisa do token; lista e marca reportes; suspende e reativa', async () => {
       const A = await account();
       assert.equal((await api(S.url, 'GET', '/admin/reports')).status, 401);

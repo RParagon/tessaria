@@ -52,6 +52,8 @@ No projeto do Easypanel (por exemplo `tessaria`), crie um serviço **Postgres**.
 
 > Segredos (senha do banco, tokens) ficam só no painel do Easypanel. Nunca no repositório.
 
+> **Depois de subir:** configure o backup diário do banco e o monitor do `/health` seguindo o [docs/OPERATIONS.md](OPERATIONS.md).
+
 #### Moderação (com `ADMIN_TOKEN`)
 
 Todas as rotas pedem `Authorization: Bearer <ADMIN_TOKEN>`:
