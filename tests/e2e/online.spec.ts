@@ -11,8 +11,8 @@ async function onlinePlayer(browser: Browser, cls = 'lamina') {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error' && !/fonts\.g|favicon/.test(m.text())) errors.push(m.text()); });
-  await page.goto('/?debug=1');
-  await page.waitForSelector('#mOnline:not([hidden])', { timeout: 30_000 });
+  await page.goto('/?debug=1'); await page.bringToFront();   // sem GPU (SwiftShader), o terceiro jogo aberto demora: a aba da frente não é freada
+  await page.waitForSelector('#mOnline:not([hidden])', { timeout: 60_000 });
   await page.evaluate(() => { (window as any).__T.G.forceHour = 12; (window as any).__T.G.forceWeather = 'limpo'; });   // meio-dia (a noite muda dano, XP e loot)
   await page.click('#mOnline');
   await page.click('.net-tabs button:nth-child(3)');
