@@ -511,3 +511,6 @@ body.tch #mmapZ{font-size:8px}body.tch #feed .toast{font-size:10px}body.tch #fee
 #tip .x{position:absolute;right:4px;top:4px;background:none;border:0;color:var(--dim);font-size:13px;cursor:pointer;pointer-events:auto}
 body:not(.playing) #tip{display:none}   /* só jogando: nunca por cima de menus e painéis */
 body.tch #tip{top:calc(env(safe-area-inset-top,0px) + 92px);zoom:var(--uit)}
+
+/* idioma */
+.langsel{margin-top:6px}#mLang,#sLang{background:#0d0a16;color:var(--bone);border:2px solid var(--line);font:inherit;font-size:11px;padding:3px 6px}

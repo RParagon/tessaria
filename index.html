@@ -69,11 +69,11 @@
     </div>
   </div>
 
-  <div id="dialog" class="panel" hidden><div class="who" id="dWho"></div><div class="txt" id="dTxt"></div><div class="choices" id="dCh"></div><div class="next" id="dNext">▼</div></div>
+  <div id="dialog" class="panel" hidden><div class="who" id="dWho"></div><div class="txt" id="dTxt" data-noi18n></div><div class="choices" id="dCh"></div><div class="next" id="dNext">▼</div></div>
 
   <section id="title" class="screen" hidden>
     <div class="title-box">
-      <h1 class="logo">FIOS DE<br>TESSÁRIA<small>UM RPG DE SPLATS</small></h1>
+      <h1 class="logo"><span data-noi18n>FIOS DE<br>TESSÁRIA</span><small>UM RPG DE SPLATS</small></h1>
       <p style="margin:0 0 6px;font-family:var(--f-display);font-size:9px;letter-spacing:.14em;color:var(--dim)">VERSÃO <span class="ver"></span></p>
       <p class="tagline">O Sol se apagou e o mundo está se desfazendo em pixels soltos. Você nasceu com uma agulha de luz na mão.</p>
       <div class="menu">
@@ -82,6 +82,7 @@
         <button class="px" id="mOnline" hidden>Jogar online</button>
       </div>
       <p class="foot">Teclado, mouse ou toque · cerca de 30 minutos de aventura</p>
+      <p class="foot langsel"><select id="mLang" aria-label="Idioma · Language" data-noi18n></select></p>
     </div>
   </section>
 
@@ -151,6 +152,7 @@
       <label class="chk" for="sVib"><input type="checkbox" id="sVib"> Vibrar ao levar dano (celular)</label>
       <button class="px" id="pFull">Tela cheia (horizontal)</button>
       <label class="set" for="sZoom">Zoom da câmera (roda do mouse, + e −) <input id="sZoom" type="range" min="0.55" max="1.25" step="0.01"></label>
+      <label class="set" for="sLang"><span data-noi18n>Idioma · Language</span> <select id="sLang" data-noi18n></select></label>
       <label class="set" for="sUi">Tamanho da interface (texto e painéis) <input id="sUi" type="range" min="0.85" max="1.4" step="0.05"></label>
       <label class="chk" for="sTips"><input type="checkbox" id="sTips"> Dicas de primeiros passos</label>
       <label class="chk" for="sHalo"><input type="checkbox" id="sHalo"> Destacar meu herói (anel no chão)</label>

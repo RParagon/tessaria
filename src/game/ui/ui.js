@@ -638,6 +638,8 @@ $('#sMusic').oninput = e => { G.settings.music = +e.target.value; if (MUS.master
 function saveSettings() { try { localStorage.setItem(SKEY + '-set', JSON.stringify(G.settings)); } catch (e) { } }
 try { const s = JSON.parse(localStorage.getItem(SKEY + '-set') || 'null'); if (s) { Object.assign(G.settings, s); if ((s.sv || 0) < 2) { G.settings.px = 3; G.settings.dither = .5; G.settings.sv = 2; } } } catch (e) { }   /* sv 2: novo padrão de pixel 3 e pontilhado .5 */
 updateUiScale();   // o tamanho da interface salvo vale desde a primeira tela
+// Idioma (src/i18n): trocar recarrega a página no idioma novo.
+{ const I = window.TessI18n; if (I) for (const id of ['#mLang', '#sLang']) { const el = $(id); if (!el) continue; if (I.LANGS.length < 2) { (el.closest('label, p') || el).hidden = true; continue; } el.innerHTML = I.LANGS.map(l => `<option value="${l.id}"${l.id === I.lang ? ' selected' : ''}>${l.n}</option>`).join(''); el.onchange = e => { sfx('ui'); I.setLang(e.target.value); }; } }
 
 /* ---- título, criador, história ---- */
 function toTitle() {

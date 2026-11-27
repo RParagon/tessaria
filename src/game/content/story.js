@@ -214,6 +214,7 @@ function say(lines, done) {
 function nextLine() {
   const L = DLG.q.shift();
   if (!L) { $('#dialog').hidden = true; DLG.cur = null; if (G.mode === 'dialog') G.mode = 'play'; refreshHudVis(); const d = DLG.done; DLG.done = null; if (d) d(); return; }
+  if (window.TessI18n && !L._tr) { L.text = window.TessI18n.tr(L.text || ''); if (L.choices) for (const c of L.choices) c.t = window.TessI18n.tr(c.t); L._tr = 1; }   // idioma: a fala inteira, antes de "digitar"
   DLG.cur = L; DLG.shown = 0; $('#dWho').textContent = L.who || ''; $('#dTxt').textContent = ''; $('#dCh').innerHTML = ''; $('#dNext').hidden = true;
   if (L.fn) { const f = L.fn; L.fn = null; DLG.pendingFn = f; } else DLG.pendingFn = null;
 }

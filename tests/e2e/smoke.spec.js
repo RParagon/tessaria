@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { newGame, T, travel, unlock, skipDialogs } from './helpers.js';
 
 test('abre o título, cria personagem e chega à vila sem erros', async ({ page }) => {
@@ -469,5 +470,31 @@ test('primeiros passos: dicas uma por vez, que somem quando o jogador faz a aç�
   await ev('G.save.tips = {}; G.save.lvl = 12');
   await page.waitForTimeout(3500);
   await expect(page.locator('#tip')).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test('idioma inglês: título, criação, HUD, menu e dicas traduzidos; o que falta continua em português sem quebrar', async ({ page }) => {
+  const EN = JSON.parse(readFileSync('src/i18n/en.json', 'utf8'));
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto('/?debug=1');
+  await page.evaluate(() => { localStorage.clear(); localStorage.setItem('tess.lang', 'en'); });
+  await page.reload();
+  await page.waitForFunction(() => window.__T && document.querySelector('#mNew'), null, { timeout: 30_000 });
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe('en');
+  await expect(page.locator('#mNew')).toHaveText(EN['Novo jogo']);
+  await expect(page.locator('#mLang')).toHaveValue('en');
+  await page.click('#mNew');
+  await expect(page.locator('#cGo')).toHaveText(EN['Começar a jornada']);
+  await page.click('#cGo');
+  for (let i = 0; i < 8; i++) { const st = page.locator('#story'); if (!(await st.isVisible())) break; await st.click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(150); }
+  await page.waitForFunction(() => window.__T.RG && window.__T.RG.key === 'hub' && window.__T.G.mode === 'play', null, { timeout: 30_000 });
+  await expect(page.locator('#hObj')).toContainText(EN['Fale com a Anciã Ysolde, perto da fonte.'], { timeout: 8000 });
+  await expect(page.locator('#tip')).toContainText('WASD', { timeout: 12000 });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pResume')).toHaveText(EN['Continuar']);
+  await page.screenshot({ path: 'test-results/ingles.png' });
+  const misses = await page.evaluate(() => [...window.TessI18n.__misses]);
+  console.log(`textos vistos sem tradução (${misses.length}):`, misses.slice(0, 25));
   expect(errors).toEqual([]);
 });

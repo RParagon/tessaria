@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 0.59.0 · Inglês (beta)
+- **O jogo em inglês:** ~2.200 textos traduzidos (menus, HUD, diálogos dos moradores, história, missões, Passe, loja, guilda, duelos, avisos e mensagens do servidor). Quem abre o jogo com o navegador em outro idioma já começa em inglês; dá para trocar a qualquer hora em **Idioma · Language**, no título e no menu
+- Glossário: Centelhas → Sparks, Fios do Tear → Loom Threads, Fios Dourados → Golden Threads, Fenda → Rift, Ermos → Wilds, Tecelão → Weaver, Passe do Tear → Loom Pass, Lâmina / Arcano / Arco → Blade / Arcanist / Archer, Vila Brasa → Ember Village
+- O que ainda não tem tradução continua em português (nada quebra). Faltam, por enquanto, os nomes de itens gerados e algumas frases com nomes no meio
+- Ferramentas: `npm run i18n:extract` (textos do código sem tradução) e `npm run i18n:harvest` (passeia pelo jogo e lista o que apareceu sem tradução). Guia em `docs/I18N.md`
+
 ## 0.58.0 · Início da migração para módulos
 - **Por dentro (sem mudança para o jogador):** o jogo começou a sair do "escopo único" (todos os arquivos colados num só) para módulos ES de verdade. O manifesto aceita `{ "module": "..." }`: o arquivo importa o que usa e o que ele exporta continua disponível para os arquivos antigos
 - Já migrados: o estado do jogo (`core/game.js`), matemática, materiais, o conjunto de splats, paletas, ícones, efeitos sonoros e música (com um contexto de áudio único, `audioCtx()`)
