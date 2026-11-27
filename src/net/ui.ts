@@ -458,10 +458,21 @@ export function mountOnlineUI(net: Net) {
   // convite de grupo: cartão com Aceitar e Recusar, que some quando expira
   const invBox = h('div', { class: 'net-invites' });
   document.body.append(invBox);
+  // Os cartões só são refeitos quando o conteúdo muda; o relógio e a vida do duelo mudam no lugar.
+  // (Refazer tudo a cada meio segundo trocava o botão debaixo do dedo e o clique em "Aceitar" se perdia.)
+  let invSig = '';
+  const duelTime = (d: NonNullable<typeof net.duel>, now: number) => { const left = Math.max(0, Math.ceil((d.end - now) / 1000)); return d.go > now ? `começa em ${Math.ceil((d.go - now) / 1000)}…` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; };
+  const hpPct = (v?: number, m?: number) => `${m ? Math.max(0, Math.min(100, v! / m * 100)) : 100}%`;
   function renderInvites() {
-    invBox.innerHTML = '';
     const now = Date.now(); net.invites = net.invites.filter(i => i.exp > now);
-    const r = net.ready;
+    net.duelInvites = net.duelInvites.filter(i => i.exp > now);
+    const r = net.ready, d0 = net.duel;
+    const sig = JSON.stringify([r && r.until > now && playing() ? [r.inst, r.until] : 0, net.duelInvites.map(i => [i.from, i.exp]), d0 ? [d0.opp, d0.go > now] : 0, net.invites.map(i => [i.from, i.exp, i.size])]);
+    if (sig === invSig) {
+      if (d0) { const t = invBox.querySelector('.net-dtime'), b = invBox.querySelector<HTMLElement>('.net-dhp > i'); if (t) t.textContent = duelTime(d0, now); if (b) b.style.width = hpPct(d0.oppHp, d0.oppMax); }
+      return;
+    }
+    invSig = sig; invBox.innerHTML = '';
     if (r && r.until > now && playing()) {
       const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, r.until - now) + 'ms';
       invBox.append(h('div', { class: 'net-invite net-ready panel', role: 'alertdialog', 'aria-label': 'Pronto?' },
@@ -472,7 +483,6 @@ export function mountOnlineUI(net: Net) {
           h('button', { class: 'px', text: 'Agora não', onclick: () => { net.declineReady(); renderInvites(); } })),
         bar));
     }
-    net.duelInvites = net.duelInvites.filter(i => i.exp > now);
     for (const i of net.duelInvites) {
       const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, i.exp - now) + 'ms';
       invBox.append(h('div', { class: 'net-invite panel duel', role: 'alertdialog', 'aria-label': `Duelo de ${i.from}` },
@@ -483,10 +493,9 @@ export function mountOnlineUI(net: Net) {
         bar));
     }
     if (net.duel) {
-      const d = net.duel, left = Math.max(0, Math.ceil((d.end - now) / 1000)), pre = d.go > now;
-      const bar = (v?: number, m?: number) => h('i', { class: 'net-dhp' }, h('i', { style: `width:${m ? Math.max(0, Math.min(100, v! / m * 100)) : 100}%` }));
-      invBox.append(h('div', { class: 'net-duelbar panel', role: 'status' }, h('b', { text: `⚔ Duelo contra ${d.name}` }), h('span', { text: pre ? `começa em ${Math.ceil((d.go - now) / 1000)}…` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` }),
-        h('small', { class: 'net-dhpl', text: 'Vida dele' }), bar(d.oppHp, d.oppMax)));
+      const d = net.duel;
+      invBox.append(h('div', { class: 'net-duelbar panel', role: 'status' }, h('b', { text: `⚔ Duelo contra ${d.name}` }), h('span', { class: 'net-dtime', text: duelTime(d, now) }),
+        h('small', { class: 'net-dhpl', text: 'Vida dele' }), h('i', { class: 'net-dhp' }, h('i', { style: `width:${hpPct(d.oppHp, d.oppMax)}` }))));
     }
     for (const i of net.invites) {
       const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, i.exp - now) + 'ms';

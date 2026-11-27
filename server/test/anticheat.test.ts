@@ -34,13 +34,48 @@ for (const kind of STORES) {
       const a = await connect(A, 'wilds'), c = await connect(C, 'wilds');
       a.c.send({ t: 'pos', x: 80, z: 350, yaw: 0, m: 0, a: '' }); c.c.send({ t: 'pos', x: 84, z: 350, yaw: 0, m: 0, a: '' });
       await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 84));
-      a.c.send({ t: 'pvp', to: c.w.id, dmg: 120 });
+      a.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); a.c.send({ t: 'pvp', to: c.w.id, dmg: 120 });
       await c.c.waitFor(m => m.t === 'pvp' && m.dmg === 120);
       for (let i = 0; i < 7; i++) { a.c.send({ t: 'pvp', to: c.w.id, dmg: 5_000_000 }); await sleep(140); }
       await sleep(200);
       assert.equal(c.c.msgs.filter(m => m.t === 'pvp').length, 1, 'dano impossível não chega');
       const sus = (await api(S.url, 'GET', '/admin/suspects', undefined, ADMIN)).body.contas;
       assert.ok(sus.some((x: any) => x.name === A.account.name && x.kinds.includes('suspeita_dano')));
+      a.c.close(); c.c.close();
+    });
+
+    test('PvP no Ermo Profundo: o servidor conta a vida, limita a cura, decide a queda e pega quem cai e continua andando', async () => {
+      const A = await account(baseSave({ lvl: 30 })), C = await account(baseSave({ lvl: 5 }));
+      const a = await connect(A, 'wilds'), c = await connect(C, 'wilds');
+      a.c.send({ t: 'pos', x: 80, z: 350, yaw: 0, m: 0, a: '', h: 1000 }); c.c.send({ t: 'pos', x: 84, z: 350, yaw: 0, m: 0, a: '', h: 1000 });
+      await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 84));
+      const hitC = async () => { a.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); a.c.send({ t: 'pvp', to: c.w.id, dmg: 400 }); await sleep(300); };
+      a.c.send({ t: 'pvp', to: c.w.id, dmg: 400 }); await sleep(150);   // sem ter atacado: não vale
+      assert.equal(c.c.msgs.filter(m => m.t === 'pvp').length, 0);
+      await hitC();
+      const h1 = c.c.msgs.filter(m => m.t === 'pvp')[0];
+      assert.ok(h1.d > 0 && h1.hp === h1.max - h1.d && !h1.kill, JSON.stringify(h1));
+      // jogo alterado: diz que está com a vida cheia de novo. O servidor só aceita o ritmo de cura (poção + regeneração).
+      c.c.send({ t: 'pos', x: 84, z: 350.1, yaw: 0, m: 0, a: '', h: 1000 }); await sleep(120);
+      let last: any = h1;
+      for (let i = 0; i < 40 && !last.kill; i++) { await hitC(); c.c.send({ t: 'pos', x: 84, z: 350 + (i % 2) * .1, yaw: 0, m: 0, a: '', h: 1000 }); last = c.c.msgs.filter(m => m.t === 'pvp').at(-1); }
+      assert.equal(last.kill, 1, 'o servidor decidiu a queda mesmo com o jogo dizendo vida cheia');
+      assert.equal(last.hp, 0);
+      const dh = a.c.msgs.filter(m => m.t === 'dhp').at(-1); assert.equal(dh.hp, 0);
+      // caído não apanha mais
+      const n = c.c.msgs.filter(m => m.t === 'pvp').length; await hitC();
+      assert.equal(c.c.msgs.filter(m => m.t === 'pvp').length, n);
+      // continuar andando sem renascer: suspeita (e o servidor repete a queda)
+      await sleep(4100);
+      for (let i = 1; i <= 6; i++) { c.c.send({ t: 'pos', x: 84 + i * 2.5, z: 350, yaw: 0, m: 1, a: '', h: 1000 }); await sleep(250); }
+      await c.c.waitFor(m => m.t === 'pvp' && m.kill === 1 && m.from === 0);
+      const sus = (await api(S.url, 'GET', '/admin/suspects', undefined, ADMIN)).body.contas;
+      assert.ok(sus.some((x: any) => x.name === C.account.name && x.kinds.includes('suspeita_dano')));
+      // renascer (teleporte aceito) zera a queda: volta a valer o PvP
+      c.c.send({ t: 'pos', x: 84, z: 350, yaw: 0, m: 0, a: '', w: 1, h: 1000 });
+      await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 84));
+      const n2 = c.c.msgs.filter(m => m.t === 'pvp').length; await hitC();
+      const back = c.c.msgs.filter(m => m.t === 'pvp'); assert.equal(back.length, n2 + 1); assert.ok(back.at(-1).hp > 0 && !back.at(-1).kill);
       a.c.close(); c.c.close();
     });
 

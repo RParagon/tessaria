@@ -92,7 +92,7 @@ export interface PublicPlayer { id: number; name: string; title: string; look: L
 
 // Cliente → servidor
 export type ClientMsg =
-  | { t: 'pos'; x: number; z: number; yaw: number; m: number; a: string; w?: 1 }   // w: teleporte (obelisco, renascer)
+  | { t: 'pos'; x: number; z: number; yaw: number; m: number; a: string; w?: 1; h?: number }   // w: teleporte (obelisco, renascer); h: vida em milésimos (Ermos)
   | { t: 'chat'; text: string }
   | { t: 'emote'; e: Emote }
   | { t: 'act'; a: Act; c: number; yaw: number }      // c: golpe do combo, runa da habilidade ou poder da esquiva (0..3)
@@ -136,7 +136,7 @@ export type ServerMsg =
   | { t: 'hx'; from: number; d: any }
   | { t: 'gx'; from: number; d: any }
   | { t: 'px'; from: number; d: any }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
-  | { t: 'pvp'; from: number; name: string; dmg: number; hp?: number; max?: number }   // outro jogador me acertou no Ermo Profundo (no duelo, hp/max: a vida que o servidor contou)
+  | { t: 'pvp'; from: number; name: string; dmg: number; d?: number; hp?: number; max?: number; kill?: 1 }   // outro jogador me acertou (duelo ou Ermo Profundo): hp/max é a vida que o servidor contou; d: dano que o servidor aplicou (Ermos); kill: o servidor decidiu que caí
   | { t: 'dhp'; id: number; hp: number; max: number }   // duelo: a vida do adversário, contada pelo servidor
   | { t: 'dinv'; from: string; ms: number }                  // desafio de duelo
   | { t: 'dstart'; opp: number; name: string; ms: number; go: number }   // o duelo começa em `go` ms e dura `ms`

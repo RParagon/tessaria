@@ -356,13 +356,16 @@ test('Ermos abertos: sem grupo, todos se veem; no Ermo Profundo há PvP e o esp�
   await expect(A.page.locator('#marks .tag.rp.foe .rn', { hasText: B.name })).toBeVisible();
   // golpe de A acerta B (dano de PvP reduzido)
   await ev(B.page, 'P.hp = P.maxHp = 5000; P.iframe = 0');
-  await ev(A.page, 'pvpArea(P.x, P.z, 5, 400)');
+  await A.page.waitForTimeout(250);   // a vida nova de B chega ao servidor com a posição
+  await ev(A.page, "TessNet.sendAct('swing', 0, 0); pvpArea(P.x, P.z, 5, 400)");   // o servidor só aceita acerto logo depois de um ataque
   await B.page.waitForFunction(() => (window as any).__T.ev('P.hp < 5000'), null, { timeout: 8000 });
-  expect(await ev(B.page, '5000 - P.hp')).toBeLessThanOrEqual(120);   // 400 × 0,3
+  // o servidor contou o dano (no máximo 20% da vida por golpe) e o jogo aplicou o mesmo, na escala da vida dele
+  expect(await ev(B.page, '5000 - P.hp')).toBeLessThanOrEqual(1001);
+  expect(await ev(B.page, '5000 - P.hp')).toBeGreaterThan(0);
   // B cai com Centelhas e um item na bolsa; A pega o espólio
   await ev(B.page, "G.save.gold = 777; G.save.inv = [TessItems.makeItem('weapon', 1.5, 1, 'arco')]; P.hp = 1; P.iframe = 0");
   await A.page.waitForTimeout(300);
-  await ev(A.page, 'pvpCd.clear(); pvpArea(P.x, P.z, 5, 400)');
+  await ev(A.page, "pvpCd.clear(); TessNet.sendAct('swing', 0, 0); pvpArea(P.x, P.z, 5, 400)");   // o servidor decide a queda
   await B.page.waitForFunction(() => (window as any).__T.ev('!!G.save.wloot && !!G.save.wloot.sid'), null, { timeout: 8000 });
   await A.page.waitForFunction(() => (window as any).TessNet.loots.size === 1, null, { timeout: 8000 });
   const gold0 = await ev(A.page, 'G.save.gold');

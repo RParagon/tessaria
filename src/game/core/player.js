@@ -284,7 +284,8 @@ function playerDie() { P.hp = 0; P.dieT = 0; G.save.deaths++; if (G.char.death) 
   if (RG && RG.wild) {   // Ermos: tudo o que você carrega fica no chão por 5 min (equipados e banco ficam)
     const s = G.save, old = s.wloot && Date.now() - s.wloot.t < LOOT_MS ? s.wloot : null, items = s.inv.splice(0);
     s.wloot = { x: Math.round(P.x * 10) / 10, z: Math.round(P.z * 10) / 10, gold: s.gold + (old ? old.gold : 0), items: (old ? old.items : []).concat(items).slice(0, 40), t: Date.now() }; s.gold = 0; writeSave(); netLootDrop(s.wloot);   // online: o espólio vai para o chão da sala e qualquer um pega
-    setTimeout(() => toast('ESPÓLIO NOS ERMOS', true, `${s.wloot.gold} CENTELHAS E ${s.wloot.items.length} ITENS NO CHÃO · 5 MIN PARA VOLTAR`, '#ff8a6a'), 1200); return;
+    const lg = s.wloot.gold, ln = s.wloot.items.length;   // o espólio pode ser pego antes do aviso aparecer
+    setTimeout(() => toast('ESPÓLIO NOS ERMOS', true, `${lg} CENTELHAS E ${ln} ITENS NO CHÃO · 5 MIN PARA VOLTAR`, '#ff8a6a'), 1200); return;
   }
   const dv = G.save.diff || 0; if (dv > 0) { const lost = Math.floor(G.save.gold * Math.min(.2, .04 * dv)); if (lost > 0) { G.save.gold -= lost; setTimeout(() => toast('-' + lost + ' Centelhas', false, 'O PREÇO DA ' + curDiff().n.toUpperCase(), '#ff8a6a'), 1100); } } }
 function respawn() {

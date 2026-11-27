@@ -78,7 +78,8 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
 - [ ] Beta fechado
 - [x] Proteção contra trapaça, etapa 1 (0.49): velocidade na vila e nos Ermos, teto de dano PvP, ritmo de pesca e de Fios do Tear no save, alertas e moderação
 - [x] Combate decidido pelo servidor nos duelos (0.60): vida, dano, ritmo de ataque e esquiva calculados no servidor
-- [ ] Proteção contra trapaça, etapa 2: o mesmo no PvP do Ermo Profundo, e dano contra monstros validado pelo servidor
+- [x] PvP do Ermo Profundo decidido pelo servidor (0.61): vida contada no servidor com cura limitada, golpes conferidos e queda decidida por ele
+- [ ] Proteção contra trapaça, etapa 3: dano contra monstros validado pelo servidor (Fendas e Ermos do grupo)
 - [ ] Login com Apple (exigido pela App Store, se houver versão iOS)
 - [x] Passe do Tear e loja de cosméticos (0.44 e 0.45; ver [MONETIZATION.md](MONETIZATION.md))
 - [ ] Google Play: conta de desenvolvedor, APK assinado, ficha da loja, classificação etária

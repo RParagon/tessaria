@@ -445,3 +445,11 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 - Um acerto `{t:'pvp', to, dmg}` no duelo só conta se o atacante mandou um ataque (`act`) nos últimos 1,5 s, e é ignorado se a vítima esquivou (`act` dash) há menos de 350 ms. O dano bruto é limitado a `maxHit(perfil)` e vira dano de PvP com `pvpDamage` (30% do golpe, no máximo 20% da vida por acerto, menos a defesa).
 - O servidor guarda a vida dos dois. A vítima recebe `pvp` com `hp`/`max`; o atacante recebe `dhp` (vida do adversário). Em zero, o servidor encerra com `dend`. A mensagem `dlost` do cliente é ignorada.
 - Teste de paridade: `tests/e2e/smoke.spec.js` ("combate: atributos do servidor…") confere que `combatProfile` bate com o `stats()` do jogo. Se mudar a conta de atributos no jogo, mude também em `shared/combat.ts`.
+
+## PvP do Ermo Profundo decidido pelo servidor (0.61)
+
+- O jogo manda a vida na posição: `pos.h`, em milésimos da vida máxima. O servidor guarda `p.hp` (nas unidades do perfil de combate). Uma queda vale na hora (dano de monstro). Uma subida gasta um orçamento de cura: até 60% da vida de uma vez, repondo 30% por segundo (`HEAL_BURST`, `HEAL_RATE`). A primeira posição e os teletransportes aceitos (renascer, obelisco) valem direto.
+- Golpe `{t:'pvp'}` fora do duelo, na ordem das conferências: zona e amizade, teto `hitCap` (acima dele, suspeita), ataque nos últimos 1,5 s, esquiva da vítima há menos de 350 ms ou dano recebido há menos de 240 ms (`HURT_IFRAME`). Depois disso, `pvpDamage(min(dmg, maxHit))`, com metade do dano se a vítima estiver girando (`a: 'spin'`).
+- A vítima recebe `pvp` com `d` (dano aplicado), `hp`, `max` e `kill: 1` quando chega a zero. O atacante recebe `dhp`. O jogo aplica `d` na escala da própria vida, nunca fica acima de `hp`, e cai com `kill` (fecha menus e diálogos).
+- Caído (`p.down`): não bate nem apanha até um teletransporte aceito (renascer). Se depois de 4 s (`DOWN_GRACE`) andar mais de 8 unidades sem renascer, conta como suspeita forte de dano (peso `SUS_DMG`, já registrada) e o servidor repete o `kill`. Três vezes, e a conexão cai.
+- Não coberto: o Escudo de Musgo (o servidor não conhece o escudo) e o dano contra monstros (próxima etapa).

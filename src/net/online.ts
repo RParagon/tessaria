@@ -2,7 +2,7 @@
 // Exposto como window.TessNet para o código do jogo (src/game/net/remote.js).
 
 import { API_BASE, WS_BASE, call, tokens } from './api';
-import { type RiftParams, ACTS, EMOTES, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
+import { type RiftParams, ACTS, EMOTES, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg, type ClientMsg } from '../../shared/protocol';
 import type { FriendsList, PartyView } from '../../shared/social';
 
 export interface PublicAccount { id: string; name: string; guest: boolean; email: string | null; google: boolean; password?: boolean }
@@ -279,14 +279,17 @@ export class Net {
   setLook(look: Look) { this.look = look; this.send({ t: 'look', look }); }
   players(): Remote[] { return this.remoteList; }
   /** w=1: teleporte (obelisco, renascer): o servidor aceita o salto. */
-  sendPos(x: number, z: number, yaw: number, m: number, a: string, w = 0) {
-    const k = `${x.toFixed(2)},${z.toFixed(2)},${yaw.toFixed(2)},${m.toFixed(2)},${a}`;
+  /** h: vida em milésimos da vida máxima (o servidor conta a vida no PvP dos Ermos). */
+  sendPos(x: number, z: number, yaw: number, m: number, a: string, w = 0, h?: number) {
+    const k = `${x.toFixed(2)},${z.toFixed(2)},${yaw.toFixed(2)},${m.toFixed(2)},${a},${h}`;
     // Repete a posição parada 1x/s: se o servidor limitou um salto (anti-teleporte),
     // ele converge para a posição real mesmo com o jogador imóvel.
     const now = Date.now();
     if (k === this.lastPos && now - this.lastPosAt < 1000 && !w) return;
     this.lastPos = k; this.lastPosAt = now;
-    this.send(w ? { t: 'pos', x, z, yaw, m, a, w: 1 } : { t: 'pos', x, z, yaw, m, a });
+    const msg: ClientMsg = w ? { t: 'pos', x, z, yaw, m, a, w: 1 } : { t: 'pos', x, z, yaw, m, a };
+    if (typeof h === 'number' && msg.t === 'pos') msg.h = Math.max(0, Math.min(1000, Math.round(h)));
+    this.send(msg);
   }
   /** Envia no quadro em que a ação começa, para quem assiste ver o início da animação. */
   sendAct(a: Act, c: number, yaw: number) { if (ACTS.includes(a) && this.room) this.send({ t: 'act', a, c, yaw }); }
@@ -408,7 +411,7 @@ export class Net {
       case 'ihost': this.hostId = m.id; G?.coopHost?.(m.id === this.myId); break;
       case 'hx': case 'gx': case 'px': G?.coopMsg?.(m.t, m.from, m.d); break;
       case 'loot': G?.coopLoot?.(m); break;
-      case 'pvp': G?.pvpHurt?.(m.from, m.name, m.dmg, m.hp, m.max); if (this.duel && typeof m.hp === 'number') { this.duel.myHp = m.hp; this.duel.myMax = m.max; this.emit('duel', this.duel); } break;
+      case 'pvp': G?.pvpHurt?.(m.from, m.name, m.dmg, m.hp, m.max, m.d, m.kill); if (this.duel && typeof m.hp === 'number') { this.duel.myHp = m.hp; this.duel.myMax = m.max; this.emit('duel', this.duel); } break;
       case 'dhp': if (this.duel && this.duel.opp === m.id) { this.duel.oppHp = m.hp; this.duel.oppMax = m.max; this.emit('duel', this.duel); } break;
       case 'dinv': this.duelInvites = this.duelInvites.filter(i => i.from !== m.from); this.duelInvites.push({ from: m.from, exp: Date.now() + m.ms }); this.emit('dinvite', m); break;
       case 'dstart': this.duel = { opp: m.opp, name: m.name, go: Date.now() + m.go, end: Date.now() + m.go + m.ms }; this.duelInvites = []; G?.duelStart?.(m.name, m.go); this.emit('duel', this.duel); break;

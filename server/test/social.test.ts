@@ -297,14 +297,14 @@ for (const kind of STORES) {
       // Ermo Profundo: ladrilho (40, 175), longe do centro (200, 175)
       a.c.send({ t: 'pos', x: 80, z: 350, yaw: 0, m: 0, a: '' }); b.c.send({ t: 'pos', x: 82, z: 350, yaw: 0, m: 0, a: '' }); c.c.send({ t: 'pos', x: 84, z: 350, yaw: 0, m: 0, a: '' });
       await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 84));
-      a.c.send({ t: 'pvp', to: c.w.id, dmg: 120 });
+      a.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); a.c.send({ t: 'pvp', to: c.w.id, dmg: 120 });
       const hit = await c.c.waitFor(m => m.t === 'pvp');
       assert.equal(hit.from, a.w.id); assert.equal(hit.name, A.account.name); assert.equal(hit.dmg, 120);
-      a.c.send({ t: 'pvp', to: b.w.id, dmg: 120 });   // amigo: sem fogo amigo
+      await sleep(300); a.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); a.c.send({ t: 'pvp', to: b.w.id, dmg: 120 });   // amigo: sem fogo amigo
       // perto da vila não há PvP: C volta pelo obelisco (teleporte aceito) para o centro
       c.c.send({ t: 'pos', x: 400, z: 350, yaw: 0, m: 0, a: '', w: 1 });
       await a.c.waitFor(m => m.t === 'snap' && m.ps.some((q: any) => q[0] === c.w.id && q[1] === 400));
-      a.c.send({ t: 'pvp', to: c.w.id, dmg: 99 });
+      a.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); a.c.send({ t: 'pvp', to: c.w.id, dmg: 99 });
       await sleep(250);
       assert.equal(b.c.msgs.filter(m => m.t === 'pvp').length, 0);
       assert.equal(c.c.msgs.filter(m => m.t === 'pvp').length, 1);

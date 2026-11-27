@@ -11,6 +11,8 @@ import { maxItemTier } from '../../shared/save';
 import { DIFF_LEVEL } from '../../shared/save';
 import { requestFriend } from './social';
 
+/** PvP: cura máxima de uma vez (fração da vida) e por segundo; instante sem dano depois de apanhar (igual ao do jogo); tempo para renascer depois de cair. */
+const HEAL_BURST = .6, HEAL_RATE = .3, HURT_IFRAME = 240, DOWN_GRACE = 4000;
 const CLS_LABEL: Record<string, string> = { lamina: 'Lâmina', arcano: 'Arcano', arco: 'Arco' };
 const DIFF_N = ['Normal', 'Difícil', 'Expert', 'Mestre', 'Tormento I', 'Tormento II', 'Tormento III'];
 
@@ -40,6 +42,8 @@ interface Player {
   guildId: string | null; gtag: string; baseTitle: string;
   /** Combate decidido pelo servidor (duelos): atributos pelo save e as horas do último ataque e da última esquiva. */
   prof: CombatProfile; lastAtk: number; lastDash: number;
+  /** PvP dos Ermos: vida que o servidor conta (unidades do perfil), orçamento de cura, último dano e a queda decidida pelo servidor. */
+  hp: number; heal: number; healT: number; lastHurt: number; down: { at: number; x: number; z: number; warned: boolean } | null;
   hitCap: number; sus: { speed: number; dmg: number; t0: number; logged: number };
 }
 
@@ -164,7 +168,7 @@ export class Hub {
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
       actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0, relayTokens: RELAY_PER_SEC, relayRefill: Date.now(), pvpTokens: PVP_RATE * 2, pvpRefill: Date.now(), lastWarp: 0,
       guildId: null, gtag: '', baseTitle: titleFromSave(save),
-      prof: combatProfile(save), lastAtk: 0, lastDash: 0,
+      prof: combatProfile(save), lastAtk: 0, lastDash: 0, hp: 0, heal: 0, healT: 0, lastHurt: 0, down: null,
       hitCap: pvpHitCap(save), sus: { speed: 0, dmg: 0, t0: Date.now(), logged: 0 },
     };
     { const g = await this.store.guildOf(account.id).catch(() => null); if (g) { p.guildId = g.guild.id; p.gtag = g.guild.tag; p.title = this.titleOf(p); } }
@@ -268,9 +272,12 @@ export class Hub {
     const now = Date.now(), dt = Math.max(.05, (now - p.lastPos) / 1000), dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz), lim = MAX_SPEED * dt + 1.5;
     // A primeira posição depois de entrar vale direto (o jogador pode estar voltando de um portal).
     // Teleporte dentro da mesma região (obelisco dos Ermos, renascer): também vale direto, no máximo a cada 3 s.
-    if (m.w === 1 && now - p.lastWarp > 3000) { p.lastWarp = now; p.synced = false; inc('hub_warps'); }
+    const warped = m.w === 1 && now - p.lastWarp > 3000;
+    if (warped) { p.lastWarp = now; p.synced = false; inc('hub_warps'); }
+    this.trackHp(p, m.h, !p.synced, now);
     if (p.synced && d > lim) { x = p.x + dx / d * lim; z = p.z + dz / d * lim; inc('hub_speed_clamps'); if (d > lim * 2) this.suspect(p, 'speed', { d: Math.round(d), lim: Math.round(lim) }); }
     p.synced = true;
+    if (p.down && !warped) this.checkDown(p, x, z, now);
     p.x = x; p.z = z; p.yaw = yaw % 6.2832; p.m = Math.min(1, Math.max(0, mv)); p.a = typeof m.a === 'string' ? m.a.slice(0, 8) : ''; p.lastPos = now; p.dirty = true;
   }
 
@@ -367,7 +374,7 @@ export class Hub {
   refreshTitle(accountId: string, save: any) {
     const p = this.byAccount.get(accountId); if (!p) return;
     const lvl = lvlOf(save), party = this.partyOf.get(accountId), info = party?.info.get(accountId);
-    Object.assign(p, ctxOf(save)); p.hitCap = pvpHitCap(save); p.prof = combatProfile(save);
+    Object.assign(p, ctxOf(save)); p.hitCap = pvpHitCap(save); p.prof = combatProfile(save); p.hp = Math.min(p.hp, p.prof.maxHp);
     if (lvl !== p.lvl) { p.lvl = lvl; if (party && info) { info.lvl = lvl; this.sendParty(party); } }
     p.baseTitle = titleFromSave(save); const t = this.titleOf(p); if (t === p.title) return;
     p.title = t; p.room?.broadcast({ t: 'title', id: p.id, title: t });
@@ -436,9 +443,9 @@ export class Hub {
    * Suspeita de trapaça: conta na janela de 60 s. Passou do limite, registra na auditoria (no máximo a cada 10 min);
    * muito acima, derruba a conexão. Lag e portais geram poucos casos, por isso os limites são folgados.
    */
-  private suspect(p: Player, kind: 'speed' | 'dmg', detail: Record<string, number>) {
+  private suspect(p: Player, kind: 'speed' | 'dmg', detail: Record<string, number>, weight = 1) {
     const now = Date.now(), S = p.sus; if (now - S.t0 > 60_000) { S.speed = 0; S.dmg = 0; S.t0 = now; }
-    S[kind]++; inc('hub_suspect_' + kind);
+    S[kind] += weight; inc('hub_suspect_' + kind);
     const n = S[kind], lim = kind === 'speed' ? SUS_SPEED : SUS_DMG;
     if (n >= lim && now - S.logged > 600_000) { S.logged = now; void this.store.audit(p.account.id, 'suspeita_' + (kind === 'speed' ? 'velocidade' : 'dano'), { ...detail, n, onde: p.where }).catch(() => {}); }
     if (n >= lim * 3) { inc('hub_suspect_kicks'); send(p, { t: 'kick', reason: 'Conexão encerrada: movimento ou dano fora do normal.' }); try { p.ws.close(4002, 'suspeita'); } catch { /* já fechado */ } this.leave(p); }
@@ -491,6 +498,28 @@ export class Hub {
   private allies(a: Player, b: Player) { if (a.friends.has(b.account.id) || b.friends.has(a.account.id)) return true; const pa = this.partyOf.get(a.account.id); return !!pa && pa === this.partyOf.get(b.account.id); }
 
   /** Acerto num jogador: só nas salas públicas dos Ermos, os dois no Ermo Profundo, perto e sem ser amigo nem do grupo. O jogo da vítima confere de novo (bioma exato e acampamento). */
+  /** Vida dos Ermos: o jogo informa (h, em milésimos da vida máxima). Perder vale na hora; recuperar tem limite de ritmo
+   *  (uma poção mais roubo de vida e regeneração), assim um jogo alterado não ignora o dano do PvP. Primeira posição
+   *  e teleportes aceitos (renascer, obelisco) valem direto. Caído (decidido pelo servidor) fica em zero até renascer. */
+  private trackHp(p: Player, h: unknown, reset: boolean, now: number) {
+    const max = p.prof.maxHp, v = num(h);
+    p.heal = Math.min(max * HEAL_BURST, p.heal + Math.max(0, now - p.healT) / 1000 * max * HEAL_RATE); p.healT = now;
+    if (reset) { p.down = null; p.heal = max * HEAL_BURST; p.hp = v === null ? max : Math.max(0, Math.min(1000, v)) / 1000 * max; return; }
+    if (v === null || p.down) return;
+    const t = Math.max(0, Math.min(1000, v)) / 1000 * max;
+    if (t <= p.hp) { p.hp = t; return; }
+    const g = Math.min(t - p.hp, p.heal); p.hp += g; p.heal -= g;
+    if (t - p.hp > max * .05) inc('pvp_heal_clamped');
+  }
+  /** Caiu no PvP (o servidor decidiu) e continua andando sem renascer: o jogo foi alterado. */
+  private checkDown(p: Player, x: number, z: number, now: number) {
+    const d = p.down!;
+    if (now - d.at > DOWN_GRACE && Math.hypot(x - d.x, z - d.z) > 8) {   // sinal claro: vale como suspeita forte; repetido, derruba a conexão
+      d.at = now; d.x = x; d.z = z; d.warned = true; this.suspect(p, 'dmg', { caiu_e_andou: 1 }, SUS_DMG);
+      send(p, { t: 'pvp', from: 0, name: '', dmg: 0, hp: 0, max: p.prof.maxHp, kill: 1 });
+    }
+  }
+
   private onPvp(p: Player, m: any) {
     const room = p.room; if (!room) return;
     const v = room.players.get(m.to), dmg = num(m.dmg); if (!v || v === p || dmg === null || dmg <= 0) return;
@@ -502,17 +531,27 @@ export class Hub {
     if (dmg > p.hitCap) { inc('hub_pvp_dmg_refused'); this.suspect(p, 'dmg', { dmg: Math.round(dmg), teto: p.hitCap }); return; }
     if (duel && d) {   // duelo: o servidor decide (vida, ritmo de ataque, esquiva e quem cai)
       if (now - p.lastAtk > 1500) { inc('duel_hit_no_attack'); return; }   // acerto sem ter atacado
-      if (now - v.lastDash < 350) { inc('duel_hit_dodged'); return; }      // a vítima esquivou
+      if (now - v.lastDash < 350 || now - v.lastHurt < HURT_IFRAME) { inc('duel_hit_dodged'); return; }      // a vítima esquivou (ou acabou de apanhar)
       const raw = Math.min(dmg, maxHit(p.prof)), dealt = pvpDamage(raw, v.prof);
-      const hp = Math.max(0, (d.hp.get(v.id) ?? v.prof.maxHp) - dealt); d.hp.set(v.id, hp);
+      const hp = Math.max(0, (d.hp.get(v.id) ?? v.prof.maxHp) - dealt); d.hp.set(v.id, hp); v.lastHurt = now;
       p.pvpTokens -= 1; inc('hub_pvp_hits');
       send(v, { t: 'pvp', from: p.id, name: p.account.name, dmg: Math.round(raw), hp, max: v.prof.maxHp });
       send(p, { t: 'dhp', id: v.id, hp, max: v.prof.maxHp });
       if (hp <= 0) void this.duelOver(v, 'caiu');
       return;
     }
+    // Ermo Profundo: o servidor decide (mesmas regras do duelo) e conta a vida; em zero, ele declara a queda.
+    if (p.down || v.down) { inc('hub_pvp_refused'); return; }   // caído não bate nem apanha
+    if (now - p.lastAtk > 1500) { inc('pvp_hit_no_attack'); return; }
+    if (now - v.lastDash < 350 || now - v.lastHurt < HURT_IFRAME) { inc('pvp_hit_dodged'); return; }
+    const raw = Math.min(dmg, maxHit(p.prof));
+    let dealt = pvpDamage(raw, v.prof); if (v.a === 'spin') dealt = Math.max(1, Math.round(dealt * .5));   // giro da Lâmina: metade
+    v.hp = Math.max(0, v.hp - dealt); v.lastHurt = now;
     p.pvpTokens -= 1; inc('hub_pvp_hits');
-    send(v, { t: 'pvp', from: p.id, name: p.account.name, dmg: Math.min(1e6, Math.round(dmg)) });
+    const kill = v.hp <= 0;
+    if (kill) { v.down = { at: now, x: v.x, z: v.z, warned: false }; inc('pvp_kills'); }
+    send(v, { t: 'pvp', from: p.id, name: p.account.name, dmg: Math.round(raw), d: dealt, hp: Math.round(v.hp), max: v.prof.maxHp, ...(kill ? { kill: 1 as const } : {}) });
+    send(p, { t: 'dhp', id: v.id, hp: Math.round(v.hp), max: v.prof.maxHp });
   }
 
   /** Quem caiu nos Ermos larga o espólio (Centelhas e itens da bolsa): fica 5 min no chão da sala. */

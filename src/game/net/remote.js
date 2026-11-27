@@ -75,7 +75,7 @@ function netTick(dt) {
   }
   netAct = P.act; netActT = P.actT;
   netPosAcc += dt; if (netPosAcc < .1) return; netPosAcc = 0;
-  n.sendPos(P.x, P.z, P.yaw, P.moveAmt || 0, P.act || '', P.warp ? 1 : 0); P.warp = false;
+  n.sendPos(P.x, P.z, P.yaw, P.moveAmt || 0, P.act || '', P.warp ? 1 : 0, P.dieT >= 0 ? 0 : Math.round(Math.max(0, P.hp) / P.maxHp * 1000)); P.warp = false;
 }
 
 // ---------- jogadores remotos ----------
@@ -344,7 +344,7 @@ function pvpProj(p) {
 }
 /** Entre jogadores o dano é menor que o dos monstros: uma luta dura alguns golpes, não um. */
 const PVP_MUL = .3;
-function pvpHurt(from, name, dmg, hp, max) {
+function pvpHurt(from, name, dmg, hp, max, dealt, kill) {
   const n = NETON(), duel = !!(n && n.duel && n.duel.opp === from && Date.now() >= n.duel.go);
   // Duelo: o servidor conta a vida (hp/max) e decide quem caiu; aqui só mostramos. Ninguém morre: fica com 1 até o fim.
   if (duel && P && typeof hp === 'number' && max > 0) {
@@ -354,6 +354,24 @@ function pvpHurt(from, name, dmg, hp, max) {
     if (r && r.x !== undefined) { const dx = P.x - r.x, dz = P.z - r.z, l = Math.hypot(dx, dz) || 1; P.kx = dx / l * 5; P.kz = dz / l * 5; }
     if (d > 0) popNum(P.x, 2.2, P.z, '-' + d, 'hurt');
     sfx('hurt'); if (hp <= 0) burst(P.x, 1, P.z, 30, 21, 4, .6, .15);
+    return;
+  }
+  // Ermo Profundo com servidor novo: ele já conferiu zona, amizade, esquiva e o instante sem dano, e conta a vida.
+  // Aqui aplicamos o dano dele (nunca ficamos com mais vida que a dele) e, se ele disse que caímos, caímos.
+  if (!duel && n && P && typeof hp === 'number' && max > 0) {
+    if (P.dieT >= 0 || G.respawning) return;
+    const r = n.players().find(q => q.id === from), sc = P.maxHp / max, d = Math.max(0, Math.round((dealt || 0) * sc));
+    if (d > 0 || kill) {
+      P.hp = Math.min(P.hp - d, Math.round(hp * sc)); P.iframe = .25; P.flash = 1; G.hurt = 1; G.shake = Math.max(G.shake, .2);
+      if (r && r.x !== undefined) { const dx = P.x - r.x, dz = P.z - r.z, l = Math.hypot(dx, dz) || 1; P.kx = dx / l * 5; P.kz = dz / l * 5; }
+      if (d > 0) popNum(P.x, 2.2, P.z, '-' + d, 'hurt');
+      sfx('hurt');
+    }
+    if (kill || P.hp <= 0) {
+      if (G.mode === 'dialog') { DLG.q = []; DLG.cur = null; $('#dialog').hidden = true; G.mode = 'play'; } else if (G.mode !== 'play') closeMenus();   // menu aberto não salva de cair
+      const by = name || G.pvpBy || 'outro jogador'; G.pvpBy = by; playerDie();
+      setTimeout(() => toast('ABATIDO POR ' + by.toUpperCase(), true, 'ERMO PROFUNDO · PVP ATIVO', '#ff5a7a'), 2600);
+    }
     return;
   }
   // Aba escondida: o jogo pausa e a invulnerabilidade curta não acaba; sem isto, trocar de aba deixava o jogador imune no PvP e no duelo.

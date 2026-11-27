@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 0.61.0 · PvP do Ermo Profundo decidido pelo servidor
+- **O servidor conta a vida nos Ermos:** o jogo informa a vida junto com a posição. Perder vida vale na hora; recuperar tem limite de ritmo (uma poção, roubo de vida e regeneração). Assim, um jogo alterado não consegue ignorar o dano de outro jogador
+- **Cada golpe de PvP é conferido como no duelo:** só vale logo depois de um ataque, nunca passa do maior golpe possível do atacante, não pega quem acabou de esquivar nem quem acabou de apanhar (o mesmo instante de proteção do jogo), e o giro da Lâmina corta o dano pela metade. O dano é calculado no servidor a partir dos dois personagens salvos
+- **Quem cai, o servidor decide:** em zero, ele avisa o jogo (que cai mesmo com um menu aberto). Quem caiu não bate nem apanha até renascer. Continuar andando depois de cair conta como suspeita forte; repetido, a conexão cai
+- **Convites mais firmes:** os cartões de convite (grupo, Pronto?, duelo) não são mais refeitos a cada meio segundo. Antes, o botão "Aceitar" podia ser trocado bem na hora do clique e o clique se perdia
+- Correção: o aviso "Espólio nos Ermos" dava erro se outro jogador pegasse o espólio antes de o aviso aparecer
+- Ressalva: o Escudo de Musgo (poder) não absorve dano de outros jogadores no PvP dos Ermos (o servidor não conhece o escudo)
+
 ## 0.60.0 · Duelos decididos pelo servidor
 - **O servidor decide os duelos:** a vida, o dano, a defesa e o ritmo de ataque de cada duelista são calculados no servidor a partir do personagem salvo (`shared/combat.ts`, a mesma conta do jogo). Cada golpe só vale se veio logo depois de um ataque, nunca passa do maior golpe possível daquele personagem e não pega quem acabou de esquivar. Quem chega a zero perde; o jogo não pode mais dizer "venci" ou "não caí"
 - **Barra do duelo** mostra a vida do adversário
