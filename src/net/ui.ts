@@ -484,7 +484,9 @@ export function mountOnlineUI(net: Net) {
     }
     if (net.duel) {
       const d = net.duel, left = Math.max(0, Math.ceil((d.end - now) / 1000)), pre = d.go > now;
-      invBox.append(h('div', { class: 'net-duelbar panel', role: 'status' }, h('b', { text: `⚔ Duelo contra ${d.name}` }), h('span', { text: pre ? `começa em ${Math.ceil((d.go - now) / 1000)}…` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` })));
+      const bar = (v?: number, m?: number) => h('i', { class: 'net-dhp' }, h('i', { style: `width:${m ? Math.max(0, Math.min(100, v! / m * 100)) : 100}%` }));
+      invBox.append(h('div', { class: 'net-duelbar panel', role: 'status' }, h('b', { text: `⚔ Duelo contra ${d.name}` }), h('span', { text: pre ? `começa em ${Math.ceil((d.go - now) / 1000)}…` : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` }),
+        h('small', { class: 'net-dhpl', text: 'Vida dele' }), bar(d.oppHp, d.oppMax)));
     }
     for (const i of net.invites) {
       const bar = h('i', { class: 'net-ibar' }); bar.style.animationDuration = Math.max(0, i.exp - now) + 'ms';

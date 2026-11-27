@@ -8,3 +8,6 @@ import * as TessFish from '../shared/fish';
 // Temporada: Passe do Tear, missões, entrada diária e catálogo de cosméticos (as mesmas regras do servidor).
 import * as TessSeason from '../shared/season';
 (window as any).TessSeason = TessSeason;
+// Atributos de combate que o servidor usa nos duelos (o teste confere que batem com o stats() do jogo).
+import * as TessCombat from '../shared/combat';
+(window as any).TessCombat = TessCombat;

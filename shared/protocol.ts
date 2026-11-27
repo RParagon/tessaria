@@ -111,7 +111,7 @@ export type ClientMsg =
   | { t: 'pvp'; to: number; dmg: number }      // acertei este jogador (o servidor confere zona, amizade e grupo)
   | { t: 'duel'; name: string }                // desafiar para um duelo (na vila, perto)
   | { t: 'dans'; from: string; ok: boolean }   // responder ao desafio
-  | { t: 'dlost' }                             // caí no duelo
+  | { t: 'dlost' }                             // (antigo) o servidor agora decide quem cai no duelo
   | { t: 'ldrop'; x: number; z: number; gold: number; items: unknown[]; at: number }   // caí: meu espólio fica no chão (at: hora da queda no save, wloot.t)
   | { t: 'ltake'; id: string; free: number }    // pegar um espólio (free: espaços livres na bolsa)
   // troca direta (na mesma sala)
@@ -136,7 +136,8 @@ export type ServerMsg =
   | { t: 'hx'; from: number; d: any }
   | { t: 'gx'; from: number; d: any }
   | { t: 'px'; from: number; d: any }   // resposta: c ecoado, s = hora do servidor   // room vazio: conectado fora da vila
-  | { t: 'pvp'; from: number; name: string; dmg: number }   // outro jogador me acertou no Ermo Profundo (ou no duelo)
+  | { t: 'pvp'; from: number; name: string; dmg: number; hp?: number; max?: number }   // outro jogador me acertou no Ermo Profundo (no duelo, hp/max: a vida que o servidor contou)
+  | { t: 'dhp'; id: number; hp: number; max: number }   // duelo: a vida do adversário, contada pelo servidor
   | { t: 'dinv'; from: string; ms: number }                  // desafio de duelo
   | { t: 'dstart'; opp: number; name: string; ms: number; go: number }   // o duelo começa em `go` ms e dura `ms`
   | { t: 'dend'; result: 'venceu' | 'perdeu' | 'empate'; opp: string; rating: number | null; delta: number }

@@ -77,7 +77,8 @@ As regras de cada sistema estão em [ONLINE.md](ONLINE.md). O combate em grupo c
 
 - [ ] Beta fechado
 - [x] Proteção contra trapaça, etapa 1 (0.49): velocidade na vila e nos Ermos, teto de dano PvP, ritmo de pesca e de Fios do Tear no save, alertas e moderação
-- [ ] Proteção contra trapaça, etapa 2: tempo de recarga e dano contra monstros validados pelo servidor (vem com o combate decidido pelo servidor)
+- [x] Combate decidido pelo servidor nos duelos (0.60): vida, dano, ritmo de ataque e esquiva calculados no servidor
+- [ ] Proteção contra trapaça, etapa 2: o mesmo no PvP do Ermo Profundo, e dano contra monstros validado pelo servidor
 - [ ] Login com Apple (exigido pela App Store, se houver versão iOS)
 - [x] Passe do Tear e loja de cosméticos (0.44 e 0.45; ver [MONETIZATION.md](MONETIZATION.md))
 - [ ] Google Play: conta de desenvolvedor, APK assinado, ficha da loja, classificação etária
@@ -117,7 +118,7 @@ Online:
 
 Em ordem: parte legal e conta (0.48) · proteção contra trapaça na vila e no progresso (0.49) · guilda social (0.50) ·
 decoração da casa com Fios Dourados (0.51) · duelos e arena (0.52) · idiomas, Google Play Billing e combate decidido
-pelo servidor (depois, nessa ordem de tamanho).
+pelo servidor (depois, nessa ordem de tamanho). Feitos: idiomas (inglês, 0.59) e duelos decididos pelo servidor (0.60).
 
 ## Fase 5 · Guildas (desenho em docs/GUILDS.md)
 

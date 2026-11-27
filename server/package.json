@@ -1,6 +1,6 @@
 {
   "name": "@tessaria/server",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "private": true,
   "type": "module",
   "description": "Servidor online do Fios de Tessária: contas, save na nuvem, correio e vila online.",

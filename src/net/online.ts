@@ -38,7 +38,7 @@ export class Net {
   invites: Array<{ from: string; size: number; exp: number }> = [];
   /** Duelos: desafios recebidos e o duelo em andamento (go e end em hora local). */
   duelInvites: Array<{ from: string; exp: number }> = [];
-  duel: { opp: number; name: string; go: number; end: number } | null = null;
+  duel: { opp: number; name: string; go: number; end: number; myHp?: number; myMax?: number; oppHp?: number; oppMax?: number } | null = null;
   /** Última lista de amigos carregada (para os menus) e nomes bloqueados. */
   friendsList: FriendsList | null = null;
   /** Espólios no chão da sala dos Ermos (de quem caiu): id → posição, dono, Centelhas, nº de itens e quando some. */
@@ -297,7 +297,6 @@ export class Net {
   invite(name: string) { this.send({ t: 'pinvite', name }); }
   duelAsk(name: string) { this.send({ t: 'duel', name }); }
   duelAnswer(from: string, ok: boolean) { this.duelInvites = this.duelInvites.filter(i => i.from !== from); this.send({ t: 'dans', from, ok }); }
-  duelLost() { this.send({ t: 'dlost' }); }
   async duels(): Promise<any | null> { if (!this.account || this.offline) return null; const r = await call('GET', '/duels', undefined, 8000); return r.status === 200 ? r.data : null; }
   acceptInvite(from: string) { this.invites = this.invites.filter(i => i.from !== from); this.send({ t: 'paccept', from }); }
   declineInvite(from: string) { this.invites = this.invites.filter(i => i.from !== from); this.send({ t: 'pdecline', from }); }
@@ -409,7 +408,8 @@ export class Net {
       case 'ihost': this.hostId = m.id; G?.coopHost?.(m.id === this.myId); break;
       case 'hx': case 'gx': case 'px': G?.coopMsg?.(m.t, m.from, m.d); break;
       case 'loot': G?.coopLoot?.(m); break;
-      case 'pvp': G?.pvpHurt?.(m.from, m.name, m.dmg); break;
+      case 'pvp': G?.pvpHurt?.(m.from, m.name, m.dmg, m.hp, m.max); if (this.duel && typeof m.hp === 'number') { this.duel.myHp = m.hp; this.duel.myMax = m.max; this.emit('duel', this.duel); } break;
+      case 'dhp': if (this.duel && this.duel.opp === m.id) { this.duel.oppHp = m.hp; this.duel.oppMax = m.max; this.emit('duel', this.duel); } break;
       case 'dinv': this.duelInvites = this.duelInvites.filter(i => i.from !== m.from); this.duelInvites.push({ from: m.from, exp: Date.now() + m.ms }); this.emit('dinvite', m); break;
       case 'dstart': this.duel = { opp: m.opp, name: m.name, go: Date.now() + m.go, end: Date.now() + m.go + m.ms }; this.duelInvites = []; G?.duelStart?.(m.name, m.go); this.emit('duel', this.duel); break;
       case 'dend': this.duel = null; G?.duelEnd?.(m); this.emit('duel', null); break;

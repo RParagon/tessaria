@@ -726,7 +726,7 @@ test('duelo na vila: desafio pelo chat, aceitar no cartão, contagem, quem cai p
   const bid = await A.page.evaluate(n => (window as any).TessNet.players().find((p: any) => p.name === n).id, B.name);
   await B.page.bringToFront();   // o jogo de B precisa estar rodando (aba em primeiro plano) para sentir os golpes
   // no teste o jogo roda lento: a invulnerabilidade curta pós-golpe dura mais, então são precisas mais tentativas
-  for (let i = 0; i < 40 && !(await A.page.evaluate(() => !(window as any).TessNet.duel)); i++) { await A.page.evaluate(id => (window as any).TessNet.pvpHit(id, 400), bid); await A.page.waitForTimeout(420); }
+  for (let i = 0; i < 40 && !(await A.page.evaluate(() => !(window as any).TessNet.duel)); i++) { await A.page.evaluate(id => { const n = (window as any).TessNet; n.sendAct('swing', 0, 0); n.pvpHit(id, 400); }, bid); await A.page.waitForTimeout(420); }
   await expect.poll(() => A.page.evaluate(() => (window as any).TessNet.duel), { timeout: 10_000 }).toBeNull();
   expect(await B.page.evaluate(() => { const P = (window as any).__T.P; return [P.dieT < 0, P.hp === P.maxHp || P.hp > 0]; })).toEqual([true, true]);   // ninguém morreu
   await expect(A.page.locator('.net-log')).toContainText(`${A.name} venceu o duelo contra ${B.name}`);

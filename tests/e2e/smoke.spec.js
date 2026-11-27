@@ -498,3 +498,18 @@ test('idioma inglês: título, criação, HUD, menu e dicas traduzidos; o que fa
   console.log(`textos vistos sem tradução (${misses.length}):`, misses.slice(0, 25));
   expect(errors).toEqual([]);
 });
+
+test('combate: atributos do servidor (shared/combat.ts) batem com o stats() do jogo em cada classe', async ({ page }) => {
+  await newGame(page);
+  const r = await page.evaluate(() => __T.ev(`(() => {
+    const out = [];
+    for (const cls of ['lamina', 'arcano', 'arco']) {
+      G.char.cls = cls; G.save.char.cls = cls; G.save.lvl = 14; G.save.up = Object.assign(G.save.up, { vig: 3, pow: 2 });
+      G.save.talents = ['mao', 'olho', 'casca']; G.save.pgp = { hp: 4, dmg: 6, crit: 10 }; G.save.perks = { mel: 1, lio: 1 };
+      G.save.eq = { weapon: makeItem('weapon', 3, 8), armor: makeItem('armor', 3, 8), charm: makeItem('charm', 3, 8) };
+      const a = stats0(), b = TessCombat.combatProfile(JSON.parse(JSON.stringify(G.save)));
+      out.push([cls, a.maxHp - b.maxHp, +(a.dmg - b.dmg).toFixed(4), +(a.atkCd - b.atkCd).toFixed(4), +(a.dr - b.dr).toFixed(4), +(a.crit - b.crit).toFixed(4), a.critMul - b.critMul]);
+    }
+    return out; })()`));
+  for (const [cls, ...d] of r) expect([cls, ...d]).toEqual([cls, 0, 0, 0, 0, 0, 0]);
+});

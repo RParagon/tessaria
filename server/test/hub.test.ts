@@ -16,6 +16,11 @@ for (const kind of STORES) {
       return { a, c, w };
     }
 
+    /** Duelo: A ataca B até o servidor decidir (ataque antes de cada acerto, no ritmo permitido). */
+    async function strike(A: any, B: any, max = 30) {
+      for (let i = 0; i < max && !A.c.msgs.some((m: any) => m.t === 'dend'); i++) { A.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); A.c.send({ t: 'pvp', to: B.w.id, dmg: 400 }); await sleep(140); }
+    }
+
     test('sem sessão válida a conexão é recusada', async () => {
       const c = new WsClient(`${S.ws}?token=falso`);
       await assert.rejects(c.open(), /401/);
@@ -166,21 +171,27 @@ for (const kind of STORES) {
       const sa = await A.c.waitFor(m => m.t === 'dstart'), sb = await B.c.waitFor(m => m.t === 'dstart');
       assert.equal(sa.opp, B.w.id); assert.equal(sb.opp, A.w.id); assert.equal(sa.name, B.a.account.name);
       await C.c.waitFor(m => m.t === 'sys' && /começaram um duelo/.test(m.text));
-      A.c.send({ t: 'pvp', to: B.w.id, dmg: 40 });   // na contagem: não vale
-      B.c.send({ t: 'dlost' });                      // cair na contagem também não vale
+      A.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); A.c.send({ t: 'pvp', to: B.w.id, dmg: 40 });   // na contagem: não vale
+      B.c.send({ t: 'dlost' });                      // o "caí" do jogador não vale mais: o servidor decide
       await sleep(3100);
-      A.c.send({ t: 'pvp', to: B.w.id, dmg: 40 });
-      const hit = await B.c.waitFor(m => m.t === 'pvp'); assert.equal(hit.dmg, 40);
+      A.c.send({ t: 'pvp', to: B.w.id, dmg: 40 }); await sleep(150);   // acerto sem ter atacado: não vale
+      assert.equal(B.c.msgs.filter(m => m.t === 'pvp').length, 0);
+      A.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); A.c.send({ t: 'pvp', to: B.w.id, dmg: 40 });
+      const hit = await B.c.waitFor(m => m.t === 'pvp'); assert.equal(hit.dmg, 40); assert.ok(hit.hp < hit.max, 'o servidor conta a vida');
+      const dh = await A.c.waitFor(m => m.t === 'dhp'); assert.equal(dh.hp, hit.hp);
+      B.c.send({ t: 'act', a: 'dash', c: 0, yaw: 0 }); await sleep(40);   // esquiva: o próximo acerto não pega
+      A.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); A.c.send({ t: 'pvp', to: B.w.id, dmg: 40 }); await sleep(150);
       assert.equal(B.c.msgs.filter(m => m.t === 'pvp').length, 1);
       A.c.send({ t: 'pvp', to: C.w.id, dmg: 40 }); await sleep(150);
       assert.ok(!C.c.msgs.some(m => m.t === 'pvp'), 'quem não está no duelo não apanha');
-      B.c.send({ t: 'dlost' });
+      await sleep(400); await strike(A, B);
       const ea = await A.c.waitFor(m => m.t === 'dend'), eb = await B.c.waitFor(m => m.t === 'dend');
       assert.equal(ea.result, 'venceu'); assert.equal(eb.result, 'perdeu'); assert.equal(ea.rating, 1016); assert.equal(eb.rating, 984); assert.equal(ea.delta, 16);
       const R = (await api(S.url, 'GET', '/duels', undefined, A.a.token)).body;
       assert.equal(R.me.wins, 1); assert.equal(R.me.rank, 1); assert.equal(R.top[0].name, A.a.account.name);
-      A.c.send({ t: 'pvp', to: B.w.id, dmg: 40 }); await sleep(150);
-      assert.equal(B.c.msgs.filter(m => m.t === 'pvp').length, 1, 'acabou o duelo, acabou o PvP');
+      const hits = B.c.msgs.filter(m => m.t === 'pvp').length;
+      A.c.send({ t: 'act', a: 'swing', c: 0, yaw: 0 }); A.c.send({ t: 'pvp', to: B.w.id, dmg: 40 }); await sleep(150);
+      assert.equal(B.c.msgs.filter(m => m.t === 'pvp').length, hits, 'acabou o duelo, acabou o PvP');
       // longe demais não desafia
       C.c.send({ t: 'duel', name: A.a.account.name }); await C.c.waitFor(m => m.t === 'sys' && (/Desafio enviado/.test(m.text) || /mais perto/.test(m.text)));
       A.c.close(); B.c.close(); C.c.close();
@@ -193,7 +204,7 @@ for (const kind of STORES) {
         A.c.msgs.length = 0; B.c.msgs.length = 0;
         A.c.send({ t: 'duel', name: B.a.account.name }); await B.c.waitFor(m => m.t === 'dinv');
         B.c.send({ t: 'dans', from: A.a.account.name, ok: true }); await A.c.waitFor(m => m.t === 'dstart'); await sleep(3050);
-        lose.c.send({ t: 'dlost' }); return (await A.c.waitFor(m => m.t === 'dend'));
+        await strike(A, lose); return (await A.c.waitFor(m => m.t === 'dend'));
       };
       const deltas = []; for (let i = 0; i < 4; i++) deltas.push((await round(B)).delta);
       assert.ok(deltas.slice(0, 3).every(d => d > 0)); assert.equal(deltas[3], 0);

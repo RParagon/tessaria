@@ -438,3 +438,10 @@ As regras deste documento valem nos dois caminhos. Só muda quem calcula o comba
 | 2.11 | Mercado da vila | |
 | 2.12 | Módulos ES, `src/sim` e caminho B; Procurar grupo; ranking público | |
 | Fase 3 | Ermos compartilhados, Ermo Profundo com PvP, arena | |
+
+## Duelos decididos pelo servidor (0.60)
+
+- O servidor monta o perfil de combate de cada jogador a partir do save (`combatProfile` em `shared/combat.ts`): vida máxima, dano, ritmo de ataque, crítico e defesa, sem bênçãos nem comida. Refaz ao entrar e quando o save muda.
+- Um acerto `{t:'pvp', to, dmg}` no duelo só conta se o atacante mandou um ataque (`act`) nos últimos 1,5 s, e é ignorado se a vítima esquivou (`act` dash) há menos de 350 ms. O dano bruto é limitado a `maxHit(perfil)` e vira dano de PvP com `pvpDamage` (30% do golpe, no máximo 20% da vida por acerto, menos a defesa).
+- O servidor guarda a vida dos dois. A vítima recebe `pvp` com `hp`/`max`; o atacante recebe `dhp` (vida do adversário). Em zero, o servidor encerra com `dend`. A mensagem `dlost` do cliente é ignorada.
+- Teste de paridade: `tests/e2e/smoke.spec.js` ("combate: atributos do servidor…") confere que `combatProfile` bate com o `stats()` do jogo. Se mudar a conta de atributos no jogo, mude também em `shared/combat.ts`.

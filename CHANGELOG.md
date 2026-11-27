@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 0.60.0 · Duelos decididos pelo servidor
+- **O servidor decide os duelos:** a vida, o dano, a defesa e o ritmo de ataque de cada duelista são calculados no servidor a partir do personagem salvo (`shared/combat.ts`, a mesma conta do jogo). Cada golpe só vale se veio logo depois de um ataque, nunca passa do maior golpe possível daquele personagem e não pega quem acabou de esquivar. Quem chega a zero perde; o jogo não pode mais dizer "venci" ou "não caí"
+- **Barra do duelo** mostra a vida do adversário
+- Ao fim do duelo, quem perdeu volta com metade da vida (ninguém morre)
+- Um teste confere que as contas do servidor batem com as do jogo nas três classes, com itens, talentos e bônus
+- Base para o ranking e os torneios valerem prêmios com segurança. Próximo passo: o mesmo para o PvP do Ermo Profundo e para o dano em monstros
+
 ## 0.59.0 · Inglês (beta)
 - **O jogo em inglês:** ~2.200 textos traduzidos (menus, HUD, diálogos dos moradores, história, missões, Passe, loja, guilda, duelos, avisos e mensagens do servidor). Quem abre o jogo com o navegador em outro idioma já começa em inglês; dá para trocar a qualquer hora em **Idioma · Language**, no título e no menu
 - Glossário: Centelhas → Sparks, Fios do Tear → Loom Threads, Fios Dourados → Golden Threads, Fenda → Rift, Ermos → Wilds, Tecelão → Weaver, Passe do Tear → Loom Pass, Lâmina / Arcano / Arco → Blade / Arcanist / Archer, Vila Brasa → Ember Village

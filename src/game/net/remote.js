@@ -344,8 +344,18 @@ function pvpProj(p) {
 }
 /** Entre jogadores o dano é menor que o dos monstros: uma luta dura alguns golpes, não um. */
 const PVP_MUL = .3;
-function pvpHurt(from, name, dmg) {
+function pvpHurt(from, name, dmg, hp, max) {
   const n = NETON(), duel = !!(n && n.duel && n.duel.opp === from && Date.now() >= n.duel.go);
+  // Duelo: o servidor conta a vida (hp/max) e decide quem caiu; aqui só mostramos. Ninguém morre: fica com 1 até o fim.
+  if (duel && P && typeof hp === 'number' && max > 0) {
+    const nh = Math.max(1, Math.round(hp / max * P.maxHp)), d = Math.max(0, P.hp - nh);
+    P.hp = nh; P.iframe = .25; P.flash = 1; G.hurt = 1; G.shake = Math.max(G.shake, .2);
+    const r = n.players().find(q => q.id === from);
+    if (r && r.x !== undefined) { const dx = P.x - r.x, dz = P.z - r.z, l = Math.hypot(dx, dz) || 1; P.kx = dx / l * 5; P.kz = dz / l * 5; }
+    if (d > 0) popNum(P.x, 2.2, P.z, '-' + d, 'hurt');
+    sfx('hurt'); if (hp <= 0) burst(P.x, 1, P.z, 30, 21, 4, .6, .15);
+    return;
+  }
   // Aba escondida: o jogo pausa e a invulnerabilidade curta não acaba; sem isto, trocar de aba deixava o jogador imune no PvP e no duelo.
   const hid = document.hidden;
   if (!n || !P || (G.mode !== 'play' && !hid) || P.dieT >= 0 || (!hid && (P.iframe > 0 || P.dashT > 0)) || (!duel && (!deepAt(P.x, P.z) || n.isAlly(name)))) return;
@@ -356,7 +366,7 @@ function pvpHurt(from, name, dmg) {
   P.hp -= d; P.iframe = .25; P.flash = 1; G.hurt = 1; G.shake = Math.max(G.shake, .2);
   if (r && r.x !== undefined) { const dx = P.x - r.x, dz = P.z - r.z, l = Math.hypot(dx, dz) || 1; P.kx = dx / l * 5; P.kz = dz / l * 5; }
   popNum(P.x, 2.2, P.z, '-' + d, 'hurt'); sfx('hurt');
-  if (P.hp <= 0 && duel) { P.hp = P.maxHp; P.iframe = 1.5; n.duelLost(); burst(P.x, 1, P.z, 30, 21, 4, .6, .15); return; }   // no duelo ninguém morre: quem cai perde e volta com a vida cheia
+  if (P.hp <= 0 && duel) { P.hp = 1; return; }   // servidor antigo (sem hp): o resultado vem dele mesmo assim
   if (P.hp <= 0) { G.pvpBy = name; playerDie(); setTimeout(() => toast('ABATIDO POR ' + name.toUpperCase(), true, 'ERMO PROFUNDO · PVP ATIVO', '#ff5a7a'), 2600); }
 }
 // Espólio. O próprio (G.save.wloot) ganha o id do servidor (sid); os dos outros ficam em TessNet.loots.
@@ -418,7 +428,7 @@ window.TessGame = {
   /** Duelo: contagem, fim e resultado (o servidor decide). */
   duelStart(name, goMs) { toast('DUELO CONTRA ' + name.toUpperCase(), true, 'COMEÇA EM ' + Math.round(goMs / 1000) + ' S · QUEM CAIR PRIMEIRO PERDE', '#ff8a5a', { now: true }); sfx('ui'); G.later.push({ t: goMs / 1000, fn: () => { toast('JÁ!', true, '', '#ff5a5a', { now: true }); sfx('hit'); } }); },
   duelEnd(m) {
-    if (P && P.hp < P.maxHp * .3) P.hp = Math.max(P.hp, Math.round(P.maxHp * .3));
+    if (P) { P.hp = Math.max(P.hp, Math.round(P.maxHp * (m.result === 'perdeu' ? .5 : .3))); P.iframe = 1.5; }   // no duelo ninguém morre
     const rt = m.rating !== null ? ' · RANKING ' + m.rating + ' (' + (m.delta >= 0 ? '+' : '') + m.delta + ')' : m.result === 'empate' ? '' : ' · ESSA DUPLA JÁ CONTOU 3 VEZES HOJE';
     toast(m.result === 'venceu' ? 'VITÓRIA NO DUELO' : m.result === 'perdeu' ? 'DERROTA NO DUELO' : 'EMPATE NO DUELO', true, 'CONTRA ' + m.opp.toUpperCase() + rt, m.result === 'venceu' ? '#ffd27a' : m.result === 'perdeu' ? '#ff8a6a' : '#cfc8ba', { now: true });
     sfx(m.result === 'venceu' ? 'legend' : 'ui');

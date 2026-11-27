@@ -496,6 +496,7 @@ body.ic3d .res img,body.ic3d .hic{width:18px;height:18px}
 /* duelos */
 .net-invite.duel b{color:#ff8a5a}
 .net-duelbar{display:flex;gap:10px;align-items:center;padding:6px 12px;border-color:#a8323a}.net-duelbar b{color:#ff8a5a}
+.net-dhp{display:block;width:90px;height:7px;background:#2a1418;border:1px solid #6a2a30;border-radius:3px;overflow:hidden}.net-dhp>i{display:block;height:100%;background:linear-gradient(#ff7a6a,#c8323a);transition:width .2s}.net-dhpl{opacity:.75}
 
 /* 0.55 · tamanho da interface no celular (o computador já usa --ui) e legibilidade mínima */
 :root{--uit:1}

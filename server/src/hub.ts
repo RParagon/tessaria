@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import { combatProfile, maxHit, pvpDamage, type CombatProfile } from '../../shared/combat';
 import { PARTY_LVL_GAP, RELAY_MAX_BYTES, RELAY_PER_SEC, INST_BOUNDS, INST_CAP, INST_EMPTY_MS, INST_READY_MS, RIFT_BASES, ACTS, ACT_BURST, ACT_RATE, CHAT_MAX, EMOTES, HUB_BOUNDS, HUB_CAP, MAX_SPEED, WILDS_CAP, deepWilds, PVP_RANGE, PVP_RATE, LOOT_MS, LOOT_TAKE_R, PROTOCOL_VERSION, SNAP_HZ, sanitizeLook, pvpHitCap, CHAT_RADIUS, DUEL_INVITE_MS, DUEL_RANGE, DUEL_GO_MS, DUEL_MS, DUEL_ELO_START, DUEL_ELO_K, DUEL_PAIR_DAY, type Act, type Emote, type Look, type PublicPlayer, type ServerMsg } from '../../shared/protocol';
 import { cleanChat, maskText } from '../../shared/text';
 import { FRIEND_REQ_DAYS, PARTY_GRACE_MS, PARTY_INVITE_MS, PARTY_MAX, WHERE_LABEL, whereLabel, type PartyView } from '../../shared/social';
@@ -37,6 +38,8 @@ interface Player {
   /** Teto de dano PvP (pelo save) e suspeitas de trapaça na sessão (velocidade, dano), com a hora do último registro. */
   /** Guilda: id, sigla e o título sem a sigla (o que aparece para os outros é "[SIGLA] título"). */
   guildId: string | null; gtag: string; baseTitle: string;
+  /** Combate decidido pelo servidor (duelos): atributos pelo save e as horas do último ataque e da última esquiva. */
+  prof: CombatProfile; lastAtk: number; lastDash: number;
   hitCap: number; sus: { speed: number; dmg: number; t0: number; logged: number };
 }
 
@@ -89,7 +92,7 @@ export class Hub {
   private byAccount = new Map<string, Player>();
   /** Duelos: desafios pendentes (por quem foi desafiado) e duelos em andamento (pelos dois jogadores). */
   private duelInv = new Map<number, { from: Player; exp: number }[]>();
-  private duelOf = new Map<number, { a: Player; b: Player; go: number; end: number; timer: ReturnType<typeof setTimeout> }>();
+  private duelOf = new Map<number, { a: Player; b: Player; go: number; end: number; hp: Map<number, number>; timer: ReturnType<typeof setTimeout> }>();
   private seq = 0;
   private timer: NodeJS.Timeout;
   private ping: NodeJS.Timeout;
@@ -161,6 +164,7 @@ export class Hub {
       x: 44, z: 42, yaw: 0, m: 0, a: '', lastPos: Date.now(), synced: false, dirty: true, alive: true,
       actTokens: ACT_BURST, actRefill: Date.now(), chatTokens: 3, chatRefill: Date.now(), blockedHits: [], lastEmote: 0, lastLook: 0, timeReqs: 0, relayTokens: RELAY_PER_SEC, relayRefill: Date.now(), pvpTokens: PVP_RATE * 2, pvpRefill: Date.now(), lastWarp: 0,
       guildId: null, gtag: '', baseTitle: titleFromSave(save),
+      prof: combatProfile(save), lastAtk: 0, lastDash: 0,
       hitCap: pvpHitCap(save), sus: { speed: 0, dmg: 0, t0: Date.now(), logged: 0 },
     };
     { const g = await this.store.guildOf(account.id).catch(() => null); if (g) { p.guildId = g.guild.id; p.gtag = g.guild.tag; p.title = this.titleOf(p); } }
@@ -239,7 +243,7 @@ export class Hub {
       case 'pvp': return this.onPvp(p, msg);
       case 'duel': return this.duelAsk(p, msg.name);
       case 'dans': return this.duelAnswer(p, msg.from, !!msg.ok);
-      case 'dlost': return void this.duelOver(p, 'caiu');
+      case 'dlost': return;   // o servidor conta a vida no duelo e decide quem caiu
       case 'tprop': return void this.tradePropose(p, msg.name);
       case 'tans': return this.tradeAnswer(p, msg.from, !!msg.ok);
       case 'toffer': return void this.tradeOffer(p, msg);
@@ -346,6 +350,7 @@ export class Hub {
     if (p.actTokens < 1) { inc('hub_act_drops'); return; }
     p.actTokens -= 1;
     const c = Number.isInteger(m.c) && m.c >= 0 && m.c <= 3 ? m.c : 0;
+    if (m.a === 'dash') p.lastDash = now; else p.lastAtk = now;   // duelos: golpe só vale logo depois de um ataque; esquiva dá um instante sem dano
     p.yaw = yaw % 6.2832; p.dirty = true;
     p.room?.broadcast({ t: 'act', id: p.id, a: m.a as Act, c, yaw: +p.yaw.toFixed(2) }, p);
   }
@@ -362,7 +367,7 @@ export class Hub {
   refreshTitle(accountId: string, save: any) {
     const p = this.byAccount.get(accountId); if (!p) return;
     const lvl = lvlOf(save), party = this.partyOf.get(accountId), info = party?.info.get(accountId);
-    Object.assign(p, ctxOf(save)); p.hitCap = pvpHitCap(save);
+    Object.assign(p, ctxOf(save)); p.hitCap = pvpHitCap(save); p.prof = combatProfile(save);
     if (lvl !== p.lvl) { p.lvl = lvl; if (party && info) { info.lvl = lvl; this.sendParty(party); } }
     p.baseTitle = titleFromSave(save); const t = this.titleOf(p); if (t === p.title) return;
     p.title = t; p.room?.broadcast({ t: 'title', id: p.id, title: t });
@@ -459,13 +464,13 @@ export class Hub {
     const a = inv.from;
     if (!ok) return send(a, { t: 'sys', text: `${p.account.name} recusou o duelo.` });
     if (a.left || !a.room || a.room !== p.room || a.room.kind !== 'vila' || this.duelOf.has(a.id) || this.duelOf.has(p.id) || Math.hypot(p.x - a.x, p.z - a.z) > DUEL_RANGE * 1.5) return send(p, { t: 'sys', text: 'O duelo não pôde começar (alguém saiu ou se afastou).' });
-    const d = { a, b: p, go: now + DUEL_GO_MS, end: now + DUEL_GO_MS + DUEL_MS, timer: setTimeout(() => void this.duelOver(null, 'tempo', d), DUEL_GO_MS + DUEL_MS) };
+    const d = { a, b: p, go: now + DUEL_GO_MS, end: now + DUEL_GO_MS + DUEL_MS, hp: new Map([[a.id, a.prof.maxHp], [p.id, p.prof.maxHp]]), timer: setTimeout(() => void this.duelOver(null, 'tempo', d), DUEL_GO_MS + DUEL_MS) };
     this.duelOf.set(a.id, d); this.duelOf.set(p.id, d);
     send(a, { t: 'dstart', opp: p.id, name: p.account.name, ms: DUEL_MS, go: DUEL_GO_MS }); send(p, { t: 'dstart', opp: a.id, name: a.account.name, ms: DUEL_MS, go: DUEL_GO_MS });
     a.room.broadcast({ t: 'sys', text: `⚔ ${a.account.name} e ${p.account.name} começaram um duelo!` }); inc('duels_started');
   }
   /** Fim do duelo: quem caiu (ou saiu) perde; no tempo, empate. Conta no ranking (Elo), com limite diário por dupla. */
-  private async duelOver(p: Player | null, why: 'caiu' | 'saiu' | 'tempo', dd?: { a: Player; b: Player; go: number; end: number; timer: ReturnType<typeof setTimeout> }) {
+  private async duelOver(p: Player | null, why: 'caiu' | 'saiu' | 'tempo', dd?: { a: Player; b: Player; go: number; end: number; hp: Map<number, number>; timer: ReturnType<typeof setTimeout> }) {
     const d = dd ?? (p ? this.duelOf.get(p.id) : undefined); if (!d || this.duelOf.get(d.a.id) !== d) return;
     if (why === 'caiu' && Date.now() < d.go) return;   // antes da contagem acabar não vale
     clearTimeout(d.timer); this.duelOf.delete(d.a.id); this.duelOf.delete(d.b.id);
@@ -495,6 +500,17 @@ export class Hub {
     if (p.pvpTokens < 1) { inc('hub_pvp_limited'); return; }
     if (Math.hypot(p.x - v.x, p.z - v.z) > PVP_RANGE || (!duel && (this.allies(p, v) || !deepWilds(p.x, p.z) || !deepWilds(v.x, v.z)))) { inc('hub_pvp_refused'); return; }
     if (dmg > p.hitCap) { inc('hub_pvp_dmg_refused'); this.suspect(p, 'dmg', { dmg: Math.round(dmg), teto: p.hitCap }); return; }
+    if (duel && d) {   // duelo: o servidor decide (vida, ritmo de ataque, esquiva e quem cai)
+      if (now - p.lastAtk > 1500) { inc('duel_hit_no_attack'); return; }   // acerto sem ter atacado
+      if (now - v.lastDash < 350) { inc('duel_hit_dodged'); return; }      // a vítima esquivou
+      const raw = Math.min(dmg, maxHit(p.prof)), dealt = pvpDamage(raw, v.prof);
+      const hp = Math.max(0, (d.hp.get(v.id) ?? v.prof.maxHp) - dealt); d.hp.set(v.id, hp);
+      p.pvpTokens -= 1; inc('hub_pvp_hits');
+      send(v, { t: 'pvp', from: p.id, name: p.account.name, dmg: Math.round(raw), hp, max: v.prof.maxHp });
+      send(p, { t: 'dhp', id: v.id, hp, max: v.prof.maxHp });
+      if (hp <= 0) void this.duelOver(v, 'caiu');
+      return;
+    }
     p.pvpTokens -= 1; inc('hub_pvp_hits');
     send(v, { t: 'pvp', from: p.id, name: p.account.name, dmg: Math.min(1e6, Math.round(dmg)) });
   }
